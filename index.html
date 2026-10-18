@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#14051e" />
+  <title>Gore Burst</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+    :root {
+      --bg: #09000f;
+      --panel: rgba(26, 5, 32, 0.94);
+      --panel-2: rgba(48, 10, 62, 0.96);
+      --hotpink: #ff3dc7;
+      --hotpink2: #ff70df;
+      --purple: #8f2bff;
+      --glow: 0 0 14px rgba(255, 61, 199, .55), 0 0 28px rgba(143, 43, 255, .35);
+      --text: #fff7ff;
+      --muted: #e6c8ff;
+      --gold: #ffd761;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; height: 100%; background: radial-gradient(circle at top, #220233, #08000e 55%); color: var(--text); font-family: Inter, system-ui, sans-serif; overflow: hidden; }
+    body { display: grid; place-items: center; }
+    .app {
+      position: relative;
+      width: 100vw;
+      height: 100dvh;
+      max-width: 430px;
+      max-height: calc(430px * 1.7777778);
+      aspect-ratio: 9 / 16;
+      overflow: hidden;
+      background: #0b0211;
+      box-shadow: 0 16px 50px rgba(0,0,0,.45);
+    }
+    .screen {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(10px);
+      transition: opacity .4s ease, transform .4s ease;
+      background: #100017;
+    }
+    .screen.active { opacity: 1; pointer-events: auto; transform: translateY(0); }
+    .plate {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center top;
+      user-select: none;
+      -webkit-user-drag: none;
+      pointer-events: none;
+    }
+    .fill-bar {
+      position: absolute;
+      left: 11.3%;
+      top: 78.8%;
+      width: 62.8%;
+      height: 1.75%;
+      border-radius: 999px;
+      overflow: hidden;
+      filter: drop-shadow(0 0 8px rgba(255, 0, 174, .45));
+      pointer-events: none;
+    }
+    .fill-bar::before {
+      content: '';
+      display: block;
+      height: 100%;
+      width: 0%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #8d31ff 0%, #ff45c6 40%, #fd8cff 75%, #ffe0ff 100%);
+      box-shadow: 0 0 16px rgba(255,80,215,.8);
+      animation: load 3s linear forwards;
+    }
+    @keyframes load { from { width: 0%; } to { width: 100%; } }
+    .spark {
+      position: absolute; inset: 0; pointer-events: none; overflow: hidden;
+    }
+    .spark span {
+      position: absolute; width: 5px; height: 5px; border-radius: 50%;
+      background: rgba(255, 132, 234, .75);
+      box-shadow: 0 0 10px rgba(255, 80, 220, .8);
+      animation: drift linear infinite;
+    }
+    .spark span:nth-child(1){left:12%;top:88%;animation-duration:4.8s;animation-delay:-2s}
+    .spark span:nth-child(2){left:22%;top:84%;animation-duration:5.1s;animation-delay:-1s}
+    .spark span:nth-child(3){left:78%;top:73%;animation-duration:6s;animation-delay:-3s}
+    .spark span:nth-child(4){left:70%;top:85%;animation-duration:5.5s;animation-delay:-.5s}
+    .spark span:nth-child(5){left:56%;top:82%;animation-duration:6.2s;animation-delay:-4s}
+    @keyframes drift { from { transform: translateY(0) scale(.8); opacity: 0; } 15%{opacity:1} to { transform: translateY(-38px) scale(1.15); opacity: 0; } }
+    .hotspot {
+      position: absolute;
+      border: 0;
+      background: transparent;
+      color: transparent;
+      cursor: pointer;
+      padding: 0;
+    }
+    .hotspot:focus-visible { outline: 2px solid rgba(255,255,255,.95); outline-offset: 3px; border-radius: 12px; }
+
+    /* Play hub hotspots aligned to approved art */
+    #btn-profile { left: 1.2%; top: 0.35%; width: 13.6%; height: 7.3%; border-radius: 999px; }
+    #btn-lives { left: 17.5%; top: 1.2%; width: 20.8%; height: 4.9%; border-radius: 999px; }
+    #btn-coin { left: 45.5%; top: 1.2%; width: 30.2%; height: 4.9%; border-radius: 999px; }
+    #btn-settings { left: 84%; top: 0.4%; width: 14%; height: 7%; border-radius: 999px; }
+    #btn-play { left: 16.2%; top: 48.6%; width: 67.5%; height: 12.4%; border-radius: 28px; }
+    #btn-tickets { left: 17.4%; top: 63.7%; width: 66%; height: 8.8%; border-radius: 20px; }
+    #tab-play { left: 0.9%; top: 90.3%; width: 24.4%; height: 8.8%; border-radius: 22px 22px 0 0; }
+    #tab-events { left: 25.5%; top: 90.3%; width: 24.2%; height: 8.8%; }
+    #tab-collectibles { left: 50.1%; top: 90.3%; width: 24.2%; height: 8.8%; }
+    #tab-shop { left: 74.5%; top: 90.3%; width: 24.6%; height: 8.8%; border-radius: 22px 22px 0 0; }
+
+    /* Ticket book screen */
+    .ticket-screen {
+      background: radial-gradient(120% 100% at 50% 0%, rgba(84,20,102,.7), rgba(11,3,18,.96) 50%, #09000f 100%);
+      padding-top: calc(var(--safe-top) + 10px);
+      padding-bottom: calc(var(--safe-bottom) + 10px);
+    }
+    .ticket-bg {
+      position: absolute; inset: 0;
+      background: linear-gradient(rgba(14,2,23,.76), rgba(14,2,23,.94)), url('assets/play-hub.png') center top / cover no-repeat;
+      filter: blur(8px) saturate(1.15);
+      transform: scale(1.05);
+      opacity: .55;
+    }
+    .ticket-chrome {
+      position: relative; z-index: 1; height: 100%; display: flex; flex-direction: column;
+    }
+    .ticket-topbar {
+      display: flex; align-items: center; gap: 12px; padding: 8px 14px 0;
+    }
+    .back-btn, .arrow-btn, .close-btn {
+      border: 1px solid rgba(255, 134, 225, .45); background: linear-gradient(180deg, rgba(255,109,223,.25), rgba(75,10,85,.65));
+      color: white; width: 44px; height: 44px; border-radius: 50%; font-size: 24px; display: grid; place-items: center; box-shadow: var(--glow); cursor: pointer;
+    }
+    .ticket-title {
+      margin: 8px auto 0; width: calc(100% - 28px); border-radius: 26px; padding: 16px 18px 14px; text-align: center;
+      background: linear-gradient(180deg, rgba(47,8,58,.96), rgba(23,4,31,.95)); border: 2px solid rgba(255, 112, 223, .45); box-shadow: var(--glow);
+    }
+    .ticket-title h1 { margin: 0; font-family: Cinzel, serif; font-weight: 800; font-size: clamp(28px, 5vw, 34px); letter-spacing: .06em; color: #ffcdf5; text-shadow: 0 0 18px rgba(255,70,210,.55); }
+    .ticket-title p { margin: 6px 0 0; color: #f2c8ff; font-size: 14px; }
+    .grid-wrap {
+      margin: 16px 14px 0; flex: 1; border-radius: 30px; padding: 16px;
+      background: linear-gradient(180deg, rgba(35,4,45,.94), rgba(14,2,22,.92)); border: 2px solid rgba(255, 112, 223, .35); box-shadow: inset 0 0 0 1px rgba(255,255,255,.04), var(--glow);
+      display: flex; flex-direction: column;
+    }
+    .ticket-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; align-content: start;
+    }
+    .ticket {
+      position: relative; border: none; padding: 12px 8px 10px; min-height: 108px; cursor: pointer; color: #421131;
+      background: linear-gradient(180deg, #fbe1cb 0%, #f0c29e 55%, #e39e7d 100%);
+      clip-path: polygon(0 10%, 8% 10%, 8% 0, 92% 0, 92% 10%, 100% 10%, 100% 90%, 92% 90%, 92% 100%, 8% 100%, 8% 90%, 0 90%);
+      box-shadow: 0 10px 18px rgba(0,0,0,.28), 0 0 0 2px rgba(90,18,62,.28) inset;
+      display: flex; flex-direction: column; justify-content: space-between; align-items: center;
+      transition: transform .16s ease, box-shadow .16s ease;
+    }
+    .ticket:hover, .ticket:active { transform: translateY(-1px); }
+    .ticket.locked { background: linear-gradient(180deg, #8a718f, #5e4967); color: #e8dcf7; cursor: not-allowed; }
+    .ticket .num { font-family: Cinzel, serif; font-size: 34px; font-weight: 800; line-height: 1; margin-top: 8px; }
+    .stars { display: flex; gap: 3px; font-size: 18px; line-height: 1; color: var(--gold); text-shadow: 0 0 6px rgba(255,190,40,.5); }
+    .stars .off { color: rgba(85,35,56,.4); text-shadow: none; }
+    .lock { font-size: 24px; margin-bottom: 4px; }
+    .pager {
+      margin-top: auto; display: flex; align-items: center; justify-content: center; gap: 16px; padding-top: 14px;
+      color: #fbeaff;
+    }
+    .page-indicator { font-weight: 700; min-width: 54px; text-align: center; }
+
+    /* Placeholder screens */
+    .placeholder {
+      display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+      gap: 12px; padding: 28px; background: linear-gradient(180deg, rgba(11,2,18,.95), rgba(20,2,28,.97));
+    }
+    .placeholder::before {
+      content: ''; position: absolute; inset: 0; background: url('assets/play-hub.png') center/cover no-repeat; opacity: .18; filter: blur(12px) saturate(1.2);
+      transform: scale(1.08);
+    }
+    .placeholder > * { position: relative; z-index: 1; }
+    .placeholder h2 { font-family: Cinzel, serif; font-size: 34px; margin: 0; color: #ffc9f2; text-shadow: 0 0 16px rgba(255,60,190,.4); }
+    .placeholder p { margin: 0; max-width: 280px; color: #f0d6ff; }
+
+    /* Modal */
+    .modal { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; padding: 22px; background: rgba(8, 0, 12, .72); backdrop-filter: blur(4px); z-index: 50; }
+    .modal.show { display: flex; }
+    .modal-card {
+      width: min(92vw, 360px);
+      border-radius: 28px;
+      padding: 22px 20px 18px;
+      background: linear-gradient(180deg, rgba(52,8,63,.98), rgba(18,3,24,.98));
+      border: 2px solid rgba(255, 122, 223, .45);
+      box-shadow: 0 18px 40px rgba(0,0,0,.48), var(--glow);
+      text-align: center;
+    }
+    .modal-card h3 { margin: 0; font-family: Cinzel, serif; font-size: 30px; color: #ffe4fa; text-shadow: 0 0 16px rgba(255,70,210,.45); }
+    .modal-card p { margin: 10px 0 18px; color: #f0d1ff; line-height: 1.45; }
+    .modal-actions { display: flex; justify-content: center; }
+    .primary-btn {
+      border: none; border-radius: 999px; padding: 14px 26px; min-width: 150px;
+      font-size: 18px; font-weight: 800; letter-spacing: .02em; color: white; cursor: pointer;
+      background: linear-gradient(180deg, #ff6be0, #d71b93 60%, #9d0e71);
+      box-shadow: 0 0 16px rgba(255,70,210,.5), inset 0 2px 0 rgba(255,255,255,.35);
+    }
+    @media (min-width: 431px) {
+      .app { border-radius: 26px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app" id="app">
+    <section class="screen active" id="loading-screen" aria-label="Loading screen">
+      <img class="plate" src="assets/loading-screen.png" alt="Gore Burst loading screen" />
+      <div class="fill-bar" aria-hidden="true"></div>
+      <div class="spark" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+    </section>
+
+    <section class="screen" id="play-screen" aria-label="Play hub">
+      <img class="plate" src="assets/play-hub.png" alt="Gore Burst play hub" />
+      <button class="hotspot" id="btn-profile" aria-label="Profile"></button>
+      <button class="hotspot" id="btn-lives" aria-label="Lives"></button>
+      <button class="hotspot" id="btn-coin" aria-label="Currency"></button>
+      <button class="hotspot" id="btn-settings" aria-label="Settings"></button>
+      <button class="hotspot" id="btn-play" aria-label="Play next level"></button>
+      <button class="hotspot" id="btn-tickets" aria-label="Open ticket book"></button>
+      <button class="hotspot" id="tab-play" aria-label="Play tab"></button>
+      <button class="hotspot" id="tab-events" aria-label="Events tab"></button>
+      <button class="hotspot" id="tab-collectibles" aria-label="Collectibles tab"></button>
+      <button class="hotspot" id="tab-shop" aria-label="Shop tab"></button>
+    </section>
+
+    <section class="screen ticket-screen" id="ticket-screen" aria-label="Ticket Book">
+      <div class="ticket-bg" aria-hidden="true"></div>
+      <div class="ticket-chrome">
+        <div class="ticket-topbar"><button class="back-btn" id="ticket-back" aria-label="Back">‹</button></div>
+        <div class="ticket-title"><h1>MY TICKETS</h1><p>Replay unlocked levels</p></div>
+        <div class="grid-wrap">
+          <div class="ticket-grid" id="ticket-grid"></div>
+          <div class="pager">
+            <button class="arrow-btn" id="prev-page" aria-label="Previous page">‹</button>
+            <div class="page-indicator" id="page-indicator">1 / 2</div>
+            <button class="arrow-btn" id="next-page" aria-label="Next page">›</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen placeholder" id="events-screen" aria-label="Events">
+      <h2>EVENTS</h2><p>Leaderboards, seasonal challenges, and limited-time madness will live here soon.</p>
+      <button class="primary-btn" data-go="play-screen">Back to Play</button>
+    </section>
+    <section class="screen placeholder" id="collectibles-screen" aria-label="Collectibles">
+      <h2>COLLECTIBLES</h2><p>Your future oddities, rewards, and event collectibles will be displayed here.</p>
+      <button class="primary-btn" data-go="play-screen">Back to Play</button>
+    </section>
+    <section class="screen placeholder" id="shop-screen" aria-label="Shop">
+      <h2>SHOP</h2><p>Boosters, lives, and other goodies will arrive once the board gameplay is in place.</p>
+      <button class="primary-btn" data-go="play-screen">Back to Play</button>
+    </section>
+
+    <div class="modal" id="modal" aria-hidden="true" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <h3 id="modal-title">Coming Soon</h3>
+        <p id="modal-text">This part of Gore Burst is being prepared.</p>
+        <div class="modal-actions"><button class="primary-btn" id="modal-close">OK</button></div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const screens = document.querySelectorAll('.screen');
+    const modal = document.getElementById('modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalText = document.getElementById('modal-text');
+    const closeModalBtn = document.getElementById('modal-close');
+    const ticketGrid = document.getElementById('ticket-grid');
+    const pageIndicator = document.getElementById('page-indicator');
+
+    function showScreen(id) {
+      screens.forEach(screen => screen.classList.toggle('active', screen.id === id));
+    }
+    function showModal(title, text) {
+      modalTitle.textContent = title;
+      modalText.textContent = text;
+      modal.classList.add('show');
+      modal.setAttribute('aria-hidden', 'false');
+    }
+    function hideModal() {
+      modal.classList.remove('show');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+    closeModalBtn.addEventListener('click', hideModal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) hideModal(); });
+
+    setTimeout(() => showScreen('play-screen'), 3000);
+
+    document.getElementById('btn-play').addEventListener('click', () => {
+      showModal('Coming Soon', 'The actual match-3 board will replace this button action once our gameplay screen is ready.');
+    });
+    document.getElementById('btn-tickets').addEventListener('click', () => showScreen('ticket-screen'));
+    document.getElementById('ticket-back').addEventListener('click', () => showScreen('play-screen'));
+
+    ['btn-profile', 'btn-lives', 'btn-coin', 'btn-settings'].forEach(id => {
+      document.getElementById(id).addEventListener('click', () => showModal('Coming Soon', 'This button is wired and ready. We can connect its real page next.'));
+    });
+
+    document.getElementById('tab-events').addEventListener('click', () => showScreen('events-screen'));
+    document.getElementById('tab-collectibles').addEventListener('click', () => showScreen('collectibles-screen'));
+    document.getElementById('tab-shop').addEventListener('click', () => showScreen('shop-screen'));
+    document.getElementById('tab-play').addEventListener('click', () => showScreen('play-screen'));
+    document.querySelectorAll('[data-go]').forEach(btn => btn.addEventListener('click', () => showScreen(btn.dataset.go)));
+
+    const ticketPages = [
+      [
+        { level: 1, stars: 3, locked: false }, { level: 2, stars: 3, locked: false }, { level: 3, stars: 2, locked: false },
+        { level: 4, stars: 3, locked: false }, { level: 5, stars: 2, locked: false }, { level: 6, stars: 3, locked: false },
+        { level: 7, stars: 1, locked: false }, { level: 8, stars: 0, locked: false }, { level: 9, stars: 0, locked: false },
+        { level: 10, stars: 0, locked: true }, { level: 11, stars: 0, locked: true }, { level: 12, stars: 0, locked: true },
+      ],
+      [
+        { level: 13, stars: 0, locked: true }, { level: 14, stars: 0, locked: true }, { level: 15, stars: 0, locked: true },
+        { level: 16, stars: 0, locked: true }, { level: 17, stars: 0, locked: true }, { level: 18, stars: 0, locked: true },
+        { level: 19, stars: 0, locked: true }, { level: 20, stars: 0, locked: true }, { level: 21, stars: 0, locked: true },
+        { level: 22, stars: 0, locked: true }, { level: 23, stars: 0, locked: true }, { level: 24, stars: 0, locked: true },
+      ]
+    ];
+    let currentPage = 0;
+
+    function starMarkup(count) {
+      let html = '';
+      for (let i = 0; i < 3; i++) html += `<span class="${i < count ? '' : 'off'}">★</span>`;
+      return html;
+    }
+    function renderTickets() {
+      ticketGrid.innerHTML = '';
+      ticketPages[currentPage].forEach(item => {
+        const btn = document.createElement('button');
+        btn.className = 'ticket' + (item.locked ? ' locked' : '');
+        btn.type = 'button';
+        btn.innerHTML = `<div class="num">${item.level}</div>` +
+                        (item.locked ? `<div class="lock">🔒</div>` : `<div class="stars">${starMarkup(item.stars)}</div>`);
+        btn.addEventListener('click', () => {
+          if (item.locked) {
+            showModal('Locked', `Level ${item.level} is not unlocked yet.`);
+          } else {
+            showModal('Coming Soon', `Level ${item.level} will be playable here once the boards are ready.`);
+          }
+        });
+        ticketGrid.appendChild(btn);
+      });
+      pageIndicator.textContent = `${currentPage + 1} / ${ticketPages.length}`;
+    }
+    document.getElementById('prev-page').addEventListener('click', () => { currentPage = (currentPage - 1 + ticketPages.length) % ticketPages.length; renderTickets(); });
+    document.getElementById('next-page').addEventListener('click', () => { currentPage = (currentPage + 1) % ticketPages.length; renderTickets(); });
+    renderTickets();
+  </script>
+</body>
+</html>
