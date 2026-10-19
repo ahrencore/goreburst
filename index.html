@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#14051e" />
+  <title>Gore Burst</title>
+  <style>
+    :root {
+      --bg: #09000f;
+      --glow: 0 0 14px rgba(255, 61, 199, .55), 0 0 28px rgba(143, 43, 255, .35);
+      --text: #fff7ff;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; height: 100%; background: radial-gradient(circle at top, #220233, #08000e 55%); color: var(--text); font-family: system-ui, sans-serif; overflow: hidden; }
+    body { display: grid; place-items: center; }
+    .app {
+      position: relative;
+      width: 100vw; height: 100dvh; max-width: 430px; max-height: calc(430px * 1.7777778);
+      aspect-ratio: 9 / 16; overflow: hidden; background: #0b0211; box-shadow: 0 16px 50px rgba(0,0,0,.45);
+    }
+    .screen {
+      position: absolute; inset: 0; opacity: 0; pointer-events: none; transform: translateY(10px);
+      transition: opacity .35s ease, transform .35s ease; background: #100017;
+    }
+    .screen.active { opacity: 1; pointer-events: auto; transform: translateY(0); }
+    .plate {
+      position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center top;
+      user-select: none; -webkit-user-drag: none; pointer-events: none;
+    }
+    .fill-bar { position: absolute; left: 11.3%; top: 78.8%; width: 62.8%; height: 1.75%; border-radius: 999px; overflow: hidden; filter: drop-shadow(0 0 8px rgba(255, 0, 174, .45)); pointer-events: none; }
+    .fill-bar::before {
+      content: ''; display: block; height: 100%; width: 0%; border-radius: inherit;
+      background: linear-gradient(90deg, #8d31ff 0%, #ff45c6 40%, #fd8cff 75%, #ffe0ff 100%);
+      box-shadow: 0 0 16px rgba(255,80,215,.8); animation: load 3s linear forwards;
+    }
+    @keyframes load { from { width: 0%; } to { width: 100%; } }
+    .spark { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+    .spark span { position: absolute; width: 5px; height: 5px; border-radius: 50%; background: rgba(255, 132, 234, .75); box-shadow: 0 0 10px rgba(255, 80, 220, .8); animation: drift linear infinite; }
+    .spark span:nth-child(1){left:12%;top:88%;animation-duration:4.8s;animation-delay:-2s}
+    .spark span:nth-child(2){left:22%;top:84%;animation-duration:5.1s;animation-delay:-1s}
+    .spark span:nth-child(3){left:78%;top:73%;animation-duration:6s;animation-delay:-3s}
+    .spark span:nth-child(4){left:70%;top:85%;animation-duration:5.5s;animation-delay:-.5s}
+    .spark span:nth-child(5){left:56%;top:82%;animation-duration:6.2s;animation-delay:-4s}
+    @keyframes drift { from { transform: translateY(0) scale(.8); opacity: 0; } 15%{opacity:1} to { transform: translateY(-38px) scale(1.15); opacity: 0; } }
+
+    .hotspot { position: absolute; border: 0; background: transparent; color: transparent; cursor: pointer; padding: 0; }
+    .hotspot:focus-visible { outline: 2px solid rgba(255,255,255,.95); outline-offset: 3px; border-radius: 12px; }
+
+    /* Play hub hotspots */
+    .play #btn-profile { left: 1.2%; top: 0.35%; width: 13.6%; height: 7.3%; border-radius: 999px; }
+    .play #btn-lives { left: 17.5%; top: 1.2%; width: 20.8%; height: 4.9%; border-radius: 999px; }
+    .play #btn-coin { left: 45.5%; top: 1.2%; width: 30.2%; height: 4.9%; border-radius: 999px; }
+    .play #btn-settings { left: 84%; top: 0.4%; width: 14%; height: 7%; border-radius: 999px; }
+    .play #btn-play { left: 16.2%; top: 48.6%; width: 67.5%; height: 12.4%; border-radius: 28px; }
+    .play #btn-tickets { left: 17.4%; top: 63.7%; width: 66%; height: 8.8%; border-radius: 20px; }
+    .play #tab-play { left: 0.9%; top: 90.3%; width: 24.4%; height: 8.8%; border-radius: 22px 22px 0 0; }
+    .play #tab-events { left: 25.5%; top: 90.3%; width: 24.2%; height: 8.8%; }
+    .play #tab-collectibles { left: 50.1%; top: 90.3%; width: 24.2%; height: 8.8%; }
+    .play #tab-shop { left: 74.5%; top: 90.3%; width: 24.6%; height: 8.8%; border-radius: 22px 22px 0 0; }
+
+    /* Popup screen hotspots */
+    .popup #popup-close { left: 81.7%; top: 24.3%; width: 10%; height: 7%; border-radius: 999px; }
+    .popup #popup-play { left: 13.5%; top: 80.5%; width: 73.4%; height: 10.2%; border-radius: 24px; }
+    .popup #popup-back { left: 0%; top: 0%; width: 100%; height: 18%; }
+
+    #gesture-guide { position:absolute; top:65%; left:22%; width:73%; display:flex; flex-direction:column; align-items:center; text-align:center; gap:4px; color:white; z-index:3; pointer-events:none; font-size:clamp(11px,3vw,15px); font-weight:800; text-shadow:0 2px 8px #140018,0 0 12px #ff00ae; }
+    #gesture-guide[hidden], #gesture-zone[hidden], #tutorial-feedback[hidden] { display:none!important; }
+    .gesture-arrow {font-size:34px; color:#ffb5f6; filter:drop-shadow(0 0 8px #f0f); animation:promptPulse .8s ease-in-out infinite alternate;}
+    @keyframes promptPulse {to{transform:translateX(14px);opacity:.6;}}
+    #gesture-zone {position:absolute;left:21%;top:31%;width:61%;height:32%;z-index:5;touch-action:none; cursor:grab;}
+    #tutorial-feedback {position:absolute;left:12%;right:12%;top:48%;background:rgba(30,0,39,.94);border:2px solid #f55de5;padding:15px 7px;border-radius:20px;z-index:8;text-align:center;font-weight:bold;box-shadow:0 0 20px #e0f;}
+    /* Tutorial step screen hotspots */
+    .tutorial #tutorial-back { left: 0%; top: 0%; width: 14%; height: 10%; border-radius: 999px; }
+    .tutorial #tutorial-settings { right: 0%; top: 0%; width: 14%; height: 10%; border-radius: 999px; }
+    .tutorial #tutorial-continue { left: 80%; top: 66%; width: 11%; height: 7%; border-radius: 999px; }
+
+    .ticket-screen { background: radial-gradient(120% 100% at 50% 0%, rgba(84,20,102,.7), rgba(11,3,18,.96) 50%, #09000f 100%); }
+    .ticket-bg { position: absolute; inset: 0; background: linear-gradient(rgba(14,2,23,.76), rgba(14,2,23,.94)), url('assets/play-hub.webp') center top / cover no-repeat; filter: blur(8px) saturate(1.15); transform: scale(1.05); opacity: .55; }
+    .ticket-chrome { position: relative; z-index: 1; height: 100%; display: flex; flex-direction: column; padding: 16px 14px 14px; }
+    .back-btn, .arrow-btn { border: 1px solid rgba(255, 134, 225, .45); background: linear-gradient(180deg, rgba(255,109,223,.25), rgba(75,10,85,.65)); color: white; width: 44px; height: 44px; border-radius: 50%; font-size: 24px; display: grid; place-items: center; box-shadow: var(--glow); cursor: pointer; }
+    .ticket-title { margin: 8px auto 0; width: 100%; border-radius: 26px; padding: 16px 18px 14px; text-align: center; background: linear-gradient(180deg, rgba(47,8,58,.96), rgba(23,4,31,.95)); border: 2px solid rgba(255, 112, 223, .45); box-shadow: var(--glow); }
+    .ticket-title h1 { margin: 0; font-size: 32px; letter-spacing: .06em; color: #ffcdf5; }
+    .ticket-title p { margin: 6px 0 0; color: #f2c8ff; font-size: 14px; }
+    .grid-wrap { margin-top: 16px; flex: 1; border-radius: 30px; padding: 16px; background: linear-gradient(180deg, rgba(35,4,45,.94), rgba(14,2,22,.92)); border: 2px solid rgba(255, 112, 223, .35); box-shadow: inset 0 0 0 1px rgba(255,255,255,.04), var(--glow); display: flex; flex-direction: column; }
+    .ticket-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; align-content: start; }
+    .ticket { position: relative; border: none; padding: 12px 8px 10px; min-height: 108px; cursor: pointer; color: #421131; background: linear-gradient(180deg, #fbe1cb 0%, #f0c29e 55%, #e39e7d 100%); clip-path: polygon(0 10%, 8% 10%, 8% 0, 92% 0, 92% 10%, 100% 10%, 100% 90%, 92% 90%, 92% 100%, 8% 100%, 8% 90%, 0 90%); box-shadow: 0 10px 18px rgba(0,0,0,.28), 0 0 0 2px rgba(90,18,62,.28) inset; display: flex; flex-direction: column; justify-content: space-between; align-items: center; transition: transform .16s ease, box-shadow .16s ease; }
+    .ticket.locked { background: linear-gradient(180deg, #8a718f, #5e4967); color: #e8dcf7; cursor: not-allowed; }
+    .ticket .num { font-size: 34px; font-weight: 800; line-height: 1; margin-top: 8px; }
+    .stars { display: flex; gap: 3px; font-size: 18px; line-height: 1; color: #ffd761; text-shadow: 0 0 6px rgba(255,190,40,.5); }
+    .stars .off { color: rgba(85,35,56,.4); text-shadow: none; }
+    .lock { font-size: 24px; margin-bottom: 4px; }
+    .pager { margin-top: auto; display: flex; align-items: center; justify-content: center; gap: 16px; padding-top: 14px; color: #fbeaff; }
+    .page-indicator { font-weight: 700; min-width: 54px; text-align: center; }
+
+    .placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 12px; padding: 28px; background: linear-gradient(180deg, rgba(11,2,18,.95), rgba(20,2,28,.97)); }
+    .placeholder::before { content: ''; position: absolute; inset: 0; background: url('assets/play-hub.webp') center/cover no-repeat; opacity: .18; filter: blur(12px) saturate(1.2); transform: scale(1.08); }
+    .placeholder > * { position: relative; z-index: 1; }
+    .placeholder h2 { font-size: 34px; margin: 0; color: #ffc9f2; text-shadow: 0 0 16px rgba(255,60,190,.4); }
+    .placeholder p { margin: 0; max-width: 280px; color: #f0d6ff; }
+    .primary-btn { border: none; border-radius: 999px; padding: 14px 26px; min-width: 150px; font-size: 18px; font-weight: 800; letter-spacing: .02em; color: white; cursor: pointer; background: linear-gradient(180deg, #ff6be0, #d71b93 60%, #9d0e71); box-shadow: 0 0 16px rgba(255,70,210,.5), inset 0 2px 0 rgba(255,255,255,.35); }
+
+    .modal { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; padding: 22px; background: rgba(8, 0, 12, .72); backdrop-filter: blur(4px); z-index: 50; }
+    .modal.show { display: flex; }
+    .modal-card { width: min(92vw, 360px); border-radius: 28px; padding: 22px 20px 18px; background: linear-gradient(180deg, rgba(52,8,63,.98), rgba(18,3,24,.98)); border: 2px solid rgba(255, 122, 223, .45); box-shadow: 0 18px 40px rgba(0,0,0,.48), var(--glow); text-align: center; }
+    .modal-card h3 { margin: 0; font-size: 30px; color: #ffe4fa; text-shadow: 0 0 16px rgba(255,70,210,.45); }
+    .modal-card p { margin: 10px 0 18px; color: #f0d1ff; line-height: 1.45; }
+    .modal-actions { display: flex; justify-content: center; }
+    @media (min-width: 431px) { .app { border-radius: 26px; } }
+
+    .live-game{background:linear-gradient(rgba(8,2,24,.25),rgba(9,2,18,.35)),url('assets/calm-bg.jpg') center/cover no-repeat;touch-action:none;}
+    .game-hud{position:absolute;top:2%;left:2%;right:2%;height:11%;display:flex;align-items:center;gap:5px;z-index:4;}
+    .hud-back{flex:0 0 10%;height:44px;border:2px solid #ff77e9;border-radius:50%;background:#230b34;color:white;font-size:24px;box-shadow:0 0 14px #d62acf;}
+    .moves-panel,.target-panel{height:85%;border:2px solid #ec43bb;border-radius:14px;background:rgba(18,3,30,.95);box-shadow:0 0 13px #d62acf80;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+    .moves-panel{width:18%;}.moves-panel small,.target-panel small{font-size:9px;color:#ffdafa;letter-spacing:.07em;font-weight:800}.moves-panel b{font-size:38px;font-family:Georgia,serif;text-shadow:0 0 10px #ff70de;}
+    .target-panel{flex:1}.objectives{width:100%;display:flex;justify-content:space-evenly}.objectives span{display:flex;align-items:center;gap:3px}.objectives img{width:29px;height:29px;object-fit:contain}.objectives b{font-size:13px;white-space:nowrap}.target-panel.focus{box-shadow:0 0 18px rgba(255,83,217,.95), inset 0 0 0 1px rgba(255,201,244,.45); animation:objectivePulse .75s infinite alternate;}@keyframes objectivePulse{to{transform:scale(1.03)}}
+    .star-meter{position:absolute;top:13.1%;left:17%;width:66%;height:7%;text-align:center;color:#d482ed;z-index:3;}
+    .star-track{position:absolute;top:38%;left:0;width:100%;height:11px;border-radius:15px;background:#32163f;border:1px solid #ad5bad;box-shadow:0 0 8px #ee34b855;overflow:hidden}
+    .star-fill{height:100%;width:0;background:linear-gradient(90deg,#bc30ef,#fd49c2,#ffdc56);border-radius:15px;transition:width .3s ease-out;box-shadow:0 0 12px #fd49c2}
+    .star-pins{position:absolute;inset:0;display:flex;align-items:flex-start;justify-content:space-between;padding-top:0;pointer-events:none}.star-pins span{font-size:26px;color:#51405f;text-shadow:0 0 7px #d545cb;transition:color .23s,transform .23s}.star-pins span.earned{color:#ffe266;text-shadow:0 0 12px #ffdd68;transform:scale(1.22)}
+    .result-stars{font-size:38px;color:#ffe07a;letter-spacing:5px;text-shadow:0 0 16px #ffb322}.result-objectives{font-size:14px;color:#f3d3ff}.result-coins{font-weight:800;color:#ffdb8d}
+    .game-board.surging{animation:surgePulse .3s alternate 3}@keyframes surgePulse{to{filter:drop-shadow(0 0 18px #ffe160)}}
+    .game-board{position:absolute;top:21%;left:3%;width:94%;aspect-ratio:7/6;display:grid;grid-template-columns:repeat(7,1fr);grid-template-rows:repeat(6,1fr);gap:2px;filter:drop-shadow(0 0 7px #ff30da);}
+    .cell{position:relative;border:1px solid #77358c;border-radius:8px;background:linear-gradient(160deg,#301747,#10091f 75%);display:flex;align-items:center;justify-content:center;touch-action:none;min-width:0;min-height:0;}
+    .cell.hole{visibility:hidden}.cell img{width:97%;height:97%;object-fit:contain;pointer-events:none;user-select:none;filter:drop-shadow(0 0 3px #fc6adf80)}
+    .cell.guided{outline:3px solid #ff8deb;z-index:2;box-shadow:0 0 13px #ff38da,inset 0 0 8px #ff38da;animation:pulse-tile .75s alternate infinite}.cell.selected{outline:2px solid white;}
+    @keyframes pulse-tile{to{box-shadow:0 0 26px #ff38da,inset 0 0 16px #ff38da}}
+    .finger-guide{position:absolute;bottom:-17px;left:38%;font-size:30px;color:#fff;filter:drop-shadow(0 0 5px #f0f);pointer-events:none;z-index:5}.finger-guide.right{animation:slide-guide-right .9s infinite}.finger-guide.left{animation:slide-guide-left .9s infinite}.finger-guide.down{animation:slide-guide-down .9s infinite}.finger-guide.up{animation:slide-guide-up .9s infinite}
+    @keyframes slide-guide-right{to{transform:translate(12px,0)}}
+    @keyframes slide-guide-left{to{transform:translate(-12px,0)}}
+    @keyframes slide-guide-down{to{transform:translate(0,12px)}}
+    @keyframes slide-guide-up{to{transform:translate(0,-12px)}}
+    .cell img{will-change:auto}
+    @keyframes piece-land{from{transform:translateY(-8px) scale(.87)}65%{transform:translateY(2px) scale(1.07)}to{transform:translateY(0) scale(1)}}
+    .pop-spark{position:absolute;z-index:10;width:25px;height:25px;border-radius:50%;border:3px solid #ffc8ef;box-shadow:0 0 14px 6px #fd4dd8;pointer-events:none;transform:translate(-50%,-50%);animation:pop-burst .34s ease-out forwards}
+    @keyframes pop-burst{to{transform:translate(-50%,-50%) scale(2.3);opacity:0}}
+    .rocket-beam{position:absolute;z-index:11;pointer-events:none;transform:translate(-50%,-50%);background:linear-gradient(90deg,#ff55db,#fff,#f77fff);box-shadow:0 0 12px 5px #f83caf;animation:beam-flash .33s ease-out forwards}
+    .beam-vertical{height:100%;width:12px}.beam-horizontal{width:100%;height:12px}
+    @keyframes beam-flash{0%{opacity:0;filter:brightness(2)}20%{opacity:1}100%{opacity:0;filter:brightness(.7)}}
+    .game-board.impact{animation:board-impact .25s ease-out}
+    @keyframes board-impact{0%{transform:translateX(0)}25%{transform:translateX(-3px)}50%{transform:translateX(3px)}100%{transform:translateX(0)}}
+    @media(prefers-reduced-motion:reduce){.cell img,.game-board.impact{animation:none}.pop-spark,.rocket-beam{animation-duration:.1s}}
+    .game-toast{position:absolute;top:62%;left:10%;width:80%;text-align:center;background:#200a31;border:2px solid #ec4acb;border-radius:16px;padding:12px;z-index:6;font-weight:800;color:#fff;}
+    .walker-panel{position:absolute;bottom:13%;left:1%;right:1%;height:23%;display:flex;align-items:end;z-index:8;animation:walker-in .25s ease-out;}@keyframes walker-in{from{opacity:0;transform:translateY(25px)}to{opacity:1;transform:translateY(0)}}
+    .walker-panel[hidden],.end-overlay[hidden],.game-toast[hidden]{display:none}
+    .walker-face{height:100%;width:34%;flex-shrink:0;background:url('assets/walker.webp') center bottom/contain no-repeat;filter:drop-shadow(0 0 8px #d536cc);}
+    .walker-bubble{background:linear-gradient(#2f103c,#100718);border:2px solid #ff69dc;box-shadow:0 0 17px #ee38d7;border-radius:16px;padding:12px;flex:1;align-self:center;}
+    .walker-bubble strong{font-size:13px;color:#ff9fea}.walker-bubble p{font-size:15px;line-height:1.35;margin:9px 0;color:#fff}.walker-bubble button{float:right;background:#e23aab;color:white;border:1px solid #ffa6eb;border-radius:11px;padding:8px;font-weight:800}
+    .game-bottom{position:absolute;bottom:1.5%;left:4%;width:92%;height:11%;padding:4px 10px;border:2px solid #e73ab6;border-radius:16px;background:#180c26e8;box-shadow:0 0 15px #dd31ba90;}
+    .booster-title{font-size:11px;font-weight:700;color:#faa5df;text-align:center}.booster-row{display:flex;height:76%;justify-content:space-around;gap:7px}.booster{position:relative;width:23%;border-radius:50%;display:grid;place-items:center;background:#30213b;border:2px solid #9153a8;filter:grayscale(.7);font-size:30px}.booster i{position:absolute;right:-4px;bottom:0;font-style:normal;font-size:15px}
+    .end-overlay{position:absolute;inset:0;z-index:15;background:#08020edb;display:grid;place-items:center}.end-card{width:85%;border-radius:25px;border:2px solid #ff79dd;padding:25px 14px;background:#240b34;box-shadow:0 0 25px #f4d;text-align:center}.end-card h2{font-family:Georgia,serif;color:#ffabeb}.end-card button{margin:8px;border:1px solid #ff9ceb;background:#ba1689;color:#fff;border-radius:17px;padding:13px;font-weight:800}
+    
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="screen active" id="loading-screen">
+      <img class="plate" src="assets/loading-screen.webp" alt="Gore Burst loading screen" />
+
+      <div class="spark" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+    </section>
+
+    <section class="screen play" id="play-screen">
+      <img class="plate" src="assets/play-hub.webp" alt="Gore Burst play hub" />
+      <button class="hotspot" id="btn-profile" aria-label="Profile"></button>
+      <button class="hotspot" id="btn-lives" aria-label="Lives"></button>
+      <button class="hotspot" id="btn-coin" aria-label="Currency"></button>
+      <button class="hotspot" id="btn-settings" aria-label="Settings"></button>
+      <button class="hotspot" id="btn-play" aria-label="Open level 1 setup"></button>
+      <button class="hotspot" id="btn-tickets" aria-label="Open ticket book"></button>
+      <button class="hotspot" id="tab-play" aria-label="Play tab"></button>
+      <button class="hotspot" id="tab-events" aria-label="Events tab"></button>
+      <button class="hotspot" id="tab-collectibles" aria-label="Collectibles tab"></button>
+      <button class="hotspot" id="tab-shop" aria-label="Shop tab"></button>
+    </section>
+
+    <section class="screen popup" id="level1-popup-screen">
+      <img class="plate" src="assets/level1-popup.webp" alt="Level 1 setup popup" />
+      <button class="hotspot" id="popup-close" aria-label="Close level setup"></button>
+      <button class="hotspot" id="popup-play" aria-label="Start Level 1"></button>
+      <button class="hotspot" id="popup-back" aria-label="Background tap to close"></button>
+    </section>
+
+    <section class="screen live-game" id="level1-screen" aria-label="Playable Level 1">
+      <div class="game-hud">
+        <button class="hud-back" id="tutorial-back" aria-label="Back to main menu">❮</button>
+        <div class="moves-panel"><small>MOVES</small><b id="moves-left">10</b></div>
+        <div class="target-panel" id="objective-panel"><small>OBJECTIVES</small><div class="objectives"><span><img src="assets/heart.webp" alt="Heart"/><b id="hearts-left">0/8</b></span><span><img src="assets/star.webp" alt="Star"/><b id="stars-left">0/7</b></span></div></div>
+        <button class="hud-back" id="tutorial-settings" aria-label="Pause">⚙</button>
+      </div>
+      <div class="star-meter" aria-label="Star score progress"><div class="star-track"><div class="star-fill" id="star-fill"></div></div><div class="star-pins"><span id="star-one">★</span><span id="star-two">★</span><span id="star-three">★</span></div></div>
+      <div class="game-board" id="game-board" aria-label="Stepped match three puzzle board"></div>
+      <div class="game-toast" id="game-toast" hidden></div>
+      <div class="walker-panel" id="walker-panel">
+        <div class="walker-face" aria-hidden="true"></div>
+        <div class="walker-bubble"><strong>MR. WALKER</strong><p id="walker-text">Match 3 pieces of the same kind.</p><button id="tutorial-continue" aria-label="Continue instruction">CONTINUE ›</button></div>
+      </div>
+      <div class="game-bottom"><div class="booster-title">TRICKS</div><div class="booster-row">
+        <div class="booster locked"><span>🔨</span><i>🔒</i></div><div class="booster locked"><span>⌚</span><i>🔒</i></div><div class="booster locked"><span>🃏</span><i>🔒</i></div><div class="booster locked"><span>🎁</span><i>🔒</i></div>
+      </div></div>
+      <div class="end-overlay" id="end-overlay" hidden><div class="end-card"><h2 id="end-title">LEVEL COMPLETE!</h2><div class="result-stars" id="result-stars">☆☆☆</div><p id="end-description">The Freakshow applauds.</p><p class="result-objectives" id="result-objectives"></p><p class="result-coins" id="result-coins"></p><button id="end-retry">PLAY AGAIN</button><button id="end-home">MAIN MENU</button></div></div>
+    </section>
+
+    <section class="screen ticket-screen" id="ticket-screen">
+      <div class="ticket-bg" aria-hidden="true"></div>
+      <div class="ticket-chrome">
+        <div><button class="back-btn" id="ticket-back" aria-label="Back">‹</button></div>
+        <div class="ticket-title"><h1>MY TICKETS</h1><p>Replay unlocked levels</p></div>
+        <div class="grid-wrap">
+          <div class="ticket-grid" id="ticket-grid"></div>
+          <div class="pager">
+            <button class="arrow-btn" id="prev-page" aria-label="Previous page">‹</button>
+            <div class="page-indicator" id="page-indicator">1 / 2</div>
+            <button class="arrow-btn" id="next-page" aria-label="Next page">›</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen placeholder" id="events-screen">
+      <h2>EVENTS</h2><p>Leaderboards and event content will go here later.</p>
+      <button class="primary-btn" data-go="play-screen">Back to Play</button>
+    </section>
+    <section class="screen placeholder" id="collectibles-screen">
+      <h2>COLLECTIBLES</h2><p>Your future rewards and oddities will live here.</p>
+      <button class="primary-btn" data-go="play-screen">Back to Play</button>
+    </section>
+    <section class="screen placeholder" id="shop-screen">
+      <h2>SHOP</h2><p>Boosters and bundles will live here later.</p>
+      <button class="primary-btn" data-go="play-screen">Back to Play</button>
+    </section>
+
+    <div class="modal" id="modal" aria-hidden="true" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <h3 id="modal-title">Coming Soon</h3>
+        <p id="modal-text">This part of Gore Burst is being prepared.</p>
+        <div class="modal-actions"><button class="primary-btn" id="modal-close">OK</button></div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const screens = document.querySelectorAll('.screen');
+    const modal = document.getElementById('modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalText = document.getElementById('modal-text');
+    const closeModalBtn = document.getElementById('modal-close');
+    const ticketGrid = document.getElementById('ticket-grid');
+    const pageIndicator = document.getElementById('page-indicator');
+
+    function showScreen(id) {
+      screens.forEach(screen => screen.classList.toggle('active', screen.id === id));
+    }
+    function showModal(title, text) {
+      modalTitle.textContent = title; modalText.textContent = text; modal.classList.add('show'); modal.setAttribute('aria-hidden', 'false');
+    }
+    function hideModal() { modal.classList.remove('show'); modal.setAttribute('aria-hidden', 'true'); }
+    closeModalBtn.addEventListener('click', hideModal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) hideModal(); });
+
+    setTimeout(() => showScreen('play-screen'), 3000);
+
+    document.getElementById('btn-play').addEventListener('click', () => showScreen('level1-popup-screen'));
+    document.getElementById('popup-close').addEventListener('click', () => showScreen('play-screen'));
+    document.getElementById('popup-back').addEventListener('click', (e) => {
+      if (e.target.id === 'popup-back') showScreen('play-screen');
+    });
+    document.getElementById('popup-play').addEventListener('click', () => { resetTutorial(); showScreen('level1-screen'); });
+    document.getElementById('tutorial-back').addEventListener('click', () => showScreen('play-screen'));
+    document.getElementById('tutorial-settings').addEventListener('click', () => showModal('Coming Soon', 'Pause/settings for live gameplay will be connected next.'));
+    const gameBoard=document.getElementById('game-board');
+    const walkerPanel=document.getElementById('walker-panel');
+    const walkerText=document.getElementById('walker-text');
+    const tutorContinue=document.getElementById('tutorial-continue');
+    const gameToast=document.getElementById('game-toast');
+    const endOverlay=document.getElementById('end-overlay');
+    const endTitle=document.getElementById('end-title');
+    const endDescription=document.getElementById('end-description');
+    const MASK=['..XXX..','.XXXXX.','XXXXXXX','XXXXXXX','.XXXXX.','..XXX..'];
+    const symbols=['H','S','G','M'];
+    // File names from the original export were reversed; visual direction is verified.
+    const assetMap={H:'heart.webp',S:'star.webp',G:'skull.webp',M:'moon.webp',RH:'rocket-v.webp',RV:'rocket-h.webp'};
+    const isRocket=v=>v==='RH'||v==='RV';
+    const tutorialLines=['Match 3 pieces of the same kind.','Match 4 in a line to create a Rocket.','Use the Rocket in a match. A vertical Rocket clears a column. A horizontal Rocket clears a row.','There you go. Now you know how this thing works. Finish the task up there, and then we can move on.'];
+    let board=[],phase=0,mode='talk',moves=10,hearts=0,stars=0,selection=null,swipeSource=null,busy=false,seed=907;
+    const objectivePanel=document.getElementById('objective-panel');
+    const starThresholds=[250,650,1100];let score=0,comboDepth=0,surging=false;
+    const starFill=document.getElementById('star-fill');
+    const starEls=['star-one','star-two','star-three'].map(id=>document.getElementById(id));
+    function starCount(){return starThresholds.filter(s=>score>=s).length;}
+    function addScore(pts){const prev=starCount();score+=pts;starFill.style.width=Math.min(100,score/starThresholds[2]*100)+'%';starEls.forEach((e,i)=>e.classList.toggle('earned',score>=starThresholds[i]));if(starCount()>prev && mode!=='ended')tone(550+starCount()*145);}
+    let audioContext=null;
+    function tone(freq){try{audioContext=audioContext||new (window.AudioContext||window.webkitAudioContext)();const oscillator=audioContext.createOscillator(),gain=audioContext.createGain();oscillator.frequency.value=freq;oscillator.type='sine';gain.gain.setValueAtTime(.045,audioContext.currentTime);gain.gain.exponentialRampToValueAtTime(.001,audioContext.currentTime+.13);oscillator.connect(gain).connect(audioContext.destination);oscillator.start();oscillator.stop(audioContext.currentTime+.14);}catch(e){}}
+    function announceCascade(depth){if(depth<2)return;toast(['','', 'SCARY!', 'EERIE!', 'SPOOKY!', 'GORE BURST!'][Math.min(depth,5)]);}
+
+    function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;}
+    function randomPiece(){return symbols[Math.floor(rnd()*symbols.length)];}
+    function parseBoard(rows){return rows.map((r,i)=>Array.from({length:7},(_,j)=>MASK[i][j]==='X'?(r[j]||randomPiece()):null));}
+    function boardState(index){
+      seed=907+index*300;
+      const b=MASK.map(row=>row.split('').map(v=>v==='X'?randomPiece():null));
+      if(index===0){ // swap row 2 col 3 downward to produce three Hearts in row 3
+        b[2][1]='H';b[2][2]='S';b[2][3]='H';b[1][2]='H';b[1][3]='G';b[3][2]='G';
+      } else if(index===1){ // swap row2 col3 downward to make four stars row3 c1..4
+        b[2][1]='S';b[2][2]='S';b[2][3]='H';b[2][4]='S';b[1][3]='S';
+      } else if(index===2){ // swap rocket row3 c3 with star row3 c4 to clear row
+        b[3][1]='S';b[3][2]='S';b[3][3]='RV';b[3][4]='S';
+      }
+      return b;
+    }
+    function updateHUD(){document.getElementById('moves-left').textContent=moves;document.getElementById('hearts-left').textContent=hearts+'/8';document.getElementById('stars-left').textContent=stars+'/7';}
+    // Persistent tiles: unchanged images stay mounted, so cascades do not replay
+    // entry animations or cause the random blinking seen in the previous build.
+    let tileNodes=[];
+    function initializeTiles(){
+      gameBoard.replaceChildren();tileNodes=[];
+      for(let r=0;r<6;r++)for(let c=0;c<7;c++){
+        const tile=document.createElement('div');tile.className='cell';tile.dataset.r=r;tile.dataset.c=c;
+        const img=document.createElement('img');img.draggable=false;tile.appendChild(img);
+        tile.addEventListener('pointerdown',e=>{
+          if(!board[r][c]||mode==='talk'||mode==='surge'||mode==='ended'||busy||moves<=0)return;
+          swipeSource={r,c,x:e.clientX,y:e.clientY};tile.setPointerCapture(e.pointerId);
+        });
+        tile.addEventListener('pointerup',e=>{
+          if(!swipeSource||busy||mode==='talk'||mode==='surge'||mode==='ended')return;
+          let dx=e.clientX-swipeSource.x,dy=e.clientY-swipeSource.y,dr=0,dc=0;
+          if(Math.abs(dx)+Math.abs(dy)>18){if(Math.abs(dx)>Math.abs(dy))dc=Math.sign(dx);else dr=Math.sign(dy);}
+          else if(selection){dr=r-selection.r;dc=c-selection.c;swipeSource={r:selection.r,c:selection.c};selection=null;}
+          else{selection={r,c};swipeSource=null;tile.classList.add('selected');return;}
+          const origin=swipeSource;swipeSource=null;attemptSwap(origin.r,origin.c,origin.r+dr,origin.c+dc);
+        });
+        gameBoard.appendChild(tile);tileNodes.push({tile,img,previous:undefined,r,c});
+      }
+    }
+    function renderBoard(){
+      if(tileNodes.length!==42)initializeTiles();
+      for(const node of tileNodes){
+        const {tile,img,r,c}=node,v=board[r][c];
+        tile.classList.toggle('hole',v===null);
+        tile.classList.remove('guided','selected');
+        if(v && v!==node.previous){img.src='assets/'+assetMap[v];img.alt=v;}
+        img.style.display=v?'block':'none';node.previous=v;
+        const old=tile.querySelector('.finger-guide');if(old)old.remove();
+        if(mode==='swipe'&&phase<3){
+          const [ar,ac,br,bc]=guidedSwap();
+          if((r===ar&&c===ac)||(r===br&&c===bc))tile.classList.add('guided');
+          if(r===ar&&c===ac){
+            const guide=document.createElement('span');const dr=br-ar,dc=bc-ac;
+            const cls=dr>0?'down':dr<0?'up':dc<0?'left':'right';
+            guide.className='finger-guide '+cls;
+            guide.textContent=dr>0?'↓':dr<0?'↑':dc<0?'←':'→';tile.appendChild(guide);
+          }
+        }
+      }
+    }
+    function guidedSwap(){return phase===0?[1,2,2,2]:phase===1?[1,3,2,3]:[3,3,3,4];}
+    function matchGroups(){const groups=[];
+      for(let r=0;r<6;r++){let c=0;while(c<7){const v=board[r][c];if(!v||isRocket(v)){c++;continue;}let j=c+1;while(j<7&&board[r][j]===v)j++;if(j-c>=3)groups.push(Array.from({length:j-c},(_,k)=>[r,c+k]));c=j;}}
+      for(let c=0;c<7;c++){let r=0;while(r<6){const v=board[r][c];if(!v||isRocket(v)){r++;continue;}let j=r+1;while(j<6&&board[j][c]===v)j++;if(j-r>=3)groups.push(Array.from({length:j-r},(_,k)=>[r+k,c]));r=j;}}
+      return groups;
+    }
+    function collect(v){if(v==='H')hearts=Math.min(8,hearts+1);if(v==='S')stars=Math.min(7,stars+1);}
+    function clearCells(cells){const seen=new Set();let cleared=0;for(const [r,c] of cells){const k=r+','+c;if(seen.has(k)||board[r]?.[c]==null||board[r][c]==='')continue;seen.add(k);collect(board[r][c]);board[r][c]='';cleared++;}if(cleared){addScore(cleared*(25+comboDepth*10));popEffect([...seen].map(k=>k.split(',').map(Number)));tone(310+Math.min(8,cleared)*45);}updateHUD();}
+    function refill(){for(let c=0;c<7;c++){const positions=[];for(let r=5;r>=0;r--)if(MASK[r][c]==='X')positions.push(r);const vals=positions.map(r=>board[r][c]).filter(v=>v&&v!=='');for(const r of positions){board[r][c]=vals.shift()||randomPiece();}}}
+    function blastEffect(info){
+      const fx=document.createElement('div');fx.className='rocket-beam '+(info.type==='RV'?'beam-vertical':'beam-horizontal');
+      fx.style.left=((info.c+.5)/7*100)+'%';fx.style.top=((info.r+.5)/6*100)+'%';
+      gameBoard.appendChild(fx);gameBoard.classList.remove('impact');void gameBoard.offsetWidth;gameBoard.classList.add('impact');
+      setTimeout(()=>{fx.remove();gameBoard.classList.remove('impact');},320);
+    }
+    function popEffect(cells){
+      for(const [r,c] of cells.slice(0,12)){
+        const fx=document.createElement('div');fx.className='pop-spark';
+        fx.style.left=((c+.5)/7*100)+'%';fx.style.top=((r+.5)/6*100)+'%';
+        gameBoard.appendChild(fx);setTimeout(()=>fx.remove(),350);
+      }
+    }
+    function toast(message){gameToast.textContent=message;gameToast.hidden=false;setTimeout(()=>gameToast.hidden=true,950);}
+    async function resolveMatches(rocketInfo=null){
+      if(rocketInfo){
+        const cells = rocketInfo.type==='RV' ? Array.from({length:6},(_,rr)=>[rr,rocketInfo.c]).filter(([rr,cc])=>MASK[rr][cc]==='X') : Array.from({length:7},(_,cc)=>[rocketInfo.r,cc]).filter(([rr,cc])=>MASK[rr][cc]==='X');
+        clearCells(cells);
+        toast(rocketInfo.type==='RV' ? 'VERTICAL ROCKET!' : 'HORIZONTAL ROCKET!');addScore(90);
+        renderBoard(); blastEffect(rocketInfo); await delay(440); refill(); renderBoard();
+      }
+      for(let i=0;i<8;i++){const groups=matchGroups();if(!groups.length)break;comboDepth=i+1;clearCells(groups.flat());announceCascade(i+1);renderBoard();await delay(220);refill();renderBoard();await delay(170);}comboDepth=0;
+      updateHUD();if(hearts>=8&&stars>=7){await surgeAndFinish();return;}if(moves===0){finish(false);return;}
+    }
+    const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+    async function surgeAndFinish(){
+      if(surging||mode==='ended')return;
+      surging=true;mode='surge';walkerPanel.hidden=true;
+      const bonusMoves=Math.max(0,moves);
+      if(bonusMoves){toast('GORE BURST SURGE!');gameBoard.classList.add('surging');await delay(450);
+        // Short chained blasts: every remaining move converts into a Rocket bonus,
+        // but the animation runs in a maximum of three quick waves.
+        let pending=bonusMoves;
+        for(let wave=0;wave<Math.min(3,bonusMoves);wave++){
+          const batch=Math.ceil(pending/(Math.min(3,bonusMoves)-wave));pending-=batch;
+          const cells=[];
+          for(let n=0;n<batch;n++){
+            const r=Math.floor(rnd()*6),c=Math.floor(rnd()*7),vertical=rnd()<.5;
+            if(vertical){for(let rr=0;rr<6;rr++)if(MASK[rr][c]==='X')cells.push([rr,c]);}
+            else{for(let cc=0;cc<7;cc++)if(MASK[r][cc]==='X')cells.push([r,cc]);}
+          }
+          comboDepth=wave+2;clearCells(cells);addScore(batch*65);renderBoard();tone(600+wave*110);await delay(320);refill();renderBoard();await delay(240);
+        }
+        gameBoard.classList.remove('surging');comboDepth=0;
+      }
+      moves=0;updateHUD();await delay(250);surging=false;finish(true);
+    }
+
+    async function attemptSwap(r,c,tr,tc){
+      if(Math.abs(r-tr)+Math.abs(c-tc)!==1||tr<0||tr>=6||tc<0||tc>=7||!board[tr][tc]||!board[r][c])return;
+      if(phase<3){const [ar,ac,br,bc]=guidedSwap();if(!(r===ar&&c===ac&&tr===br&&tc===bc)){toast('Follow the glowing arrow');return;}}
+      busy=true;[board[r][c],board[tr][tc]]=[board[tr][tc],board[r][c]];
+      let groups=matchGroups();
+      const rocketInfo = isRocket(board[r][c]) ? {type:board[r][c], r, c} : (isRocket(board[tr][tc]) ? {type:board[tr][tc], r:tr, c:tc} : null);
+      if(!groups.length&&!rocketInfo){[board[r][c],board[tr][tc]]=[board[tr][tc],board[r][c]];busy=false;renderBoard();return;}
+      moves--;updateHUD();renderBoard();await delay(210);
+      // A horizontal 4-match produces a VERTICAL Rocket; a vertical 4-match
+      // produces a HORIZONTAL Rocket. The Rocket keeps that orientation.
+      let createdRocket=null;
+      if(!rocketInfo && phase>=3){
+        const four=groups.find(g=>g.length===4);
+        if(four){
+          const horizontal=four.every(pos=>pos[0]===four[0][0]);
+          const type=horizontal?'RV':'RH';
+          const at=four.find(([gr,gc])=>gr===tr&&gc===tc)||four[four.length-2];
+          createdRocket={r:at[0],c:at[1],type};
+        }
+      }
+      if(phase===0){comboDepth=0;clearCells(groups.flat());renderBoard();await delay(310);board=boardState(1);phase=1;busy=false;talk();return;}
+      if(phase===1){
+        const four=groups.find(g=>g.length>=4);
+        if(!four){busy=false;toast('Make four in a line');return;}
+        const horizontal=four.every(([rr])=>rr===four[0][0]);
+        const rocketType=horizontal?'RV':'RH';
+        comboDepth=0;clearCells(groups.flat());renderBoard();await delay(310);
+        // The tutorial checkpoint only prepares the next practice swap; it does
+        // not choose the Rocket type. The actual matched alignment chooses it.
+        board=boardState(2);board[3][3]=rocketType;
+        phase=2;busy=false;talk();return;
+      }
+      if(phase===2){await resolveMatches(rocketInfo);phase=3;busy=false;talk();return;}
+      if(createdRocket){
+        comboDepth=0;
+        const clears=groups.flat().filter(([gr,gc])=>!(gr===createdRocket.r&&gc===createdRocket.c));
+        clearCells(clears);
+        board[createdRocket.r][createdRocket.c]=createdRocket.type;
+        addScore(75);toast('ROCKET CREATED!');renderBoard();await delay(290);refill();renderBoard();
+        await resolveMatches(null);
+      }else await resolveMatches(rocketInfo);
+      busy=false;renderBoard();
+    }
+    function talk(){mode='talk';walkerText.textContent=tutorialLines[phase];walkerPanel.hidden=false;if(phase===3) objectivePanel.classList.add('focus'); else objectivePanel.classList.remove('focus');renderBoard();}
+    function resetTutorial(){board=boardState(0);phase=0;mode='talk';moves=10;hearts=0;stars=0;score=0;surging=false;comboDepth=0;starFill.style.width='0%';starEls.forEach(e=>e.classList.remove('earned'));busy=false;selection=null;endOverlay.hidden=true;objectivePanel.classList.remove('focus');updateHUD();talk();}
+    tutorContinue.addEventListener('click',()=>{if(mode!=='talk')return;walkerPanel.hidden=true;if(phase===3){mode='free';renderBoard();toast('Finish the objectives!');setTimeout(()=>objectivePanel.classList.remove('focus'),2200);}else{mode='swipe';renderBoard();}});
+    function finish(win){mode='ended';endOverlay.hidden=false;const rating=win?Math.max(1,starCount()):0;
+      endTitle.textContent=win?(['','SCARY!','SPOOKY!','GORE BURST!'][rating]):'YOU FAILED!';
+      document.getElementById('result-stars').textContent='★'.repeat(rating)+'☆'.repeat(3-rating);
+      document.getElementById('result-objectives').textContent=`♥ ${hearts}/8   ★ ${stars}/7`;
+      document.getElementById('result-coins').textContent=win?['','SMALL COIN REWARD','MEDIUM COIN REWARD','BIG COIN REWARD'][rating]:'No completion reward';
+      endDescription.textContent=win?'Level 1 completed! The Freakshow applauds.':'Out of moves — retry to finish the objectives.';
+    }
+    document.getElementById('end-retry').onclick=()=>resetTutorial();
+    document.getElementById('end-home').onclick=()=>showScreen('play-screen');
+        ['btn-profile', 'btn-lives', 'btn-coin', 'btn-settings'].forEach(id => {
+      document.getElementById(id).addEventListener('click', () => showModal('Coming Soon', 'This button is wired and ready for its final page.'));
+    });
+    document.getElementById('btn-tickets').addEventListener('click', () => showScreen('ticket-screen'));
+    document.getElementById('ticket-back').addEventListener('click', () => showScreen('play-screen'));
+    document.getElementById('tab-events').addEventListener('click', () => showScreen('events-screen'));
+    document.getElementById('tab-collectibles').addEventListener('click', () => showScreen('collectibles-screen'));
+    document.getElementById('tab-shop').addEventListener('click', () => showScreen('shop-screen'));
+    document.getElementById('tab-play').addEventListener('click', () => showScreen('play-screen'));
+    document.querySelectorAll('[data-go]').forEach(btn => btn.addEventListener('click', () => showScreen(btn.dataset.go)));
+
+    const ticketPages = [
+      [
+        { level: 1, stars: 0, locked: false }, { level: 2, stars: 0, locked: true }, { level: 3, stars: 0, locked: true },
+        { level: 4, stars: 0, locked: true }, { level: 5, stars: 0, locked: true }, { level: 6, stars: 0, locked: true },
+        { level: 7, stars: 0, locked: true }, { level: 8, stars: 0, locked: true }, { level: 9, stars: 0, locked: true },
+        { level: 10, stars: 0, locked: true }, { level: 11, stars: 0, locked: true }, { level: 12, stars: 0, locked: true }
+      ],
+      [
+        { level: 13, stars: 0, locked: true }, { level: 14, stars: 0, locked: true }, { level: 15, stars: 0, locked: true },
+        { level: 16, stars: 0, locked: true }, { level: 17, stars: 0, locked: true }, { level: 18, stars: 0, locked: true },
+        { level: 19, stars: 0, locked: true }, { level: 20, stars: 0, locked: true }, { level: 21, stars: 0, locked: true },
+        { level: 22, stars: 0, locked: true }, { level: 23, stars: 0, locked: true }, { level: 24, stars: 0, locked: true }
+      ]
+    ];
+    let currentPage = 0;
+    function starMarkup(count) {
+      let html = '';
+      for (let i = 0; i < 3; i++) html += `<span class="${i < count ? '' : 'off'}">★</span>`;
+      return html;
+    }
+    function renderTickets() {
+      ticketGrid.innerHTML = '';
+      ticketPages[currentPage].forEach(item => {
+        const btn = document.createElement('button');
+        btn.className = 'ticket' + (item.locked ? ' locked' : '');
+        btn.type = 'button';
+        btn.innerHTML = `<div class="num">${item.level}</div>` + (item.locked ? `<div class="lock">🔒</div>` : `<div class="stars">${starMarkup(item.stars)}</div>`);
+        btn.addEventListener('click', () => {
+          if (item.locked) {
+            showModal('Locked', `Level ${item.level} is not unlocked yet.`);
+          } else if (item.level === 1) {
+            showScreen('level1-popup-screen');
+          } else {
+            showModal('Coming Soon', `Level ${item.level} will be added later.`);
+          }
+        });
+        ticketGrid.appendChild(btn);
+      });
+      pageIndicator.textContent = `${currentPage + 1} / ${ticketPages.length}`;
+    }
+    document.getElementById('prev-page').addEventListener('click', () => { currentPage = (currentPage - 1 + ticketPages.length) % ticketPages.length; renderTickets(); });
+    document.getElementById('next-page').addEventListener('click', () => { currentPage = (currentPage + 1) % ticketPages.length; renderTickets(); });
+    renderTickets();
+  </script>
+</body>
+</html>
+
+<!-- Level 1 uses alpha-transparent, optimized individually-rendered artwork; gameplay cells are independent controls. -->
