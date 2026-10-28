@@ -66,3 +66,11 @@
 .ev-root .ev-card .ev-promo-art img{display:block;width:100%;height:100%;object-fit:contain;object-position:center;pointer-events:none;user-select:none;-webkit-user-select:none;-webkit-user-drag:none}
 .ev-root .ev-card:focus-visible{outline:2px solid #ff8bdd;outline-offset:3px}
 .ev-root .ev-card:active{transform:scale(.985)}
+
+/* Approved Option B art; no original artwork replaced */
+.ev-root #evWeeklyCard{background-image:linear-gradient(180deg,transparent 57%,#17091bd9 96%),url("promo-weekly-option-b.png");background-size:cover;background-position:center;min-height:170px}
+.ev-root #evWeeklyCard .ev-kicker{position:relative;align-self:flex-start;padding:3px 6px;background:#13051cd9;border-radius:7px}
+.ev-root #evWeeklyCard h2{font-size:0;margin:0;line-height:1}
+.ev-root #evWeeklyCard h2 .ev-countdown{font-size:12px;display:inline-block;background:#17081eea;padding:7px 13px;border:1px solid #ff75df;border-radius:12px;box-shadow:0 0 8px #ed4bac;white-space:nowrap}
+.ev-root .ev-clash-art-sudoku{background-image:url("promo-sudoku-option-b.png")!important}
+.ev-root .ev-clash-art-tetris{background-image:url("promo-tetris-option-b.png")!important}
