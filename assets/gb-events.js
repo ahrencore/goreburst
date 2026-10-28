@@ -32,6 +32,23 @@ const evMissions=[
  ["Mr. Walker's Favorite",'attempts',5,'1 Surprise Music Box',{musicbox:1}]
 ];
 function evMission(i){let [name,key,target,reward]=evMissions[i];if(i===7&&save.current<4){key='pieces';target=15;name='Freakshow Collector'}return {name,key,target,reward}}
+// Compact, plain-language instructions for the existing ten mission objectives.
+// Keep targets tied to evMission(), including the early-game Ghostbusters substitute.
+function evMissionDescription(i,q){
+ switch(i){
+  case 0: return `Attempt ${q.target} levels`;
+  case 1: return `Collect ${q.target} Hearts`;
+  case 2: return `Make ${q.target} matches`;
+  case 3: return `Create ${q.target} Rocket special`;
+  case 4: return `Make ${q.target} matches`;
+  case 5: return `Collect ${q.target} pieces`;
+  case 6: return `Make ${q.target} swaps`;
+  case 7: return q.key==='ghosts'?`Clear ${q.target} Ghosts`:`Collect ${q.target} pieces`;
+  case 8: return `Create ${q.target} special piece`;
+  case 9: return `Attempt ${q.target} levels`;
+  default: return '';
+ }
+}
 function evDailyReadyCount(){evRefresh();return evMissions.reduce((n,_,i)=>{const q=evMission(i);return n+(!evData.claims.includes(i)&&(evData.missions[q.key]||0)>=q.target?1:0)},0)}
 function evUpdateRewardDots(){
  const ready=evDailyReadyCount()>0;
@@ -54,7 +71,7 @@ function evDaily(){
  evRefresh();
  const claimedCount=evData.claims.length;
  const sorted=evMissions.map((_,i)=>{const q=evMission(i),done=Math.min(q.target,evData.missions[q.key]||0),claimed=evData.claims.includes(i);return {i,q,done,claimed,ready:!claimed&&done>=q.target}}).sort((a,b)=>Number(b.ready)-Number(a.ready)||Number(a.claimed)-Number(b.claimed)||a.i-b.i);
- const items=sorted.map(({i,q,done,claimed,ready})=>`<div class="ev-daily-item ${claimed?'ev-daily-claimed':ready?'ev-daily-ready':'ev-daily-pending'}"><div class="ev-daily-content"><div class="ev-daily-info"><b>${q.name}</b><small>${done}/${q.target}</small><div class="ev-meter"><span style="width:${done/q.target*100}%"></span></div></div><div class="ev-daily-art">${evRewardArt(i)}</div></div><button class="ev-daily-claim" type="button" data-claim="${i}" ${claimed||!ready?'disabled':''}>${claimed?'CLAIMED':ready?'CLAIM':'IN PROGRESS'}</button></div>`).join('');
+ const items=sorted.map(({i,q,done,claimed,ready})=>`<div class="ev-daily-item ${claimed?'ev-daily-claimed':ready?'ev-daily-ready':'ev-daily-pending'}"><div class="ev-daily-content"><div class="ev-daily-info"><b>${q.name}</b><span class="ev-daily-objective">${evMissionDescription(i,q)}</span><small>${done}/${q.target}</small><div class="ev-meter"><span style="width:${done/q.target*100}%"></span></div></div><div class="ev-daily-art">${evRewardArt(i)}</div></div><button class="ev-daily-claim" type="button" data-claim="${i}" ${claimed||!ready?'disabled':''}>${claimed?'CLAIMED':ready?'CLAIM':'IN PROGRESS'}</button></div>`).join('');
  evDisplay(`${evHeader('DAILY MISSIONS')}<section class="ev-daily-panel"><h2>TEN TICKETS TO TROUBLE</h2><p class="ev-daily-counter">${claimedCount} / 10 CLAIMED · RESETS DAILY</p><div class="ev-daily-list">${items}</div></section>`);
  evRoot.querySelectorAll('[data-claim]').forEach(b=>b.onclick=()=>{const i=+b.dataset.claim,q=evMission(i);if(evData.claims.includes(i)||(evData.missions[q.key]||0)<q.target)return;evData.claims.push(i);evAward(evMissions[i][4]);evSave();evUpdateRewardDots();playSfx('victory');evDaily()});evUpdateRewardDots();
 }
