@@ -111,3 +111,20 @@
 .ev-nightmare-enter:disabled{opacity:.55}.ev-nightmare-rewards{margin-top:14px;font-size:15px;padding:12px}
 .ev-nightmare-ranks h2{font:900 22px Georgia,serif;color:#ffe1fa;text-shadow:0 0 9px #ec47cb,0 0 19px #9b4cef;letter-spacing:1px}
 .ev-nightmare-rank-list{margin-top:12px}.ev-nightmare-rank-row{display:flex;align-items:center;gap:9px;text-align:left;padding:9px 2px;border-bottom:1px solid #de6cc4;box-shadow:0 2px 3px -3px #f9aaff}.ev-nightmare-rank-row b{min-width:27px;color:#ffde9e}.ev-nightmare-rank-row img{width:31px;height:31px;object-fit:cover;border:1px solid #ff80da;border-radius:50%}.ev-nightmare-rank-row span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ev-nightmare-rank-row strong{font-size:11px;white-space:nowrap}
+
+/* Daily missions — compact neon carnival cards with actual inventory artwork */
+.ev-daily-panel{margin:12px 0 22px;padding:12px 10px;background:linear-gradient(165deg,#2b123b,#160a24);border:2px solid #ff72da;border-radius:17px;box-shadow:0 0 14px #e74cba80,inset 0 0 14px #8943ec35}
+.ev-daily-panel h2{font:900 clamp(16px,5vw,23px) Georgia,serif;color:#ffe0a5;text-shadow:0 0 9px #ff63cc,0 0 16px #8857fa;letter-spacing:.6px;text-align:center;margin:2px 0 4px}
+.ev-daily-counter{text-align:center;color:#dbabeb;letter-spacing:1px;font-size:10px;margin:0 0 11px}
+.ev-daily-list{display:grid;gap:8px}
+.ev-daily-item{border:1.5px solid #cd75e9;border-radius:13px;background:linear-gradient(110deg,#39183f,#261337);padding:9px 10px 8px;box-shadow:0 0 9px #ad50dc77,inset 0 0 7px #ec71c51b;min-width:0}
+.ev-daily-ready{border-color:#ff7bda;box-shadow:0 0 12px #f65edaa8,inset 0 0 9px #f46cd631}
+.ev-daily-claimed{opacity:.69;border-color:#80518f;box-shadow:0 0 5px #9552d855}
+.ev-daily-content{display:flex;gap:8px;justify-content:space-between;align-items:center}
+.ev-daily-info{flex:1;min-width:0}.ev-daily-info b{display:block;color:#ffe7f6;font-size:12px;line-height:1.25}.ev-daily-info small{color:#d5a9e0;font-size:10px}
+.ev-daily-info .ev-meter{height:5px;margin-top:7px;background:#160d27;border-radius:20px}.ev-daily-info .ev-meter span{background:linear-gradient(90deg,#9253f9,#ff68d1,#52baff)}
+.ev-daily-art{display:flex;gap:5px;align-items:center;justify-content:end;min-width:45px}.ev-daily-reward{display:flex;align-items:center;gap:1px;font-size:11px;color:#fff1bd}.ev-daily-reward img{display:block;width:36px;height:36px;object-fit:contain;filter:drop-shadow(0 0 5px #ee65d5)}.ev-daily-reward b{font-size:10px}
+.ev-daily-claim{display:block;margin:7px auto 0;min-width:110px;min-height:32px;padding:6px 15px;border:1.5px solid #ff9ce7;border-radius:999px;background:linear-gradient(#db55bd,#6d248a);box-shadow:0 0 8px #ec61df8c,inset 0 0 7px #f7b6f05c;color:#fff;font:800 11px Georgia,serif;letter-spacing:.9px;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.ev-daily-claim:disabled{opacity:.6;box-shadow:none;background:linear-gradient(#614267,#362846);border-color:#775e85}
+#events.ev-tab-has-reward,[data-ev="daily"].ev-has-reward{position:relative}
+#events.ev-tab-has-reward::after,[data-ev="daily"].ev-has-reward::after{content:"";position:absolute;z-index:15;right:5px;top:4px;width:11px;height:11px;border-radius:100%;background:#ff304f;border:2px solid #ffe0ee;box-shadow:0 0 6px #ff305f,0 0 12px #ff2b4b;pointer-events:none}
