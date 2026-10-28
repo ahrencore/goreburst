@@ -155,3 +155,16 @@
   box-shadow:0 0 7px 2px #ff244f,0 0 10px #fc315b88;
   pointer-events:none;
 }
+
+/* 2026-10-29 approved correction: red dot INSIDE the upper-right of the main Events tab.
+   Match index.html's more-specific historical selector, which previously put it below the label. */
+#menu .bottom-tabs #events.ev-tab-has-reward::after{
+  content:""!important;
+  position:absolute!important;
+  top:13%!important;right:13%!important;bottom:auto!important;left:auto!important;
+  width:11px!important;height:11px!important;
+  border:0!important;border-radius:50%!important;
+  background:#ff1738!important;
+  box-shadow:0 0 7px 2px #ff244f,0 0 12px #fc315b99!important;
+  pointer-events:none!important;z-index:30!important;
+}
