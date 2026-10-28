@@ -493,7 +493,7 @@ html,body{overscroll-behavior:none;height:100%;height:100dvh}
 <div class="menu-sign"><img src="assets/art-sign.webp" alt=""/><div class="main-level" id="current">Level 1</div></div>
 <button id="openplay" class="menu-play art-btn" aria-label="Play"><img src="assets/art-play.webp" alt="PLAY"/></button>
 <button class="tickets-btn art-btn" id="ticketsopen" aria-label="Ticket Book"><img src="assets/art-ticket.webp" alt="TICKET BOOK"/></button>
-<div class="bottom-tabs"><img src="assets/art-nav.webp" alt=""/><button id="menuplay" aria-label="Play"></button><button id="events" aria-label="Events"></button><button id="collectibles" aria-label="Collectibles"></button><button id="shop" aria-label="Shop"></button></div></section>
+<div class="bottom-tabs"><img src="assets/art-nav.webp" alt=""/><button id="menuplay" aria-label="Play"></button><button id="events" aria-label="Events"><span class="gb-events-red-badge" aria-hidden="true"></span></button><button id="collectibles" aria-label="Collectibles"></button><button id="shop" aria-label="Shop"></button></div></section>
 <section class="view" id="setup"><div class="scenery"></div><div class="popup-overlay"></div>
 <div class="gb-setup-frame" role="dialog" aria-modal="true" aria-labelledby="setupTitle">
  
@@ -1135,4 +1135,18 @@ document.getElementById('gamepause').onclick=openGbSettings;
 document.getElementById('gbSettingsClose').onclick=closeGbSettings;
 document.getElementById('gbSettings').addEventListener('click',e=>{if(e.target.id==='gbSettings')closeGbSettings()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeGbSettings()});
-</script><script src="assets/gb-events.js"></script><script type="module" src="assets/gb-profile.js?v=auto-stars-sync-2"></script></body></html>
+</script><script src="assets/gb-events.js"></script><script type="module" src="assets/gb-profile.js?v=auto-stars-sync-2"></script><style id="gb-events-badge-final-position">
+/* Fixed badge: a child of the actual EVENTS tap area, not a pseudo-element. */
+#menu .bottom-tabs #events.ev-tab-has-reward::after{content:none!important;display:none!important}
+#menu .bottom-tabs #events{position:absolute!important;overflow:hidden!important}
+#menu .bottom-tabs #events .gb-events-red-badge{
+ display:none!important;position:absolute!important;
+ top:17%!important;right:17%!important;
+ width:11px!important;height:11px!important;
+ margin:0!important;padding:0!important;border:0!important;
+ border-radius:50%!important;background:#ff1738!important;
+ box-shadow:0 0 5px 1px #ff244f!important;
+ pointer-events:none!important;z-index:50!important;
+}
+#menu .bottom-tabs #events.ev-tab-has-reward .gb-events-red-badge{display:block!important}
+</style></body></html>
