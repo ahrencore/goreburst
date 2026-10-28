@@ -92,3 +92,11 @@
 .ev-root .ev-card .ev-promo-art img{object-fit:cover!important;}
 .ev-root .ev-clash-cards .ev-clash-compact .ev-clash-art{background-size:cover!important;background-color:transparent!important;}
 .ev-root .ev-clash-card .ev-clash-art{background-size:cover!important;}
+
+/* Three user-approved matching marquee promos: fill the same 2:1 artwork box as Daily Quests. */
+.ev-root .ev-promo.ev-promo-art,
+.ev-root .ev-clash-cards .ev-clash-compact .ev-clash-art {aspect-ratio:2/1!important; overflow:hidden!important;}
+.ev-root .ev-card .ev-promo-art img{display:block;width:100%;height:100%;object-fit:fill!important;}
+.ev-root .ev-clash-cards .ev-clash-compact .ev-clash-art{background-size:100% 100%!important;background-position:center!important;}
+.ev-root .ev-clash-art-sudoku{background-image:url('promo-sudoku-option-b.png')!important;}
+.ev-root .ev-clash-art-tetris{background-image:url('promo-tetris-option-b.png')!important;}
