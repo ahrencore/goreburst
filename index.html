@@ -456,6 +456,17 @@ html,body{overscroll-behavior:none;height:100%;height:100dvh}
 #game .cell.gb-ghost-born img:not(.blocker-overlay){animation:gb-ghost-spawn .53s ease-in-out!important}
 #game .cell.gb-boost-highlight{z-index:7;box-shadow:inset 0 0 13px 4px #ffeb9b,0 0 23px 6px #fa52cf!important}
 #game .cell.gb-boost-highlight img{filter:brightness(1.5) drop-shadow(0 0 10px #ffe6b5)!important}
+
+/* 2026-10-29 approved: compact mobile main-menu spacing and legible HUD counts. */
+#menu .menu-sign{top:32.8%!important}
+#menu .menu-play{top:56.5%!important}
+#menu .tickets-btn{top:69.4%!important}
+#menu .top.art-hud>.hud-lives #lives{font-size:clamp(11px,3vw,15px)!important;transform:translate(13%,-5%)!important;white-space:nowrap!important}
+#menu .top.art-hud>.hud-coins #money{font-size:clamp(10px,2.85vw,14px)!important;transform:translate(20%,-4%)!important;white-space:nowrap!important;letter-spacing:-.04em!important;max-width:65%;text-align:center!important;overflow:hidden;text-overflow:clip}
+@media(max-height:680px){#menu .menu-sign{top:31.8%!important}#menu .menu-play{top:55.4%!important}#menu .tickets-btn{top:68.1%!important}}
+/* Navigational badge: attached inside the Events tap area, not free-floating. */
+#menu .bottom-tabs #events.ev-tab-has-reward{position:absolute!important;overflow:visible!important;isolation:isolate}
+#menu .bottom-tabs #events.ev-tab-has-reward::after{content:"";position:absolute;right:15%;top:9%;width:10px;height:10px;border:2px solid #fff2f8;border-radius:50%;background:#ff193c;box-shadow:0 0 0 1px #73041e,0 0 8px 2px #ff245d;pointer-events:none;z-index:12}
 </style><link rel="stylesheet" href="assets/gb-profile.css"><link rel="stylesheet" href="assets/gb-events.css"></head><body><div id="app">
 <section class="view active" id="loading" aria-label="Loading Gore Burst"><img src="assets/loading-clean.webp" alt="Gore Burst carnival entrance"></section>
 <section class="view" id="menu"><div class="scenery"></div><div class="vignette"></div>
