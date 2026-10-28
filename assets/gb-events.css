@@ -38,3 +38,25 @@
 .ev-root button[data-tact],.ev-root button[data-tact] *{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 .ev-sudo-tools #evSudoHint.used{opacity:.34;filter:grayscale(1);pointer-events:none}
 @media(max-width:390px){.ev-controls{gap:6px;max-width:calc(100% - 74px);margin-left:0}.ev-root .ev-arcade-control{min-height:51px}.ev-root .ev-drop-control{min-height:65px}}
+
+/* Carnival Clash layout: arcade cards first, global leaderboard beneath. */
+.ev-clash-intro{margin:16px 0 0;text-align:center}
+.ev-event-title{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
+.ev-event-title h2{font:800 clamp(19px,5.5vw,27px) Georgia,serif;letter-spacing:.5px;color:#ffe0ad;text-shadow:0 0 14px #fa449c;margin:0}
+.ev-countdown{display:inline-flex;align-items:center;white-space:nowrap;font:800 12px/1.2 system-ui,-apple-system,sans-serif;letter-spacing:.7px;color:#ffe1a4;background:linear-gradient(145deg,#42142e,#220c26);border:1px solid #cb9a66;border-radius:999px;padding:6px 9px;box-shadow:inset 0 0 10px #ff9f7430,0 0 10px #d52a7a40;vertical-align:middle;text-shadow:none}
+.ev-banner .ev-countdown{margin-left:4px;font-size:11px}.ev-panel h2 .ev-countdown{font-size:11px}
+.ev-clash-intro .ev-dim{margin:7px 0 2px;font-size:11px}
+.ev-clash-cards{margin-top:12px;gap:10px;align-items:stretch}
+.ev-clash-card{position:relative;display:flex;flex-direction:column;background:linear-gradient(155deg,#421024,#1a0a1c 75%);border:1.5px solid #c37689;border-radius:14px;box-shadow:0 0 16px #e83b7040,inset 0 1px #f9b59955;transition:transform .1s,filter .1s;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.ev-clash-card:active{transform:scale(.98);filter:brightness(1.1)}
+.ev-clash-art{height:clamp(104px,31vw,172px);background-size:cover;background-position:center top;position:relative;box-shadow:inset 0 -20px 17px #1a0618}
+.ev-clash-art::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 45%,#260b25b0 100%);pointer-events:none}
+.ev-clash-art-sudoku{background-image:url('clash-promo-sudoku.webp')}
+.ev-clash-art-tetris{background-image:url('clash-promo-tetris.webp')}
+.ev-clash-card b{font:800 clamp(14px,3.8vw,19px) Georgia,serif;color:#ffe0ae;margin:9px 10px 2px;text-shadow:0 0 10px #ff4590}
+.ev-clash-card small{font-size:10px;line-height:1.3;margin:0 10px 8px;color:#e2bdd2}
+.ev-clash-card .ev-card-play{display:block;margin:auto 10px 11px;padding:7px 4px;border:1px solid #d89b66;border-radius:9px;background:linear-gradient(115deg,#96254d,#51112e);color:#ffe6c1;text-align:center;font:800 11px system-ui;letter-spacing:1px;box-shadow:0 2px 8px #f5377944}
+.ev-clash-board{margin-top:15px}
+.ev-clash-board h3{font:800 17px Georgia,serif;text-align:center;color:#ffe0a4}
+.ev-clash-board #evClashRefresh{margin-top:10px;width:100%}
+@media(max-width:340px){.ev-clash-cards{gap:7px}.ev-clash-card b{margin-left:7px;margin-right:7px}.ev-clash-card small{margin-left:7px;margin-right:7px}.ev-clash-card .ev-card-play{margin-left:7px;margin-right:7px}}
