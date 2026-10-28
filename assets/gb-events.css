@@ -100,3 +100,14 @@
 .ev-root .ev-clash-cards .ev-clash-compact .ev-clash-art{background-size:100% 100%!important;background-position:center!important;}
 .ev-root .ev-clash-art-sudoku{background-image:url('promo-sudoku-option-b.png')!important;}
 .ev-root .ev-clash-art-tetris{background-image:url('promo-tetris-option-b.png')!important;}
+
+/* Weekly Nightmare: approved carnival marquee; visible indicators remain live UI */
+.ev-root #evWeeklyCard{background-image:linear-gradient(180deg,transparent 57%,#17091bd9 96%),url("promo-weekly-nightmare.webp")!important;background-position:center;background-size:cover;min-height:170px}
+.ev-nightmare-lobby,.ev-nightmare-ranks{position:relative;margin-top:12px;border:2px solid #fa68db;border-radius:18px;background:linear-gradient(160deg,#251039,#10091e);box-shadow:0 0 15px #f04bd077,inset 0 0 20px #8720c655;padding:12px;text-align:center;overflow:hidden}
+.ev-nightmare-art{height:145px;background:url("promo-weekly-nightmare.webp") center/cover;border-radius:12px;box-shadow:0 0 12px #ff64cf8a;border:1px solid #fd70de}
+.ev-nightmare-status{display:flex;align-items:center;justify-content:center;gap:12px;margin:12px 0 3px;font-weight:900;color:#ffb8ef;text-shadow:0 0 10px #ff4ab8}
+.ev-nightmare-stage{font:900 23px Georgia,serif;letter-spacing:1.3px;color:#ffd6ff;text-shadow:0 0 8px #f34df5,0 0 16px #744eff;margin:12px 0}
+.ev-nightmare-enter,.ev-nightmare-rewards{width:100%;border:2px solid #ff9af2;border-radius:999px;padding:15px 12px;color:#fff9ff;font:900 20px Georgia,serif;letter-spacing:.6px;text-shadow:0 2px 2px #2c092c,0 0 10px #fff;box-shadow:0 0 10px #fd4bc7,0 0 22px #8654ff,inset 0 0 12px #ff9fe0;background:linear-gradient(180deg,#ef6cc9 0%,#a5199c 35%,#4d146c 100%);cursor:pointer;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+.ev-nightmare-enter:disabled{opacity:.55}.ev-nightmare-rewards{margin-top:14px;font-size:15px;padding:12px}
+.ev-nightmare-ranks h2{font:900 22px Georgia,serif;color:#ffe1fa;text-shadow:0 0 9px #ec47cb,0 0 19px #9b4cef;letter-spacing:1px}
+.ev-nightmare-rank-list{margin-top:12px}.ev-nightmare-rank-row{display:flex;align-items:center;gap:9px;text-align:left;padding:9px 2px;border-bottom:1px solid #de6cc4;box-shadow:0 2px 3px -3px #f9aaff}.ev-nightmare-rank-row b{min-width:27px;color:#ffde9e}.ev-nightmare-rank-row img{width:31px;height:31px;object-fit:cover;border:1px solid #ff80da;border-radius:50%}.ev-nightmare-rank-row span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ev-nightmare-rank-row strong{font-size:11px;white-space:nowrap}

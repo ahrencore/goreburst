@@ -362,3 +362,7 @@ window.gbClashSubmit=async function(game,points){
   const {error}=await sb.rpc('carnival_clash_submit_beta',{p_game:kind,p_points:pts,p_event_id:crypto.randomUUID()});
   if(error)console.warn('Carnival Clash beta submission:',error.message);
 };
+
+// Weekly Nightmare beta reporting: only stage totals; prizes must await trusted validation.
+window.gbWeeklySubmit=async function(stages){if(!sb||!user)return {error:'Sign in required'};const {error}=await sb.rpc('weekly_nightmare_submit_beta',{p_stages:Number(stages)});if(error)throw error;return {ok:true}};
+window.gbWeeklyTop10=async function(){if(!sb)return {rows:[],error:'Offline'};const {data,error}=await sb.rpc('weekly_nightmare_top10');return {rows:data||[],error:error?.message||null}};
