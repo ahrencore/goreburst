@@ -74,3 +74,16 @@
 .ev-root #evWeeklyCard h2 .ev-countdown{font-size:12px;display:inline-block;background:#17081eea;padding:7px 13px;border:1px solid #ff75df;border-radius:12px;box-shadow:0 0 8px #ed4bac;white-space:nowrap}
 .ev-root .ev-clash-art-sudoku{background-image:url("promo-sudoku-option-b.png")!important}
 .ev-root .ev-clash-art-tetris{background-image:url("promo-tetris-option-b.png")!important}
+
+/* Consistent 2:1 art ratio with Event tab promo cards; use approved Option B imagery. */
+.ev-root .ev-clash-card .ev-clash-art{height:auto!important;aspect-ratio:2/1;background-position:center!important;background-size:contain!important;background-repeat:no-repeat;background-color:#170d25;box-shadow:none}
+.ev-root .ev-clash-card .ev-clash-art::after{display:none}
+.ev-root .ev-clash-card{min-width:0}
+
+/* Compact mini-game promos: same two-column, 2:1 art-only proportions as Event cards. */
+.ev-root .ev-clash-cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:start;}
+.ev-root .ev-clash-cards .ev-clash-compact{padding:0;min-width:0;display:block;border:1.5px solid #9e4c8f;border-radius:16px;overflow:hidden;background:#170d25;line-height:0;box-shadow:0 0 12px #d3238755;cursor:pointer;}
+.ev-root .ev-clash-cards .ev-clash-compact .ev-clash-art{display:block;width:100%;height:auto!important;aspect-ratio:2/1;background-size:contain!important;background-position:center!important;background-repeat:no-repeat;box-shadow:none;}
+.ev-root .ev-clash-cards .ev-clash-compact .ev-clash-art::after{display:none;}
+.ev-root .ev-clash-cards .ev-clash-compact:focus-visible{outline:2px solid #ff8bdd;outline-offset:3px;}
+.ev-root .ev-clash-cards .ev-clash-compact:active{transform:scale(.985);}
