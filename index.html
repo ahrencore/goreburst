@@ -486,6 +486,21 @@ html,body{overscroll-behavior:none;height:100%;height:100dvh}
 #board .cell.gb-idle-hint img{filter:brightness(1.28) drop-shadow(0 0 10px #8fe7ff)!important}
 @keyframes gb-idle-pulse{to{box-shadow:inset 0 0 12px #ff8add,0 0 20px 6px #70dfff}}
 @media(prefers-reduced-motion:reduce){#board .cell.gb-idle-hint{animation:none}}
+
+/* Approved normal gameplay carnival polish — presentation only. */
+@keyframes gbFrameBreath{0%,100%{filter:drop-shadow(0 0 5px #ed5fcc80)}50%{filter:drop-shadow(0 0 14px #a85bffac)}}
+@keyframes gbButtonBreath{0%,100%{box-shadow:inset 0 2px 2px #fff6,0 0 10px #ff50b488,0 0 3px #7efbff}50%{box-shadow:inset 0 2px 3px #fff9,0 0 19px #ed67ffcb,0 0 14px #58d9ff80}}
+#setup .gb-setup-frame,#result .gb-win-shell{border:2px solid #e47bfa!important;border-radius:23px!important;box-shadow:0 0 13px #f64abb88,0 0 24px #7a4cfa66,inset 0 0 16px #bc38bb44!important;background:linear-gradient(160deg,#291139ee,#14091feF)!important;animation:gbFrameBreath 3.7s ease-in-out infinite;overflow-y:auto!important;overflow-x:hidden!important;scrollbar-width:thin!important}
+#setup .gb-setup-frame{padding:clamp(10px,2.2vh,19px)!important}
+#result .gb-win-shell{padding:clamp(10px,2.2vh,19px)!important}
+#result .gb-failure-shell{border:2px solid #d78cfe!important;box-shadow:0 0 15px #dc4feeb0,0 0 33px #5f57e67a,inset 0 0 22px #d241a155!important;animation:gbFrameBreath 3.7s ease-in-out infinite}
+#setup #setupTitle,#result .gb-win-title,#result .failure-title{font-family:Georgia,'Palatino Linotype',serif!important;font-weight:900!important;letter-spacing:1.3px!important;text-shadow:0 2px 2px #170821,0 0 11px #ff54cf,0 0 21px #7467ef!important}
+#setup .gb-setup-kicker,#setup .gb-rule,#result .gb-win-divider,#result .failure-level{font-family:Georgia,'Palatino Linotype',serif!important;letter-spacing:.8px!important;text-shadow:0 0 8px #ff82dd8c!important}
+#setup .gb-start-art,#result .gb-next-art,#result .failure-retry{border:2px solid #ffd7a3!important;border-radius:23px!important;background:linear-gradient(175deg,#ff9ee2 0%,#ec4bac 28%,#a325a0 65%,#57217d 100%)!important;color:#fffaff!important;text-shadow:0 1px 2px #390c51,0 0 8px #ffe1fb!important;animation:gbButtonBreath 2.8s ease-in-out infinite!important;cursor:pointer!important}
+#result .gb-win-actions button,#result .failure-actions button{border:1.5px solid #c885ee!important;border-radius:15px!important;background:linear-gradient(160deg,#743a91,#351a53)!important;box-shadow:0 0 10px #a24dee88,inset 0 1px #ffdbf67a!important;color:#fff0fb!important;text-shadow:0 0 6px #ff8de5!important;font-family:Georgia,serif!important;font-weight:bold!important}
+#setup button:focus-visible,#result button:focus-visible{outline:2px solid #91f1ff!important;outline-offset:3px!important}
+#setup button:active,#result button:active{filter:brightness(1.15)!important}
+@media(prefers-reduced-motion:reduce){#setup .gb-setup-frame,#result .gb-win-shell,#result .gb-failure-shell,#setup .gb-start-art,#result .gb-next-art,#result .failure-retry{animation:none!important}}
 </style><link rel="stylesheet" href="assets/gb-profile.css"><link rel="stylesheet" href="assets/gb-events.css"></head><body><div id="app">
 <section class="view active" id="loading" aria-label="Loading Gore Burst"><img src="assets/loading-clean.webp" alt="Gore Burst carnival entrance"></section>
 <section class="view" id="menu"><div class="scenery"></div><div class="vignette"></div>
@@ -1067,7 +1082,7 @@ async function checkEnd(){
  if(Object.entries(conf.goals).every(([t,n])=>collected[t]>=n)){
   mode='surge';busy=true;const bonus=Math.max(0,moves);window.__surgeMovesAtWin=bonus;window.__surgeScoreAtWin=score;
   if(bonus||grid.some(row=>row.some(t=>t&&isSpecial(t)))){
-   say('GORE BURST SURGE!');const movesEl=$('moves');movesEl.classList.add('surge-flash');await delay(430);movesEl.classList.remove('surge-flash');
+   playSfx('surge');say('GORE BURST SURGE!');const movesEl=$('moves');movesEl.classList.add('surge-flash');await delay(430);movesEl.classList.remove('surge-flash');
    const options=[];for(let r=0;r<grid.length;r++)for(let c=0;c<grid[r].length;c++)if(valid(r,c)&&grid[r][c]&&!isSpecial(grid[r][c])&&!grid[r][c].startsWith('GH'))options.push([r,c]);
    // Prefer shared lines and clustered positions so blasts create chain reactions.
    options.sort((a,b)=>Math.abs(a[0]-grid.length/2)+Math.abs(a[1]-grid[0].length/2)-Math.abs(b[0]-grid.length/2)-Math.abs(b[1]-grid[0].length/2));
@@ -1121,7 +1136,31 @@ document.addEventListener('touchend',ensureAudioGesture,{passive:true,capture:tr
 document.addEventListener('click',ensureAudioGesture,{capture:true});
 document.addEventListener('keydown',ensureAudioGesture);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&audioUnlocked)updateAudio()});
-function playSfx(kind){if(!gbPrefs.sound||!audioUnlocked||!audioCtx)return;const now=performance.now();if(now-(lastSfx[kind]||0)<90)return;lastSfx[kind]=now;
+
+const gbApprovedSfx={
+ rocket:'assets/sfx/rocket-r6.mp3',
+ bomb:'assets/sfx/clownbomb-option3.mp3',
+ wheel:'assets/sfx/ferris-f6.mp3',
+ combo:'assets/sfx/supreme-ff2.mp3',
+ surge:'assets/sfx/surge-su4.mp3'
+};
+const gbSoundCache=Object.fromEntries(Object.entries(gbApprovedSfx).map(([key,src])=>{const a=new Audio(src);a.preload='auto';return [key,a]}));
+let gbComboAudioUntil=0;
+function playApprovedSfx(kind){
+ if(!gbPrefs.sound||!audioUnlocked)return;
+ const volume=Math.max(0,Math.min(100,Number(gbPrefs.soundVolume)||0))/100;
+ if(volume<=0)return;
+ const now=performance.now();
+ if((kind==='rocket'||kind==='bomb'||kind==='wheel')&&(now<gbComboAudioUntil||mode==='surge'))return;
+ if(kind==='combo')gbComboAudioUntil=now+1000;
+ if(now-(lastSfx[kind]||0)<100)return;
+ lastSfx[kind]=now;
+ const base=gbSoundCache[kind];if(!base)return;
+ // A new instance allows overlapping legitimate activations without cutting off earlier sounds.
+ const clip=base.cloneNode();clip.volume=volume;clip.play().catch(()=>{});
+}
+
+function playSfx(kind){if(gbApprovedSfx[kind]){playApprovedSfx(kind);return;}if(!gbPrefs.sound||!audioUnlocked||!audioCtx)return;const now=performance.now();if(now-(lastSfx[kind]||0)<90)return;lastSfx[kind]=now;
  const patterns={match:[[540,.11,'sine'],[810,.12,'sine']],cascade:[[640,.12,'sine'],[890,.14,'sine']],drop:[[190,.05,'triangle']],specialcreate:[[560,.1,'triangle'],[820,.14,'sine']],rocket:[[260,.22,'sawtooth'],[130,.12,'triangle']],bomb:[[140,.26,'sawtooth'],[85,.28,'triangle']],wheel:[[580,.22,'sine'],[880,.25,'sine']],combo:[[190,.24,'sawtooth'],[620,.2,'triangle'],[950,.2,'sine']],shuffle:[[370,.17,'triangle'],[470,.16,'triangle'],[310,.18,'triangle']],victory:[[523,.17,'sine'],[659,.18,'sine'],[784,.3,'triangle']],fail:[[392,.2,'triangle'],[294,.25,'triangle'],[196,.4,'sine']],booster:[[670,.16,'sine'],[850,.2,'triangle']]};
  const notes=patterns[kind]||patterns.match,volume=Math.max(0,Math.min(100,+gbPrefs.soundVolume||0))/100*.10;try{if(audioCtx.state==='suspended')audioCtx.resume().catch(()=>{});let t=audioCtx.currentTime;for(const [f,d,wave] of notes){const oscillator=audioCtx.createOscillator(),gain=audioCtx.createGain();oscillator.type=wave;oscillator.frequency.setValueAtTime(f,t);if(kind==='rocket'||kind==='bomb'||kind==='shuffle')oscillator.frequency.exponentialRampToValueAtTime(Math.max(50,f*.65),t+d);gain.gain.setValueAtTime(.0001,t);gain.gain.exponentialRampToValueAtTime(Math.max(.0001,volume),t+.012);gain.gain.exponentialRampToValueAtTime(.0001,t+d);oscillator.connect(gain).connect(audioCtx.destination);oscillator.start(t);oscillator.stop(t+d+.02);t+=d*.7}}catch(e){}
 }
