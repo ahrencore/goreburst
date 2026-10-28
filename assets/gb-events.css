@@ -87,3 +87,8 @@
 .ev-root .ev-clash-cards .ev-clash-compact .ev-clash-art::after{display:none;}
 .ev-root .ev-clash-cards .ev-clash-compact:focus-visible{outline:2px solid #ff8bdd;outline-offset:3px;}
 .ev-root .ev-clash-cards .ev-clash-compact:active{transform:scale(.985);}
+
+/* 2026-10-28: Edge-to-edge event promo fitting; no inset bands. */
+.ev-root .ev-card .ev-promo-art img{object-fit:cover!important;}
+.ev-root .ev-clash-cards .ev-clash-compact .ev-clash-art{background-size:cover!important;background-color:transparent!important;}
+.ev-root .ev-clash-card .ev-clash-art{background-size:cover!important;}
