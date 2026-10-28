@@ -471,11 +471,21 @@ html,body{overscroll-behavior:none;height:100%;height:100dvh}
    PLAY 22% higher than the previous menu positions (relative top offsets).
    Ticket Book and navigation deliberately unchanged. */
 #menu .menu-sign{top:22.96%!important}
-#menu .menu-play{top:44.07%!important}
+#menu .menu-play{top:51.5%!important}
 @media(max-height:680px){
   #menu .menu-sign{top:22.26%!important}
-  #menu .menu-play{top:43.21%!important}
+  #menu .menu-play{top:51%!important}
 }
+
+/* Approved visual fixes: legible unobstructed menu, no white outline on event dots. */
+#menu .menu-sign{top:22.96%!important}
+#menu .menu-play{top:51.5%!important}
+@media(max-height:680px){#menu .menu-play{top:51%!important}}
+#menu .bottom-tabs #events.ev-tab-has-reward::after{right:11%!important;top:68%!important;width:10px!important;height:10px!important;border:0!important;background:#ff163c!important;box-shadow:0 0 7px 2px #ff2d49!important}
+#board .cell.gb-idle-hint:not(.hole){z-index:4;box-shadow:inset 0 0 8px #fff0bb,0 0 13px 4px #ff55db!important;animation:gb-idle-pulse .75s ease-in-out infinite alternate}
+#board .cell.gb-idle-hint img{filter:brightness(1.28) drop-shadow(0 0 10px #8fe7ff)!important}
+@keyframes gb-idle-pulse{to{box-shadow:inset 0 0 12px #ff8add,0 0 20px 6px #70dfff}}
+@media(prefers-reduced-motion:reduce){#board .cell.gb-idle-hint{animation:none}}
 </style><link rel="stylesheet" href="assets/gb-profile.css"><link rel="stylesheet" href="assets/gb-events.css"></head><body><div id="app">
 <section class="view active" id="loading" aria-label="Loading Gore Burst"><img src="assets/loading-clean.webp" alt="Gore Burst carnival entrance"></section>
 <section class="view" id="menu"><div class="scenery"></div><div class="vignette"></div>
@@ -543,9 +553,19 @@ const boardMasks=[
  ['..XXXXX..','.XXXXXXX.','XXXXXXXXX','XXXXXXXXX','.XXXXXXX.','..XXXXX..'],
  ['XXXX.XXXX','XXXXXXXXX','XXXXXXXXX','XXXXXXXXX','XXXXXXXXX','XXXX.XXXX']
 ];
+// Larger irregular boards begin after the five previously approved stages.
+function expandedMask(mask,n){
+ if(n<=5)return mask;
+ const extra=2+(n%2), out=mask.slice();
+ for(let i=0;i<extra;i++){
+  const at=Math.min(out.length-1,2+Math.floor(i*out.length/(extra+1)));
+  out.splice(at,0,out[at]);
+ }
+ return out;
+}
 function levelConfig(n){
  if(configs[n])return configs[n];
- const mask=boardMasks[(n-5)%boardMasks.length],tier=Math.min(7,Math.floor((n-5)/12));
+ const mask=expandedMask(boardMasks[(n-5)%boardMasks.length],n),tier=Math.min(7,Math.floor((n-5)/12));
  const types='HSGMBWC';let moves=Math.min(48,35+tier+((n*7)%5));
  const selections=[types[(n*3)%7],types[(n*3+2)%7],types[(n*3+4)%7]];
  const nCollect=Math.min(34,17+tier*2+(n%4)*2);
@@ -690,7 +710,18 @@ function start(n){eventRun=false;if(n>save.current||!canAttempt())return;
  dailyRecord('attempts',1);chosen=n;conf=levelConfig(n);grantBoosters();boosterTarget=null;boosterFirst=null;pinnedSpecialCells.clear();seed=((Date.now()>>>0)^(n*781))>>>0;moves=conf.moves;starPoints=0;comboChain=0;collected=Object.fromEntries(Object.keys(conf.goals).map(t=>[t,0]));score=0;phase=0;ghostRemoved=0;ghostSpawnQueue=n===4?['G']:[];mode=conf.tutorial?'talk':'free';busy=false;grid=[];blockers=[];source=null;turnFireCleared=false;freshBoard();if(selected.length)placePreGameSpecials(selected);$('result').hidden=true;$('gbFail').hidden=true;document.querySelector('#result .gb-win-shell').hidden=false;failedPending=false;failedAttemptPaid=false;save.pendingFailure=false;persist();show('game');updateBoosterBar();render();if(conf.tutorial)talk();else {$('walker').hidden=true;render();}}
 function talk(){if(phase>0){for(let i=0;i<220&&matches().length;i++){for(const group of matches()){const [rr,cc]=group[Math.floor(rand()*group.length)];grid[rr][cc]=random();}}}mode='talk';$('speech').textContent=talkLines[conf.tutorial][Math.min(phase,talkLines[conf.tutorial].length-1)];$('walker').hidden=false;render()}
 $('continue').onclick=()=>{ $('walker').hidden=true;mode=phase<(conf.tutorial==='rocket'?3:conf.tutorial==='ghost'?1:2)?'guide':'free';render();if(mode==='free')say('Finish the objectives!')};
-function render(){const mask=conf.mask;const b=$('board');b.style.gridTemplateColumns=`repeat(${mask[0].length},1fr)`;b.style.aspectRatio=`${mask[0].length}/${mask.length}`;b.style.top=(mask.length===7?'21%':'24%');const old=Array.from(b.querySelectorAll('.cell'));if(old.length!==grid.length*grid[0].length){b.innerHTML='';cells=[];for(let r=0;r<grid.length;r++)for(let c=0;c<grid[r].length;c++){const el=document.createElement('div');el.className='cell';el.dataset.r=r;el.dataset.c=c;el.addEventListener('pointerdown',e=>{if(boosterTarget){boosterTap(r,c);return}if(!valid(r,c)||mode==='talk'||mode==='ended'||busy||(grid[r][c]?.startsWith('GH')||fixedToken(grid[r][c])||getB(r,c)?.kind==='JL'))return;source={r,c,x:e.clientX,y:e.clientY};el.setPointerCapture(e.pointerId)});el.addEventListener('pointerup',e=>{if(!source||busy||mode==='talk'||mode==='ended')return;let dx=e.clientX-source.x,dy=e.clientY-source.y;let dr=0,dc=0;if(Math.abs(dx)+Math.abs(dy)>15){if(Math.abs(dx)>Math.abs(dy))dc=Math.sign(dx);else dr=Math.sign(dy)}else if(anchor){dr=r-anchor.r;dc=c-anchor.c;source={r:anchor.r,c:anchor.c};anchor=null}else{anchor={r,c};source=null;el.style.outline='2px solid white';return}let from=source;source=null;swap(from.r,from.c,from.r+dr,from.c+dc)});b.appendChild(el);cells.push(el)}}
+let gbLastMoveAt=Date.now();
+function gbResetHint(){gbLastMoveAt=Date.now();document.querySelectorAll('#board .gb-idle-hint').forEach(el=>el.classList.remove('gb-idle-hint'))}
+setInterval(()=>{
+ const active=document.querySelector('#game.active');
+ if(!active||busy||mode!=='free'||Date.now()-gbLastMoveAt<3000)return;
+ const board=document.getElementById('board');if(!board||board.querySelector('.gb-idle-hint'))return;
+ const choices=playableSwaps();if(!choices.length)return;
+ const [r,c,rr,cc]=choices[0];for(const [y,x] of [[r,c],[rr,cc]]){
+   const item=cells[y*grid[0].length+x];if(item)item.classList.add('gb-idle-hint');
+ }
+},400);
+function render(){const mask=conf.mask;const b=$('board');b.style.gridTemplateColumns=`repeat(${mask[0].length},1fr)`;b.style.aspectRatio=`${mask[0].length}/${mask.length}`;b.style.top=mask.length>=9?'19%':(mask.length===7?'21%':'24%');b.style.maxHeight=mask.length>=9?'62%':'';const old=Array.from(b.querySelectorAll('.cell'));if(old.length!==grid.length*grid[0].length){b.innerHTML='';cells=[];for(let r=0;r<grid.length;r++)for(let c=0;c<grid[r].length;c++){const el=document.createElement('div');el.className='cell';el.dataset.r=r;el.dataset.c=c;el.addEventListener('pointerdown',e=>{if(boosterTarget){boosterTap(r,c);return}if(!valid(r,c)||mode==='talk'||mode==='ended'||busy||(grid[r][c]?.startsWith('GH')||fixedToken(grid[r][c])||getB(r,c)?.kind==='JL'))return;gbResetHint();source={r,c,x:e.clientX,y:e.clientY};el.setPointerCapture(e.pointerId)});el.addEventListener('pointerup',e=>{if(!source||busy||mode==='talk'||mode==='ended')return;let dx=e.clientX-source.x,dy=e.clientY-source.y;let dr=0,dc=0;if(Math.abs(dx)+Math.abs(dy)>15){if(Math.abs(dx)>Math.abs(dy))dc=Math.sign(dx);else dr=Math.sign(dy)}else if(anchor){dr=r-anchor.r;dc=c-anchor.c;source={r:anchor.r,c:anchor.c};anchor=null}else{anchor={r,c};source=null;el.style.outline='2px solid white';return}let from=source;source=null;swap(from.r,from.c,from.r+dr,from.c+dc)});b.appendChild(el);cells.push(el)}}
   for(let r=0;r<grid.length;r++)for(let c=0;c<grid[r].length;c++){const el=cells[r*grid[r].length+c],v=grid[r][c],g=guide();el.className='cell'+(v===null?' hole':'')+(mode==='guide'&&g&&((r===g[0]&&c===g[1])||(r===g[2]&&c===g[3]))?' guide':'');const block=getB(r,c);el.style.backgroundImage=block?.kind==='SL'?`url(assets/block-slime${block.hp}.png),linear-gradient(145deg,#32123d,#130b20)`:'';el.style.backgroundSize=block?.kind==='SL'?'100% 100%,100% 100%':'contain';el.style.backgroundRepeat='no-repeat';el.style.backgroundPosition='center';const overlay=el.querySelector('.blocker-overlay');if(block?.kind==='JL'){if(!overlay){const ov=document.createElement('img');ov.className='blocker-overlay';ov.src='assets/block-jail.png';el.appendChild(ov)}}else overlay?.remove();const img=el.querySelector('img:not(.blocker-overlay)');if(v){if(!img){let ii=document.createElement('img');ii.draggable=false;ii.src=v==='CC'?`assets/block-cloud${getB(r,c)?.hp||1}.png`:visual(v);el.appendChild(ii)}else if(img.dataset.type!==v|| (v==='CC'&&img.dataset.hp!==String(getB(r,c)?.hp||1))){img.src=v==='CC'?`assets/block-cloud${getB(r,c)?.hp||1}.png`:visual(v)}el.querySelector('img:not(.blocker-overlay)').dataset.type=v;el.querySelector('img:not(.blocker-overlay)').dataset.hp=String(getB(r,c)?.hp||0)}else img?.remove();el.querySelector('.guide-arrow')?.remove();if(mode==='guide'&&g&&r===g[0]&&c===g[1]){const a=document.createElement('span');a.className='guide-arrow';a.textContent=g[2]>r?'↓':g[2]<r?'↑':g[3]>c?'→':'←';el.appendChild(a)}}
   $('moves').textContent=moves;$('gamegoals').innerHTML=Object.entries(conf.goals).map(([t,n])=>`<span><img src="${goalIcon(t)}"> <strong>${collected[t]||0}/${n}</strong></span>`).join('');$('scorefill').style.width=Math.min(100,starPoints)+'%';document.querySelectorAll('#scorestars span').forEach((e,i)=>e.classList.toggle('on',starPoints>=[30,65,100][i]))}
 function matches(){let out=[];const h=grid.length,w=grid[0].length;for(let r=0;r<h;r++)for(let c=0;c<w;){let v=grid[r][c],j=c+1;while(j<w&&grid[r][j]===v&&v&&'HSGMBWC'.includes(v))j++;if(v&&'HSGMBWC'.includes(v)&&j-c>=3)out.push(Array.from({length:j-c},(_,k)=>[r,c+k]));c=j}for(let c=0;c<w;c++)for(let r=0;r<h;){let v=grid[r][c],j=r+1;while(j<h&&grid[j][c]===v&&v&&'HSGMBWC'.includes(v))j++;if(v&&'HSGMBWC'.includes(v)&&j-r>=3)out.push(Array.from({length:j-r},(_,k)=>[r+k,c]));r=j}return out}
@@ -796,10 +827,33 @@ function stabilizeTutorial(step){
 }
 function playableSwaps(){const result=[];for(let r=0;r<grid.length;r++)for(let c=0;c<grid[r].length;c++)if(valid(r,c)){for(const [dr,dc] of [[1,0],[0,1]]){let rr=r+dr,cc=c+dc;if(!valid(rr,cc))continue;const a=grid[r][c],b=grid[rr][cc];if(a?.startsWith('GH')||b?.startsWith('GH')||fixedToken(a)||fixedToken(b)||getB(r,c)?.kind==='JL'||getB(rr,cc)?.kind==='JL')continue;if(isSpecial(a)||isSpecial(b)){result.push([r,c,rr,cc]);continue;}grid[r][c]=b;grid[rr][cc]=a;const good=matches().length>0;grid[r][c]=a;grid[rr][cc]=b;if(good)result.push([r,c,rr,cc]);}}return result}
 function stabilizeSetup(){for(let i=0;i<250&&matches().length;i++)for(const group of matches())for(const [r,c] of group)grid[r][c]=random();if(!playableSwaps().length)shuffleBoard(true)}
-function shuffleBoard(silent=false){const coords=[];const types=[];for(let r=0;r<grid.length;r++)for(let c=0;c<grid[r].length;c++)if(valid(r,c)&&grid[r][c]&&!isSpecial(grid[r][c])&&!grid[r][c].startsWith('GH')&&!fixedToken(grid[r][c])&&getB(r,c)?.kind!=='JL'){coords.push([r,c]);types.push(grid[r][c])}for(let k=0;k<150;k++){for(let i=types.length-1;i>0;i--){const j=Math.floor(rand()*(i+1));[types[i],types[j]]=[types[j],types[i]]}coords.forEach(([r,c],i)=>grid[r][c]=types[i]);if(!matches().length&&playableSwaps().length){if(!silent)say('SHUFFLING!');render();return true}}for(const [r,c] of coords)grid[r][c]=random();return !matches().length&&playableSwaps().length}
+function shuffleBoard(silent=false){
+ const coords=[],types=[];
+ for(let r=0;r<grid.length;r++)for(let c=0;c<grid[r].length;c++)
+  if(valid(r,c)&&grid[r][c]&&!isSpecial(grid[r][c])&&!grid[r][c].startsWith('GH')&&!fixedToken(grid[r][c])&&getB(r,c)?.kind!=='JL'){
+   coords.push([r,c]);types.push(grid[r][c]);
+  }
+ const tryBoard=()=>!matches().length&&playableSwaps().length>0;
+ for(let attempt=0;attempt<2200;attempt++){
+  if(attempt<450){for(let i=types.length-1;i>0;i--){let j=Math.floor(rand()*(i+1));[types[i],types[j]]=[types[j],types[i]]}}
+  coords.forEach(([r,c],i)=>grid[r][c]=attempt<450?types[i]:random());
+  if(tryBoard()){if(!silent)say('SHUFFLING!');render();return true}
+ }
+ // Never pretend that a board with no moves has been repaired.
+ render();return false;
+}
 async function settle(){await cascades();if(!playableSwaps().length){
   const board=$('board');board.classList.add('shuffle-motion');$('gbShuffle').hidden=false;
-  playSfx('shuffle');await delay(650);const ok=shuffleBoard(true);await delay(550);board.classList.remove('shuffle-motion');
+  playSfx('shuffle');await delay(650);let ok=shuffleBoard(true);
+  if(!ok){ // Obstacles can leave too few movable pieces: recover playable cells without destroying blockers.
+    for(let recovery=0;recovery<3&&!ok;recovery++){
+      for(let r=0;r<grid.length;r++)for(let c=0;c<grid[r].length;c++){
+        if(valid(r,c)&&grid[r][c]&&grid[r][c].length===1&&!getB(r,c))grid[r][c]=random();
+      }
+      ok=shuffleBoard(true);
+    }
+  }
+  await delay(550);board.classList.remove('shuffle-motion');
   if(ok){board.classList.add('shuffle-arrive');await delay(320);board.classList.remove('shuffle-arrive')}
   $('gbShuffle').hidden=true;
  }render()}
@@ -964,7 +1018,7 @@ async function supremeCombo(r,c,tr,tc,a,b){
  }
  score+=450;starPoints+=12;playSfx('combo');await refill();return true;
 }
-async function swap(r,c,tr,tc){
+async function swap(r,c,tr,tc){gbResetHint();
  if(!valid(r,c)||!valid(tr,tc)||Math.abs(r-tr)+Math.abs(c-tc)!==1||busy||(grid[r][c]?.startsWith('GH')||fixedToken(grid[r][c])||getB(r,c)?.kind==='JL')||(grid[tr][tc]?.startsWith('GH')||fixedToken(grid[tr][tc])||getB(tr,tc)?.kind==='JL'))return;
  if(mode==='guide'){const g=guide();if(!g||r!==g[0]||c!==g[1]||tr!==g[2]||tc!==g[3]){say('Follow the glowing arrow');return}}
  busy=true;const src=grid[r][c],dst=grid[tr][tc];[grid[r][c],grid[tr][tc]]=[dst,src];
@@ -1005,7 +1059,7 @@ async function swap(r,c,tr,tc){
   playSfx(made?'specialcreate':'match');await delay(160);await refill();
  }
  await settle();
- if(!wasGuided){spreadFire();turnFireCleared=false;render()}
+ if(!wasGuided){spreadFire();turnFireCleared=false;render();if(!playableSwaps().length)await settle()}
  if(wasGuided){phase=chosen===1?Math.min(3,phase+1):chosen===4?1:2;busy=false;talk();return}
  busy=false;mode='free';render();await checkEnd();
 }

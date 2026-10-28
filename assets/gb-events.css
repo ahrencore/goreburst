@@ -129,8 +129,6 @@
 #events.ev-tab-has-reward,[data-ev="daily"].ev-has-reward{position:relative}
 #events.ev-tab-has-reward::after,[data-ev="daily"].ev-has-reward::after{content:"";position:absolute;z-index:15;right:5px;top:4px;width:11px;height:11px;border-radius:100%;background:#ff304f;border:2px solid #ffe0ee;box-shadow:0 0 6px #ff305f,0 0 12px #ff2b4b;pointer-events:none}
 
-/* Event reward dot: anchored to artwork card corner, with a legible rim. */
-.ev-root [data-ev].ev-has-reward{position:relative!important;overflow:visible!important;isolation:isolate}
-.ev-root [data-ev].ev-has-reward::after{content:"";position:absolute;top:-5px;right:-5px;width:12px;height:12px;border:2px solid #fff5fb;border-radius:50%;background:#ff1d40;box-shadow:0 0 0 1px #881832,0 0 9px 3px #ff2b63;z-index:30;pointer-events:none}
-/* Hide old pseudo badges on nav: the main menu owns correct aligned version. */
-#events.ev-tab-has-reward::after{pointer-events:none}
+/* Approved reward notification: bright red dot, no white ring, near label. */
+#events.ev-tab-has-reward::after{right:11%!important;top:68%!important;width:10px!important;height:10px!important;border:0!important;background:#ff163c!important;box-shadow:0 0 8px 2px #ff244d!important}
+[data-ev].ev-has-reward::after{right:8px!important;top:8px!important;border:0!important;background:#ff163c!important;box-shadow:0 0 8px 2px #ff244d!important}

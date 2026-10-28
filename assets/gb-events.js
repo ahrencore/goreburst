@@ -154,10 +154,22 @@ function evStartWeeklyStage(){evRefresh();if(!evOpenWeek()){evWeekly();return}if
   case 4: goals={[pick]:amount,SL:Math.min(14,6+Math.floor(stage/2))};break;
   default: goals={[pick]:amount,RV:Math.min(5,2+Math.floor(stage/10))};break;
  }
+ // Select a configuration that can actually produce the requested blocker.
+ if(goals.FI)chosen=Math.max(51,chosen);
+ if(goals.JL)chosen=Math.max(36,chosen);
+ if(goals.CC)chosen=Math.max(21,chosen);
  conf={...base,mask:evWeeklyMask(stage),moves:Math.max(29,39-Math.floor(stage/4)),tutorial:null,goals};
  boosterTarget=null;boosterFirst=null;pinnedSpecialCells.clear();seed=((Date.now()>>>0)^(stage*9181))>>>0;
  moves=conf.moves;starPoints=0;comboChain=0;collected=Object.fromEntries(Object.keys(conf.goals).map(t=>[t,0]));score=0;phase=0;ghostRemoved=0;ghostSpawnQueue=[];mode='free';busy=false;grid=[];blockers=[];source=null;turnFireCleared=false;
- freshBoard();$('result').hidden=true;$('gbFail').hidden=true;document.querySelector('#result .gb-win-shell').hidden=false;save.pendingFailure=false;persist();show('game');$('boosters').style.display='none';$('walker').hidden=true;render();say('WEEKLY NIGHTMARE · STAGE '+stage);
+ freshBoard();
+ // Match blocker targets to their actual starting population, never demand absent fire.
+ for(const kind of ['SL','CC','JL','FI'])if(kind in conf.goals){
+  const available=blockers.flat().filter(b=>b?.kind===kind).length;
+  if(!available)delete conf.goals[kind];
+  else if(kind!=='FI')conf.goals[kind]=Math.min(conf.goals[kind],available);
+ }
+ collected=Object.fromEntries(Object.keys(conf.goals).map(t=>[t,0]));
+ $('result').hidden=true;$('gbFail').hidden=true;document.querySelector('#result .gb-win-shell').hidden=false;save.pendingFailure=false;persist();show('game');$('boosters').style.display='none';$('walker').hidden=true;render();say('WEEKLY NIGHTMARE · STAGE '+stage);
 }
 function weeklyFinish(win){if(mode==='ended'||mode==='failed')return;mode=win?'ended':'failed';busy=false;playSfx(win?'victory':'fail');$('result').hidden=true;if(win){evData.weeklyBest=Math.max(evData.weeklyBest,evData.weeklyStage);evData.weeklyStage++;evSave();window.gbWeeklySubmit?.(evData.weeklyBest).catch?.(()=>{})}else{consumeFailedLife()}const covered=document.createElement('div');covered.className='ev-root';covered.id='evWeeklyResult';covered.innerHTML=`<div class="ev-panel" style="margin-top:25%;text-align:center"><h2>${win?'STAGE CLEARED!':'STAGE FAILED'}</h2><p>${win?'You survived another nightmare.':'Retry the same stage whenever you have a life.'}</p><p>${win?'Stages passed: '+evData.weeklyBest:'Lives remaining: '+save.lives+'/5'}</p><button class="ev-btn" id="evEventRetry">${win?'NEXT STAGE':'RETRY STAGE'}</button> <button class="ev-btn ev-btn-alt" id="evEventHome">EVENTS</button></div>`;document.getElementById('app').appendChild(covered);covered.querySelector('#evEventRetry').onclick=()=>{covered.remove();evStartWeeklyStage()};covered.querySelector('#evEventHome').onclick=()=>{covered.remove();eventRun=false;$('boosters').style.display='';menu();evWeekly()};}
 const evOldBack=$('gameback').onclick;$('gameback').onclick=function(e){if(eventRun){if(mode==='ended'||mode==='failed')return;if(!confirm('Leave Weekly Nightmare stage? This attempt costs one life.'))return;consumeFailedLife();eventRun=false;$('boosters').style.display='';menu();evWeekly();return}evOldBack.call(this,e)};
