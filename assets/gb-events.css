@@ -132,3 +132,26 @@
 /* Approved reward notification: bright red dot, no white ring, near label. */
 #events.ev-tab-has-reward::after{right:11%!important;top:68%!important;width:10px!important;height:10px!important;border:0!important;background:#ff163c!important;box-shadow:0 0 8px 2px #ff244d!important}
 [data-ev].ev-has-reward::after{right:8px!important;top:8px!important;border:0!important;background:#ff163c!important;box-shadow:0 0 8px 2px #ff244d!important}
+
+/* Approved notification placements (2026-10-29): no white ring. */
+/* Main menu: entirely INSIDE upper-right of the Events navigation hit area. */
+#menu #events.ev-tab-has-reward{position:absolute!important;overflow:visible}
+#menu #events.ev-tab-has-reward::after{
+  content:""!important;position:absolute!important;
+  top:13%!important;right:13%!important;left:auto!important;bottom:auto!important;
+  width:11px!important;height:11px!important;border:0!important;
+  border-radius:50%!important;background:#ff1738!important;
+  box-shadow:0 0 7px 2px #ff244f,0 0 12px #fc315b99!important;
+  z-index:25!important;pointer-events:none!important;
+}
+/* Events listing: attach dot to the dark caption/title, not the colorful image. */
+.ev-root .ev-card.ev-has-reward::after{content:none!important;display:none!important}
+.ev-root .ev-card.ev-has-reward>b{
+  position:relative;display:table;max-width:calc(100% - 31px);
+}
+.ev-root .ev-card.ev-has-reward>b::after{
+  content:"";position:absolute;top:1px;right:-17px;
+  width:10px;height:10px;border-radius:50%;background:#ff1738;
+  box-shadow:0 0 7px 2px #ff244f,0 0 10px #fc315b88;
+  pointer-events:none;
+}
