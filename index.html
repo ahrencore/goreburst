@@ -714,7 +714,7 @@ let gbLastMoveAt=Date.now();
 function gbResetHint(){gbLastMoveAt=Date.now();document.querySelectorAll('#board .gb-idle-hint').forEach(el=>el.classList.remove('gb-idle-hint'))}
 setInterval(()=>{
  const active=document.querySelector('#game.active');
- if(!active||busy||mode!=='free'||Date.now()-gbLastMoveAt<3000)return;
+ if(!active||busy||mode!=='free'||Date.now()-gbLastMoveAt<5000)return;
  const board=document.getElementById('board');if(!board||board.querySelector('.gb-idle-hint'))return;
  const choices=playableSwaps();if(!choices.length)return;
  const [r,c,rr,cc]=choices[0];for(const [y,x] of [[r,c],[rr,cc]]){
@@ -1149,4 +1149,10 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeGbSettings()});
  pointer-events:none!important;z-index:50!important;
 }
 #menu .bottom-tabs #events.ev-tab-has-reward .gb-events-red-badge{display:block!important}
+</style><style id="gb-events-pulse-notification">
+/* No red marker in main menu. Reward availability illuminates the original full tab. */
+#menu .bottom-tabs #events.ev-tab-has-reward::after,#menu .bottom-tabs #events .gb-events-red-badge{display:none!important;content:none!important}
+#menu .bottom-tabs #events.ev-tab-has-reward{animation:gb-events-invite 1.8s ease-in-out infinite!important;isolation:isolate;overflow:visible!important;filter:drop-shadow(0 0 5px #ff79ec) drop-shadow(0 0 8px #a050ff)}
+@keyframes gb-events-invite{0%,100%{filter:drop-shadow(0 0 3px #ef4fb5) drop-shadow(0 0 4px #7844d4);opacity:1}50%{filter:drop-shadow(0 0 13px #ff72dd) drop-shadow(0 0 17px #895fff);opacity:.83}}
+@media(prefers-reduced-motion:reduce){#menu .bottom-tabs #events.ev-tab-has-reward{animation:none!important;filter:drop-shadow(0 0 10px #f858ce)}}
 </style></body></html>

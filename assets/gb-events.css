@@ -156,15 +156,19 @@
   pointer-events:none;
 }
 
-/* 2026-10-29 approved correction: red dot INSIDE the upper-right of the main Events tab.
-   Match index.html's more-specific historical selector, which previously put it below the label. */
-#menu .bottom-tabs #events.ev-tab-has-reward::after{
-  content:""!important;
-  position:absolute!important;
-  top:13%!important;right:13%!important;bottom:auto!important;left:auto!important;
-  width:11px!important;height:11px!important;
-  border:0!important;border-radius:50%!important;
-  background:#ff1738!important;
-  box-shadow:0 0 7px 2px #ff244f,0 0 12px #fc315b99!important;
-  pointer-events:none!important;z-index:30!important;
-}
+/* Weekly Nightmare: dedicated celebratory victory and matching retry view. */
+.ev-weekly-result-view{display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(ellipse at 50% 35%,#431653,#180c32 62%,#0d0719)}
+.ev-weekly-result-card{position:relative;overflow:hidden;width:min(100%,410px);border:2px solid #f37bd9;border-radius:27px;padding:35px 18px 26px;text-align:center;background:radial-gradient(ellipse at 45% 0%,#6d2781b5,#221035 67%,#140b27);box-shadow:0 0 16px #ec4fc7,0 0 35px #753eee,inset 0 0 26px #a746df66}
+.ev-weekly-result-card::before{content:"";position:absolute;inset:7px;border:1px solid #9f81ff99;border-radius:20px;pointer-events:none;box-shadow:inset 0 0 15px #7c39cb55}
+.ev-weekly-result-spark{font-size:30px;letter-spacing:13px;color:#ffe1a1;text-shadow:0 0 12px #ffcc7a,0 0 23px #f85edb;animation:gb-nightmare-spark 2s ease-in-out infinite alternate}
+@keyframes gb-nightmare-spark{to{opacity:.65;filter:drop-shadow(0 0 12px #87d5ff)}}
+.ev-weekly-result-eyebrow{font-weight:900;letter-spacing:1.2px;font-size:10px;color:#e5b3ff;margin:14px 0 5px}
+.ev-weekly-result-card h2{font:900 clamp(25px,7vw,35px) Georgia,serif;letter-spacing:1px;line-height:1.12;color:#ffdf9c;margin:10px 0;text-shadow:0 0 8px #f857b9,0 0 24px #8951ff}
+.ev-weekly-result-stage{font:900 17px Georgia,serif;color:#ffd7f7;text-shadow:0 0 12px #fa60d5;margin:15px 0 22px}
+.ev-weekly-result-lives{color:#ffa8c8;font-weight:800;margin:0 0 12px}
+.ev-weekly-result-actions{display:grid;gap:12px;position:relative;z-index:1}
+.ev-weekly-result-actions button{min-height:49px;border-radius:999px;border:2px solid #ff9ce8;color:#fff;font:900 17px Georgia,serif;letter-spacing:1px;cursor:pointer;touch-action:manipulation;-webkit-user-select:none;user-select:none;text-shadow:0 1px 5px #3a083e}
+.ev-weekly-result-primary{background:linear-gradient(#ff81dc,#a729a9 55%,#6b2387);box-shadow:0 0 15px #ff54ce9c,inset 0 2px 7px #ffe5fb99}
+.ev-weekly-result-secondary{background:linear-gradient(#7647b6,#361755);box-shadow:0 0 12px #a666f888,inset 0 1px 7px #b785fc77}
+.ev-weekly-result-actions button:disabled{opacity:.46;filter:grayscale(.6);cursor:default}
+@media(prefers-reduced-motion:reduce){.ev-weekly-result-spark{animation:none}}
