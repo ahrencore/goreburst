@@ -348,3 +348,17 @@ window.gbGhostAvatarUrl=function(record){
   }
   return avatarFile(avatarIndex(record?.avatar_key));
 };
+
+// Carnival Clash beta: browser-submitted scores are NOT server-verified; do not award prizes from them.
+window.gbClashLeaderboardFetch=async function(){
+  if(!sb)return {error:'Supabase connection is starting. Try Refresh Rankings.'};
+  const {data,error}=await sb.rpc('carnival_clash_top10');
+  return error?{error:'Carnival Clash database setup required: '+error.message}:{rows:data||[]};
+};
+window.gbClashSubmit=async function(game,points){
+  if(!sb||!user)return; // local mode works for guests
+  const kind=String(game);const pts=Number(points);
+  if(!(kind==='tetris'&&[10,20,30,40].includes(pts)||{sudoku_easy:50,sudoku_medium:100,sudoku_hard:150}[kind]===pts))return;
+  const {error}=await sb.rpc('carnival_clash_submit_beta',{p_game:kind,p_points:pts,p_event_id:crypto.randomUUID()});
+  if(error)console.warn('Carnival Clash beta submission:',error.message);
+};
