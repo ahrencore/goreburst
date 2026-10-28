@@ -60,3 +60,9 @@
 .ev-clash-board h3{font:800 17px Georgia,serif;text-align:center;color:#ffe0a4}
 .ev-clash-board #evClashRefresh{margin-top:10px;width:100%}
 @media(max-width:340px){.ev-clash-cards{gap:7px}.ev-clash-card b{margin-left:7px;margin-right:7px}.ev-clash-card small{margin-left:7px;margin-right:7px}.ev-clash-card .ev-card-play{margin-left:7px;margin-right:7px}}
+
+/* Approved Option A Event promos: full artwork on responsive, functional cards. */
+.ev-root .ev-card .ev-promo.ev-promo-art{height:auto;aspect-ratio:2/1;display:block;overflow:hidden;background:#170d25;filter:none;line-height:0}
+.ev-root .ev-card .ev-promo-art img{display:block;width:100%;height:100%;object-fit:contain;object-position:center;pointer-events:none;user-select:none;-webkit-user-select:none;-webkit-user-drag:none}
+.ev-root .ev-card:focus-visible{outline:2px solid #ff8bdd;outline-offset:3px}
+.ev-root .ev-card:active{transform:scale(.985)}
