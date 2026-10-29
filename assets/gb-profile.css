@@ -122,3 +122,19 @@
 
 /* Carnival Mail: Welcome to the Madness */
 .gbpr-welcome-mail{border:2px solid #f780e7!important;border-radius:18px!important;background:radial-gradient(circle at top,#51215e,#210d2e 78%)!important;box-shadow:0 0 17px #f550c68c,inset 0 0 20px #9e45ec3c;padding:14px!important}.gbpr-welcome-mail>.gbpr-tag{text-align:center;color:#ffdfab;letter-spacing:1px}.gbpr-welcome-mail>b{display:block;font:900 23px Georgia,serif;color:#ffe3ac;text-align:center;text-shadow:0 0 10px #f35dbe,0 0 18px #8950ff}.gbpr-welcome-mail p{line-height:1.55;color:#ffe6f3}.gbpr-welcome-gifts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:14px 0}.gbpr-welcome-gifts>div{display:flex;flex-direction:column;align-items:center;gap:4px;border:1px solid #cc78db;background:#3c184c;border-radius:12px;padding:10px 5px;box-shadow:0 0 9px #c947b849}.gbpr-welcome-gifts img{height:40px;width:40px;object-fit:contain}.gbpr-welcome-gifts span{font-size:34px;color:#ff81c5}.gbpr-welcome-gifts b{font:800 11px Georgia,serif;color:#ffebbb;text-align:center}.gbpr-welcome-gifts small{font-size:11px;color:#ffd9ef}.gbpr-welcome-claim{width:100%;border-radius:999px!important;min-height:48px;background:linear-gradient(#ef71d3,#972399,#54246f)!important;border:2px solid #ffb5ec!important;box-shadow:0 0 15px #f45ce0,inset 0 0 12px #ffeaf880!important;font:900 16px Georgia,serif!important}.gbpr-welcome-claim:disabled{opacity:.7}
+
+/* Carnival Mail: inbox list → open letter. Red dot uses approved PFP coordinates. */
+#gb-profile-layer .gbpr-hub-links button.gbpr-mail-pending{position:relative}
+#gb-profile-layer .gbpr-hub-links button.gbpr-mail-pending::after{content:"";position:absolute;top:9px;right:12px;width:10px;height:10px;border-radius:50%;border:0;background:#ff193b;box-shadow:0 0 8px 2px #ff294e;pointer-events:none}
+#gb-profile-layer .gbpr-inbox-row{width:100%;display:flex;align-items:center;gap:11px;margin:8px 0;padding:12px 11px;text-align:left;color:#ffebf8;border:1.5px solid #c66bd2;border-radius:13px;background:linear-gradient(120deg,#401a52,#210d31);box-shadow:0 0 9px #dc4bc85c;cursor:pointer}
+#gb-profile-layer .gbpr-inbox-row.gbpr-inbox-unread{border-color:#ff91e4;box-shadow:0 0 13px #f45fc988}
+#gb-profile-layer .gbpr-inbox-envelope{font-size:23px;color:#ffbbeb}
+#gb-profile-layer .gbpr-inbox-title{flex:1;min-width:0}
+#gb-profile-layer .gbpr-inbox-title b{display:block;font:800 15px Georgia,serif;color:#ffe4b0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#gb-profile-layer .gbpr-inbox-title small{display:block;color:#deb7e4;margin-top:3px;font-size:11px}
+#gb-profile-layer .gbpr-inbox-status{display:flex;align-items:center;justify-content:center;min-width:16px}
+#gb-profile-layer .gbpr-mail-dot{display:block;width:10px;height:10px;background:#ff193b;border-radius:50%;box-shadow:0 0 8px #ff294e}
+#gb-profile-layer .gbpr-open-letter{padding:13px;border:2px solid #f780e7;border-radius:18px;background:radial-gradient(circle at top,#51215e,#210d2e 78%);box-shadow:0 0 17px #f550c68c,inset 0 0 20px #9e45ec3c}
+#gb-profile-layer .gbpr-open-letter h3{font:900 22px Georgia,serif;text-align:center;color:#ffe3ac;text-shadow:0 0 10px #f35dbe}
+#gb-profile-layer .gbpr-open-letter p{white-space:pre-line;line-height:1.55;color:#ffe6f3}
+#gb-profile-layer .gbpr-letter-back{margin-bottom:12px;padding:8px 12px!important}

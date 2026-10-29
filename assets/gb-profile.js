@@ -15,11 +15,13 @@ gbprPfpDot.hidden=true;
 gbprPfpDot.setAttribute('aria-hidden','true');
 gbprHud?.append(gbprPfpDot);
 let gbprDotQueryId=0;
+let gbprFriendsPending=false,gbprMailPending=false;
+function gbprUpdatePfpNotice(){gbprPfpDot.hidden=!(gbprFriendsPending||gbprMailPending);}
 async function gbprRefreshRequestDot(){
   const seq=++gbprDotQueryId;
   const friendsButton=prHub?.querySelector('[data-gbpr-nav="friends"]');
   if(!sb||!gbprRegistered()||!profile?.username){
-    gbprPfpDot.hidden=true;
+    gbprFriendsPending=false;gbprUpdatePfpNotice();
     friendsButton?.classList.remove('gbpr-request-pending');
     return;
   }
@@ -27,12 +29,12 @@ async function gbprRefreshRequestDot(){
   if(seq!==gbprDotQueryId)return;
   if(error){return;} // Keep previous state on transient connection failures.
   const pending=Array.isArray(data)&&data.some(row=>row.kind==='incoming');
-  gbprPfpDot.hidden=!pending;
+  gbprFriendsPending=pending;gbprUpdatePfpNotice();
   friendsButton?.classList.toggle('gbpr-request-pending',pending);
 }
-window.addEventListener('focus',()=>{void gbprRefreshRequestDot()});
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)void gbprRefreshRequestDot()});
-setInterval(()=>{if(!document.hidden)void gbprRefreshRequestDot()},30000);
+window.addEventListener('focus',()=>{void gbprRefreshRequestDot();void gbprRefreshMailDot()});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){void gbprRefreshRequestDot();void gbprRefreshMailDot()}});
+setInterval(()=>{if(!document.hidden){void gbprRefreshRequestDot();void gbprRefreshMailDot()}},30000);
 
 const layer=document.createElement('aside');layer.id='gb-profile-layer';layer.setAttribute('aria-label','Player profile');layer.innerHTML=`
 <div class="gbpr-top"><h2>✦ PLAYER PROFILE ✦</h2><button class="gbpr-close" id="gbpr-close" aria-label="Close profile">×</button></div>
@@ -107,7 +109,7 @@ function setMessage(id,txt,success=false){const el=$p(id);el.textContent=txt;el.
 function avatarUrl(){if(avatarPreview!==null)return avatarFile(avatarPreview);if(!user){const ix=Number(localStorage.getItem('gb-guest-avatar'));if(Number.isInteger(ix)&&ix>=0&&ix<15)return avatarFile(ix)}if(profile?.avatar_path){return SUPABASE_URL+'/storage/v1/object/public/avatars/'+profile.avatar_path.split('/').map(encodeURIComponent).join('/')}return avatarFile(avatarIndex(profile?.avatar_key))}
 function syncMenuAvatar(){const el=document.getElementById('gbMenuAvatar');if(el){el.src=avatarUrl();el.onerror=()=>{el.onerror=null;el.src=fallbackAvatar}}}
 function refresh(){syncMenuAvatar();const signed=gbprRegistered();$p('gbpr-auth-panel').classList.toggle('gbpr-hide',signed);$p('gbpr-account-panel').classList.toggle('gbpr-hide',!signed);$p('gbpr-display').textContent=profile?.display_name||'Carnival Guest';$p('gbpr-handle').textContent=profile?.username?'@'+profile.username:(signed?'Choose a unique username':'Guest player');$p('gbpr-level').textContent='LEVEL '+localLevel()+' · Local progress';$p('gbpr-current-avatar').src=avatarUrl();$p('gbpr-new-name').value=profile?.display_name||'Carnival Guest';$p('gbpr-new-handle').value=profile?.username||'';$p('gbpr-avatar-help').textContent=signed?'Tap any character to save it. You can also upload your own photo.':'Sign in to save a PFP to your account. Tap to preview characters.';document.querySelectorAll('.gbpr-avatar').forEach((b,i)=>b.classList.toggle('chosen',(avatarPreview!==null?avatarPreview:avatarIndex(profile?.avatar_key))===i));}
-function view(open){layer.classList.toggle('open',open);if(open){avatarPreview=null;refresh();prUpdateHub();prNavigate('hub');void gbprRefreshRequestDot();$p('gbpr-close').focus()}}
+function view(open){layer.classList.toggle('open',open);if(open){avatarPreview=null;refresh();prUpdateHub();void gbprRefreshMailDot();prNavigate('hub');void gbprRefreshRequestDot();$p('gbpr-close').focus()}}
 $p('gbpr-close').onclick=()=>view(false);
 document.getElementById('profile').addEventListener('click',()=>view(true));
 layer.addEventListener('pointerdown',e=>e.stopPropagation());
@@ -142,7 +144,7 @@ $p('gbpr-auth-form').onsubmit=async e=>{
  finally{working=false;$p('gbpr-auth-submit').disabled=false}
 };
 $p('gbpr-edit-form').onsubmit=async e=>{e.preventDefault();if(!sb||!gbprRegistered())return;const username=$p('gbpr-new-handle').value.trim().toLowerCase();const display_name=$p('gbpr-new-name').value.trim();if(username&&!/^[a-z0-9_]{3,20}$/.test(username)){setMessage('gbpr-edit-status','Username must be 3–20 letters, numbers or underscores.');return}if(!display_name){setMessage('gbpr-edit-status','Choose a display name.');return}setMessage('gbpr-edit-status','Saving…');const {error}=await sb.from('profiles').update({username:username||null,display_name}).eq('id',user.id);if(error){setMessage('gbpr-edit-status',error.code==='23505'?'This username is already taken.':error.message);return}profile={...profile,username:username||null,display_name};setMessage('gbpr-edit-status','Profile updated!',true);refresh()};
-$p('gbpr-signout').onclick=async()=>{if(!sb)return;const {error}=await sb.auth.signOut();if(error){setMessage('gbpr-edit-status',error.message);return}user=null;profile=null;avatarPreview=null;cloudReset();refresh();void gbprRefreshRequestDot()};
+$p('gbpr-signout').onclick=async()=>{if(!sb)return;const {error}=await sb.auth.signOut();if(error){setMessage('gbpr-edit-status',error.message);return}user=null;profile=null;avatarPreview=null;cloudReset();refresh();void gbprRefreshRequestDot();void gbprRefreshMailDot()};
 $p('gbpr-upload').onchange=async e=>{const file=e.target.files?.[0];e.target.value='';if(!file)return;if(!user||!sb){setMessage('gbpr-upload-status','Please sign in before uploading a photo.');return}if(!['image/jpeg','image/png','image/webp'].includes(file.type)){setMessage('gbpr-upload-status','Choose a JPG, PNG or WebP image.');return}if(file.size>8*1024*1024){setMessage('gbpr-upload-status','Choose an image smaller than 8 MB.');return}
  setMessage('gbpr-upload-status','Preparing photo…');try{const bmp=await createImageBitmap(file);const canvas=document.createElement('canvas');canvas.width=512;canvas.height=512;const ctx=canvas.getContext('2d');if(!ctx)throw Error('Image processing unavailable');const d=Math.min(bmp.width,bmp.height);ctx.drawImage(bmp,(bmp.width-d)/2,(bmp.height-d)/2,d,d,0,0,512,512);bmp.close?.();const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/webp',.84));if(!blob)throw Error('Could not prepare photo');const path=user.id+'/profile-'+Date.now()+'.webp';setMessage('gbpr-upload-status','Uploading photo…');const upload=await sb.storage.from('avatars').upload(path,blob,{contentType:'image/webp',upsert:false});if(upload.error)throw upload.error;const updated=await sb.from('profiles').update({avatar_path:path}).eq('id',user.id);if(updated.error)throw updated.error;profile={...profile,avatar_path:path};avatarPreview=null;setMessage('gbpr-upload-status','Photo uploaded!',true);refresh()}catch(err){setMessage('gbpr-upload-status',err.message||'Upload failed')}};
 async function connect(){
@@ -155,7 +157,7 @@ async function connect(){
   sb.auth.onAuthStateChange((event,session)=>{
    const next=session?.user||null;
    if(next?.id!==user?.id||next?.is_anonymous!==user?.is_anonymous){
-    user=next;profile=null;refresh();void gbprRefreshRequestDot();if(user)setTimeout(fetchProfile,0);
+    user=next;profile=null;refresh();void gbprRefreshRequestDot();void gbprRefreshMailDot();if(user)setTimeout(fetchProfile,0);
    }
   });
   if(!user){
@@ -164,7 +166,7 @@ async function connect(){
    if(attempt.error){console.info('Gore Burst guest online identity unavailable:',attempt.error.message);}
    else user=attempt.data.user;
   }
-  if(user)await fetchProfile();else {refresh();void gbprRefreshRequestDot();} if(gbprIsGuest())void gbUploadGuestStars();
+  if(user){await fetchProfile();void gbprRefreshMailDot();}else {refresh();void gbprRefreshRequestDot();void gbprRefreshMailDot();} if(gbprIsGuest())void gbUploadGuestStars();
  }catch(err){setMessage('gbpr-auth-status','Cannot connect to Supabase. Local gameplay remains available.');console.warn('Gore Burst profile connection:',err)}
 }
 // Social backend: registered accounts only. Guest play and game saves remain unchanged.
@@ -205,17 +207,57 @@ if(typeof consumeFailedLife==='function' && typeof canAttempt==='function' && ty
     const countdown=document.getElementById('lifeCountdown');if(countdown){const secs=Math.max(0,Math.ceil((save.gbUnlimitedLivesUntil-Date.now())/1000));countdown.textContent=Math.floor(secs/60)+':'+String(secs%60).padStart(2,'0');countdown.style.display='block';}
   }};
 }
+let gbprMailItems=[];
+function gbprMailPendingCheck(m){return (m.category==='event_reward'&&!m.claimed_at)||!m.read_at;}
+async function gbprRefreshMailDot(){
+ const button=prHub?.querySelector('[data-gbpr-nav="mail"]');
+ if(!sb||!user){gbprMailPending=false;button?.classList.remove('gbpr-mail-pending');gbprUpdatePfpNotice();return;}
+ const {data,error}=await sb.from('gb_inbox').select('id,category,claimed_at,read_at').eq('recipient',user.id).limit(100);
+ if(error)return;
+ gbprMailPending=!!data?.some(gbprMailPendingCheck);
+ button?.classList.toggle('gbpr-mail-pending',gbprMailPending);
+ gbprUpdatePfpNotice();
+}
 async function gbprLoadMail(){
  const host=$p('gbpr-mail-list');if(!host)return;
- if(!user){host.innerHTML=gbprSocialMessage('Sign in to see official mail. Guest mail support will be added with anonymous accounts.');return}
+ if(!user){host.innerHTML=gbprSocialMessage('Sign in to see official mail.');return}
  if(!sb){host.innerHTML=gbprSocialMessage('Connecting…');return}
  host.textContent='Loading mail…';
- const {data,error}=await sb.from('gb_inbox').select('id,title,body,category,created_at,claimed_at,source_event,reward').order('created_at',{ascending:false}).limit(60);
+ const {data,error}=await sb.from('gb_inbox').select('id,title,body,category,created_at,claimed_at,read_at,source_event,reward').eq('recipient',user.id).order('created_at',{ascending:false}).limit(60);
  if(!host.isConnected)return;
- if(error){host.innerHTML=gbprSocialMessage('Mailbox unavailable. Complete the social SQL setup first.');return}
- if(!data?.length){host.innerHTML=gbprSocialMessage('No mail yet.');return}
- host.innerHTML=data.map(m=>{const welcome=m.source_event==='welcome_gift';return `<article class="gbpr-mail-card ${welcome?'gbpr-welcome-mail':''}"><div class="gbpr-tag">${welcome?'✦ AN OFFICIAL INVITATION ✦':'OFFICIAL MAIL'}</div><b>${safe(m.title)}</b><small>${new Date(m.created_at).toLocaleDateString()}</small><p>${safe(m.body)}</p>${welcome?`<div class="gbpr-welcome-gifts"><div><span>♥</span><b>UNLIMITED LIVES</b><small>1 HOUR</small></div><div><img src="assets/rocket-h.png" alt="Rocket"><b>ROCKET</b><small>×1</small></div><div><img src="assets/clownbomb.png" alt="Clownbomb"><b>CLOWNBOMB</b><small>×1</small></div><div><img src="assets/ferris.png" alt="Ferris Wheel"><b>FERRIS WHEEL</b><small>×1</small></div></div><button type="button" class="gbpr-btn gbpr-welcome-claim" data-welcome-id="${m.id}" ${m.claimed_at?'disabled':''}>${m.claimed_at?'CLAIMED':'✦ CLAIM MY GIFTS ✦'}</button>`:m.category==='event_reward'?'<em>Other event rewards are not claimable yet.</em>':''}</article>`}).join('');
- host.querySelectorAll('[data-welcome-id]').forEach(b=>b.onclick=async()=>{b.disabled=true;b.textContent='CLAIMING…';try{const {data:rows,error}=await sb.rpc('gb_welcome_claim',{p_mail:b.dataset.welcomeId});if(error)throw error;const gift=rows?.[0];if(!gift)throw Error('No gift returned');if(typeof window.gbWelcomeApplyGift!=='function')throw Error('Game reward hook not loaded. Keep your mail and reload.');const ok=window.gbWelcomeApplyGift(user.id,gift.mail_id,gift.reward_data,gift.claimed_at);if(!ok)throw Error('Could not apply gift to game save');await gbprLoadMail();}catch(e){b.disabled=false;b.textContent='✦ CLAIM MY GIFTS ✦';alert(e.message||'Claim failed');}});
+ if(error){host.innerHTML=gbprSocialMessage('Mailbox unavailable: '+error.message);return}
+ gbprMailItems=data||[];
+ gbprRefreshMailDot();
+ gbprDrawMailList();
+}
+function gbprDrawMailList(){
+ const host=$p('gbpr-mail-list');if(!host)return;
+ if(!gbprMailItems.length){host.innerHTML=gbprSocialMessage('No mail yet.');return}
+ host.innerHTML=gbprMailItems.map(m=>`<button type="button" class="gbpr-inbox-row ${gbprMailPendingCheck(m)?'gbpr-inbox-unread':''}" data-mail-open="${m.id}"><span class="gbpr-inbox-envelope">✉</span><span class="gbpr-inbox-title"><b>${safe(m.title)}</b><small>${m.source_event==='welcome_gift'?'A letter from Mr. Walker':'Official Carnival Mail'}</small></span><span class="gbpr-inbox-status">${m.category==='event_reward'&&!m.claimed_at?'<i class="gbpr-mail-dot"></i>':!m.read_at?'<i class="gbpr-mail-dot"></i>':'›'}</span></button>`).join('');
+ host.querySelectorAll('[data-mail-open]').forEach(b=>b.onclick=()=>gbprOpenMail(b.dataset.mailOpen));
+}
+async function gbprOpenMail(id){
+ const m=gbprMailItems.find(x=>x.id===id);if(!m)return;
+ const host=$p('gbpr-mail-list');
+ if(!m.read_at){
+  const {error}=await sb.rpc('gb_mail_mark_read',{p_mail:m.id});
+  if(!error)m.read_at=new Date().toISOString();
+  void gbprRefreshMailDot();
+ }
+ const welcome=m.source_event==='welcome_gift';
+ host.innerHTML=`<div class="gbpr-open-letter ${welcome?'gbpr-welcome-mail':''}"><button type="button" class="gbpr-btn secondary gbpr-letter-back" id="gbpr-mail-back">‹ INBOX</button><div class="gbpr-tag">${welcome?'✦ AN OFFICIAL INVITATION ✦':'OFFICIAL MAIL'}</div><h3>${safe(m.title)}</h3><small>${new Date(m.created_at).toLocaleDateString()}</small><p>${safe(m.body)}</p>${welcome?`<div class="gbpr-welcome-gifts"><div><span>♥</span><b>UNLIMITED LIVES</b><small>1 HOUR</small></div><div><img src="assets/rocket-h.png" alt="Rocket"><b>ROCKET</b><small>×1</small></div><div><img src="assets/clownbomb.png" alt="Clownbomb"><b>CLOWNBOMB</b><small>×1</small></div><div><img src="assets/ferris.png" alt="Ferris Wheel"><b>FERRIS WHEEL</b><small>×1</small></div></div><button type="button" class="gbpr-btn gbpr-welcome-claim" id="gbpr-letter-claim" ${m.claimed_at?'disabled':''}>${m.claimed_at?'CLAIMED':'✦ CLAIM MY GIFTS ✦'}</button>`:m.category==='event_reward'?'<em>Other event rewards are not claimable yet.</em>':''}</div>`;
+ host.querySelector('#gbpr-mail-back').onclick=gbprDrawMailList;
+ const claim=host.querySelector('#gbpr-letter-claim');if(claim)claim.onclick=async()=>{
+  claim.disabled=true;claim.textContent='CLAIMING…';
+  try{
+   const {data:rows,error}=await sb.rpc('gb_welcome_claim',{p_mail:m.id});if(error)throw error;
+   const gift=rows?.[0];if(!gift)throw Error('No gift returned');
+   if(typeof window.gbWelcomeApplyGift!=='function')throw Error('Game reward hook not loaded.');
+   if(!window.gbWelcomeApplyGift(user.id,gift.mail_id,gift.reward_data,gift.claimed_at))throw Error('Could not apply gift to game save');
+   m.claimed_at=gift.claimed_at||new Date().toISOString();claim.textContent='CLAIMED';
+   void gbprRefreshMailDot();
+  }catch(e){claim.disabled=false;claim.textContent='✦ CLAIM MY GIFTS ✦';alert(e.message||'Claim failed')}
+ };
 }
 async function gbprLoadFriends(){
  const host=$p('gbpr-friend-list');if(!host||!gbprRegistered()||!profile?.username||!sb)return;
