@@ -822,3 +822,17 @@ window.gbClashSubmit=async function(game,points){
 window.gbWeeklySubmit=async function(stages){if(!sb||!user)return {error:'Online player identity unavailable'};const {error}=await sb.rpc('weekly_nightmare_submit_beta',{p_stages:Number(stages)});if(error)throw error;return {ok:true}};
 window.gbWeeklyTop10=async function(){if(!sb)return {rows:[],error:'Offline'};const {data,error}=await sb.rpc('weekly_nightmare_top10');return {rows:data||[],error:error?.message||null}};
 
+
+// Phase 5N: server-issued Sudoku sessions. Tetris and Weekly Nightmare remain provisional.
+window.gbSudokuStartVerified=async function(difficulty){
+  if(!sb||!user) return null;
+  const {data,error}=await sb.rpc('gb_sudoku_session_start',{p_difficulty:difficulty});
+  if(error) throw error;
+  return data;
+};
+window.gbSudokuFinishVerified=async function(sessionId,values){
+  if(!sb||!user)return false;
+  const {data,error}=await sb.rpc('gb_sudoku_session_finish',{p_session:sessionId,p_board:values});
+  if(error)throw error;
+  return data===true;
+};
