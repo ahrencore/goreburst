@@ -295,7 +295,9 @@ async function gbprOpenMail(id){
      snap.coins=coins+100;
      snap.gbServerRewardReceipts={...receipts,[receiptKey]:{amount:100,completed_at:receipt.completed_at}};
      localStorage.setItem(key,JSON.stringify(snap));
-     // Reload because the main game keeps an in-memory copy of this save.
+     // Existing authorized cloud backups will upload this new receipt after reload.
+     // Otherwise the account screen requires explicit CHECK CLOUD SAVE review.
+     try{sessionStorage.setItem('gb-post-test-sync-cloud-review',uid)}catch(_){}
      location.reload();
    }catch(err){status.textContent='Sync stopped: '+(err.message||'Unknown error')}
    finally{testSync.disabled=false}
@@ -346,6 +348,19 @@ function stableValue(v){
   return v;
 }
 const saveFingerprint=(obj)=>JSON.stringify(stableValue(obj));
+// Reward receipts are monotonic: an older save must never erase a confirmed claim.
+function claimReceipts(snapshot){
+  const x=snapshot?.gbServerRewardReceipts;
+  return x&&typeof x==='object'&&!Array.isArray(x)?x:{};
+}
+function retainsClaimReceipts(candidate,baseline){
+  const have=claimReceipts(candidate), required=claimReceipts(baseline);
+  return Object.keys(required).every(k=>
+    Object.prototype.hasOwnProperty.call(have,k) &&
+    saveFingerprint(have[k])===saveFingerprint(required[k])
+  );
+}
+
 function localDominatesCloud(local,cloud){
   // Only used for the SAME ACCOUNT already authorized to auto-backup on this device.
   // Don't overwrite progress earned on a second device, or a new, unrelated save.
@@ -428,6 +443,18 @@ async function checkCloudSave(initiated=false){
     const local=readLocalGameSave(), cloud=await fetchCloudRecord(uid);
     if(!user||user.id!==uid)return;
     if(cloud)validSnapshot(cloud.snapshot);
+    // If another device already saved a claimed reward, pause rather than
+    // overwriting it with this device's older local snapshot.
+    if(cloud && !retainsClaimReceipts(local,cloud.snapshot)){
+      cloudAuthorized=false;
+      cloudCandidate=cloud;
+      cloudKnownRevision=Number(cloud.save_revision);
+      showCloudChoices(local,cloud,'This device is missing reward claims saved in the cloud. Restore the cloud copy or reconcile your game save before uploading.');
+      $p('gbpr-cloud-use-local').disabled=true;
+      cloudStatus('Cloud has claimed rewards missing here. Upload blocked to protect them.');
+      return;
+    }
+    $p('gbpr-cloud-use-local').disabled=false;
     cloudCandidate=cloud;
     cloudKnownRevision=cloud?Number(cloud.save_revision):null;
     cloudCheckedFingerprint=saveFingerprint(local);
@@ -505,6 +532,7 @@ $p('gbpr-cloud-restore').onclick=async()=>{
     const latest=await fetchCloudRecord(uid);
     if(!user||user.id!==uid)throw Error('Account changed. Please retry.');
     if(!latest||Number(latest.save_revision)!==Number(cloudCandidate.save_revision))throw Error('Cloud backup changed since review. Check Cloud Save again.');
+    if(!retainsClaimReceipts(candidate,current))throw Error('Restore blocked: the cloud copy lacks rewards already claimed on this device. Keep this save and reconcile first.');
     downloadBackup(current,'before-restore');
     const safeKey='gb-cloud-pre-restore:'+uid+':'+Date.now();
     localStorage.setItem(safeKey,JSON.stringify(current));
@@ -521,6 +549,7 @@ $p('gbpr-cloud-use-local').onclick=async()=>{
     if(!confirm("Use this device's save ("+saveSummary(local)+") as the cloud backup? "+(cloudCandidate?'This REPLACES the existing cloud copy after another check.':'This creates the first cloud backup.')+' It does not add verified leaderboard stars.'))return;
     const latest=await fetchCloudRecord(uid);
     if(!user||user.id!==uid)throw Error('Account changed. Check again.');
+    if(latest && !retainsClaimReceipts(local,latest.snapshot))throw Error('Upload blocked: cloud contains reward claims missing from this device.');
     if(Number(latest?.save_revision??0)!==Number(cloudKnownRevision??0))throw Error('Cloud save changed since review. Check again before uploading.');
     // Do not authorize background writes before explicit first upload succeeds.
     cloudActiveAccount=uid;cloudAuthorized=true;
@@ -544,6 +573,11 @@ async function cloudUpload(force=false){
     if(Number(existing?.save_revision??0)!==Number(cloudKnownRevision??0)){
       cloudAuthorized=false;cloudPanel().classList.add('gbpr-hide');
       cloudStatus('Cloud changed on another device. Auto-backup paused; tap CHECK CLOUD SAVE to resolve.');
+      return false;
+    }
+    if(existing && !retainsClaimReceipts(snapshot,existing.snapshot)){
+      cloudAuthorized=false;
+      cloudStatus('Auto-backup paused: cloud has claimed rewards missing on this device. CHECK CLOUD SAVE before proceeding.');
       return false;
     }
     const revision=Number(existing?.save_revision??0)+1;
@@ -597,6 +631,16 @@ window.addEventListener('pageshow',()=>{if(canAutoBackup())queueCloudUpload()});
 setInterval(()=>{if(canAutoBackup()&&!cloudBusy&&!cloudChecking&&navigator.onLine)queueCloudUpload()},20000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&canAutoBackup())queueCloudUpload()});
 window.gbCloudReady=()=>{
+  try{
+    const recent=sessionStorage.getItem('gb-post-test-sync-cloud-review');
+    if(recent===user?.id){
+      sessionStorage.removeItem('gb-post-test-sync-cloud-review');
+      setTimeout(()=>{
+        if(canAutoBackup())queueCloudUpload();
+        else cloudStatus('Claim added locally. Open ACCOUNT → CHECK CLOUD SAVE to back up your updated coins and receipt.');
+      },500);
+    }
+  }catch(_){}
   if(!gbprRegistered())return;
   if(cloudActiveAccount!==user.id){cloudReset();cloudActiveAccount=user.id;}
   checkCloudSave(false);
