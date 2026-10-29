@@ -83,29 +83,30 @@ function evWheel(){evRefresh();const base='assets/events/';const layer=(name,cls
 function evGhost(){
   evRefresh();
   const own=Object.values(save.best||{}).reduce((sum,v)=>sum+Math.min(3,Math.max(0,Number(v)||0)),0);
-  evDisplay(`${evHeader('GHOST PARADE')}<div class="ev-panel"><h2>👻 Hall of Stars</h2><p class="ev-dim">Permanent all-server Top 10 · each level contributes only its highest star rating, maximum 3 stars.</p><div class="ev-board-line"><span>Stars on this device</span><strong>${own} ★</strong></div><div id="gbGhostCloudSummary" class="ev-dim" aria-live="polite">Checking signed-in cloud backup…</div><div class="ev-panel"><h3>SERVER TOP 10</h3><p class="ev-dim">LIVE BETA: best stars from signed-in cloud backups count toward the all-time Top 10. Each level counts once.</p><div id="gbGhostOnlineRows" class="ev-dim" aria-live="polite">Loading rankings…</div><button class="ev-btn ev-btn-alt" id="gbGhostReload" type="button">REFRESH RANKINGS</button></div><p class="ev-dim">No rewards — just recognition.</p></div>`);
+  evDisplay(`${evHeader('GHOST PARADE')}<section class="ev-panel ev-ghost-shell"><div class="ev-ghost-title"><h2>👻 Hall of Stars</h2></div><div class="ev-ghost-stars"><span>Current Stars</span><strong>${own} ★</strong></div><section class="ev-ghost-board"><div class="ev-ghost-board-head"><h3>All-Time Top 10 Players</h3></div><div id="gbGhostOnlineRows" class="ev-ghost-loading" aria-live="polite">Loading rankings…</div><button class="ev-btn ev-ghost-refresh" id="gbGhostReload" type="button">REFRESH</button></section></section>`);
   evRoot.querySelector('#gbGhostReload').onclick=evFetchGhostParade;
   evFetchGhostParade();
 }
 function evGhostEscape(input){return String(input??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 async function evFetchGhostParade(){
-  const rows=evRoot.querySelector('#gbGhostOnlineRows'), cloud=evRoot.querySelector('#gbGhostCloudSummary');
-  if(!rows||!cloud)return;
-  rows.textContent='Loading server rankings…';cloud.textContent='Checking signed-in cloud backup…';
+  const rows=evRoot.querySelector('#gbGhostOnlineRows');
+  if(!rows)return;
+  rows.innerHTML='<div class="ev-ghost-message">Loading rankings…</div>';
   if(typeof window.gbGhostParadeFetch!=='function'){
-    rows.textContent='Profile connection is starting. Please try Refresh Rankings.';
-    cloud.textContent='Your local stars are safe on this device.';
+    rows.innerHTML='<div class="ev-ghost-message">Sign in to view the leaderboard.</div>';
     return;
   }
   try{
     const response=await window.gbGhostParadeFetch();
-    if(!rows.isConnected||!cloud.isConnected)return;
-    if(response.error){rows.textContent=response.error;cloud.textContent='Sign in to compare your private cloud backup with your device.';return}
-    const backup=response.backup;
-    cloud.textContent=backup?`Private cloud backup: ${Number(backup.total_stars||0)} stars across ${Number(backup.levels_scored||0)} levels · included in beta rankings after sync.`:'No private cloud backup found for your signed-in account. Your device stars are unchanged.';
-    if(!response.rows?.length){rows.textContent='No server stars recorded yet. Sign in, save progress to Supabase, and refresh.';return}
-    rows.innerHTML=response.rows.map(r=>`<div class="ev-board-line"><span style="display:flex;gap:8px;align-items:center"><b>#${Number(r.rank_position)}</b><img src="${evGhostEscape(window.gbGhostAvatarUrl?.(r)||'assets/avatars/01_Mr_Walker.png')}" alt="" loading="lazy" style="width:30px;height:30px;border-radius:50%;object-fit:cover"><span>${evGhostEscape(r.display_name||'Carnival Guest')}</span></span><strong>${Number(r.total_stars||0).toLocaleString()} ★</strong></div>`).join('');
-  }catch(e){if(rows.isConnected)rows.textContent='Could not load leaderboard: '+(e?.message||'Network error');if(cloud.isConnected)cloud.textContent='Your on-device stars remain safe.'}
+    if(!rows.isConnected)return;
+    if(response.error){rows.innerHTML=`<div class="ev-ghost-message">${evGhostEscape(response.error)}</div>`;return}
+    if(!response.rows?.length){rows.innerHTML='<div class="ev-ghost-message">No stars recorded yet.</div>';return}
+    rows.innerHTML=response.rows.slice(0,10).map(r=>{
+      const rank=Number(r.rank_position)||0;
+      const rankClass=rank===1?' is-top1':rank===2?' is-top2':rank===3?' is-top3':'';
+      return `<div class="ev-ghost-row${rankClass}"><div class="ev-ghost-rankwrap"><span class="ev-ghost-rank">#${rank}</span><img class="ev-ghost-avatar" src="${evGhostEscape(window.gbGhostAvatarUrl?.(r)||'assets/avatars/01_Mr_Walker.png')}" alt="" loading="lazy"><span class="ev-ghost-name">${evGhostEscape(r.display_name||'Carnival Guest')}</span></div><strong class="ev-ghost-score">${Number(r.total_stars||0).toLocaleString()} ★</strong></div>`;
+    }).join('');
+  }catch(e){if(rows.isConnected)rows.innerHTML=`<div class="ev-ghost-message">Could not load leaderboard: ${evGhostEscape(e?.message||'Network error')}</div>`}
 }
 function evClash(){evRefresh();evDisplay(`${evHeader('CARNIVAL CLASH')}<section class="ev-clash-intro"><div class="ev-event-title"><h2>THE HAUNTED ARCADE</h2><span class="ev-countdown" id="evClashCountdown" aria-label="Time remaining in this round">${evCountdownText(evClashEnd())}</span></div><p class="ev-dim">Play either mini-game to earn points in the same competition.</p></section><div class="ev-cards ev-clash-cards"><button type="button" class="ev-card ev-clash-card ev-clash-compact" id="evSudoku" aria-label="Play Creepy Sudoku"><div class="ev-clash-art ev-clash-art-sudoku" aria-hidden="true"></div></button><button type="button" class="ev-card ev-clash-card ev-clash-compact" id="evTetris" aria-label="Play Haunting Tetris"><div class="ev-clash-art ev-clash-art-tetris" aria-hidden="true"></div></button></div><section class="ev-panel ev-clash-board"><h3>GLOBAL CARNIVAL CLASH</h3><p class="ev-dim" id="evClashStatus">Checking Supabase rankings…</p><div id="evClashRows" aria-live="polite"></div><button type="button" class="ev-btn ev-btn-alt" id="evClashRefresh">REFRESH RANKINGS</button></section>`);evRoot.querySelector('#evSudoku').onclick=evSudokuMenu;evRoot.querySelector('#evTetris').onclick=evTetrisStart;evRoot.querySelector('#evClashRefresh').onclick=evFetchClash;evFetchClash();evBindCountdown('evClashCountdown',evClashEnd)}
 async function evFetchClash(){const status=evRoot.querySelector('#evClashStatus'),rows=evRoot.querySelector('#evClashRows');if(!status||!rows)return;status.textContent='Loading live rankings…';rows.replaceChildren();if(typeof window.gbClashLeaderboardFetch!=='function'){status.textContent='Connecting to Supabase…';return}try{const result=await window.gbClashLeaderboardFetch();if(!status.isConnected)return;if(result.error){status.textContent=result.error;return}status.textContent='Shared Sudoku + Tetris points · current 48-hour round';if(!result.rows?.length){rows.textContent='No online scores this round yet.';return}rows.innerHTML=result.rows.map(r=>`<div class="ev-board-line"><span style="display:flex;align-items:center;gap:8px"><b>#${Number(r.rank_position)}</b><img src="${evGhostEscape(window.gbGhostAvatarUrl?.(r)||'assets/avatars/01_Mr_Walker.png')}" alt="" loading="lazy" style="width:32px;height:32px;object-fit:cover;border-radius:50%"><span>${evGhostEscape(r.display_name||'Carnival Guest')}</span></span><strong>${Number(r.points||0).toLocaleString()} pts</strong></div>`).join('')}catch(error){if(status.isConnected)status.textContent='Could not load rankings: '+(error.message||'Network error')}}
