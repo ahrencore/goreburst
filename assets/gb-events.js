@@ -77,9 +77,21 @@ function evDaily(){
  evRoot.querySelectorAll('[data-claim]').forEach(b=>b.onclick=()=>{const i=+b.dataset.claim,q=evMission(i);if(evData.claims.includes(i)||(evData.missions[q.key]||0)<q.target)return;evData.claims.push(i);evAward(evMissions[i][4]);evSave();evUpdateRewardDots();playSfx('victory');evDaily()});evUpdateRewardDots();
 }
 const evWheelPrizes=[{label:'ROCKET',reward:{RV:1}},{label:'CLOWNBOMB',reward:{CB:1}},{label:'FERRIS WHEEL',reward:{FW:1}},{label:'HAMMER',reward:{hammer:1}},{label:'WATCH',reward:{watch:1}},{label:'500 COINS',reward:{coins:500}},{label:'300 COINS',reward:{coins:300}},{label:'100 COINS',reward:{coins:100}},{label:'MYSTERY BOOSTER',reward:null},{label:'LOSE 1 LIFE',negative:'life'},{label:'−100 COINS',negative:'coins'},{label:'LOSER!',negative:'loser'}];
+// Wheel of Misfortune spin only: W2 Enchanted Misfortune.
+// Separate from the Ferris Wheel special's `playSfx('wheel')` cue.
+function evPlayWheelSpinW2(){
+  try {
+    if(typeof gbPrefs!=='undefined' && !gbPrefs.sound) return;
+    const volume=typeof gbPrefs!=='undefined' ? Math.max(0,Math.min(100,Number(gbPrefs.soundVolume)||0))/100 : 0.75;
+    if(volume<=0) return;
+    const audio=new Audio('assets/sfx/wheel-misfortune-w2.mp3');
+    audio.volume=volume;
+    audio.play().catch(()=>{});
+  } catch(e) {}
+}
 let evWheelAngle=0,evSpinning=false;
 function evWheelCost(){return evData.spins===0?0:Math.min(1000,evData.spins*200)}
-function evWheel(){evRefresh();const base='assets/events/';const layer=(name,cls)=>`<img class="${cls}" src="${base}${name}.png" alt="">`;evDisplay(`${evHeader('WHEEL OF MISFORTUNE')}<div class="ev-panel ev-wheel-panel"><div class="ev-wheel-wallet">Skull Coins: <b id="evWheelCoins">${save.coins}</b> · Spins today: <b id="evSpinCount">${evData.spins}</b></div><div class="ev-wheel-wrap ev-wheel-glow">${layer('02_rotating_disc','ev-disc')}${layer('01_stationary_frame','ev-rim')}${layer('04_center_medallion','ev-center')}${layer('03_fixed_pointer','ev-pointer')}</div><div class="ev-btn-row"><button class="ev-btn ev-wheel-spin-btn" id="evSpinBtn">${evWheelCost()===0?'FREE SPIN':'SPIN · '+evWheelCost()+' COINS'}</button></div><div id="evWheelResult" class="ev-gift"></div></div>`);const disc=evRoot.querySelector('.ev-disc');disc.style.transform=`rotate(${evWheelAngle}deg)`;evRoot.querySelector('#evSpinBtn').onclick=async()=>{if(evSpinning)return;const cost=evWheelCost();if(save.coins<cost){evRoot.querySelector('#evWheelResult').textContent='Not enough Skull Coins!';return}if(cost&&!confirm(`Spin for ${cost} Skull Coins?`))return;save.coins-=cost;evData.spins++;evSave();persist();evUpdateRewardDots();evSpinning=true;const btn=evRoot.querySelector('#evSpinBtn');btn.disabled=true;const idx=Math.floor(Math.random()*evWheelPrizes.length),prize=evWheelPrizes[idx];const angleEnd=(360-idx*30)%360;evWheelAngle+=1800+((angleEnd-(evWheelAngle%360)+360)%360);disc.style.transform=`rotate(${evWheelAngle}deg)`;playSfx('wheel');await new Promise(r=>setTimeout(r,4050));if(prize.negative==='life'){regenLives();if(save.lives>0){if(save.lives===5)save.lifeTick=Date.now();save.lives--;persist()}}else if(prize.negative==='coins'){save.coins=Math.max(0,save.coins-100);persist()}else if(!prize.negative){const reward=prize.reward||{[BOOSTERS[Math.floor(Math.random()*BOOSTERS.length)].id]:1};evAward(reward)}const notice=prize.negative==='loser'?'LOSER! Better luck next spin.':prize.label;evSpinning=false;evRoot.querySelector('#evWheelResult').textContent=notice;evRoot.querySelector('#evWheelCoins').textContent=save.coins;evRoot.querySelector('#evSpinCount').textContent=evData.spins;btn.textContent='SPIN · '+evWheelCost()+' COINS';btn.disabled=false;playSfx(prize.negative?'fail':'victory')};}
+function evWheel(){evRefresh();const base='assets/events/';const layer=(name,cls)=>`<img class="${cls}" src="${base}${name}.png" alt="">`;evDisplay(`${evHeader('WHEEL OF MISFORTUNE')}<div class="ev-panel ev-wheel-panel"><div class="ev-wheel-wallet">Skull Coins: <b id="evWheelCoins">${save.coins}</b> · Spins today: <b id="evSpinCount">${evData.spins}</b></div><div class="ev-wheel-wrap ev-wheel-glow">${layer('02_rotating_disc','ev-disc')}${layer('01_stationary_frame','ev-rim')}${layer('04_center_medallion','ev-center')}${layer('03_fixed_pointer','ev-pointer')}</div><div class="ev-btn-row"><button class="ev-btn ev-wheel-spin-btn" id="evSpinBtn">${evWheelCost()===0?'FREE SPIN':'SPIN · '+evWheelCost()+' COINS'}</button></div><div id="evWheelResult" class="ev-gift"></div></div>`);const disc=evRoot.querySelector('.ev-disc');disc.style.transform=`rotate(${evWheelAngle}deg)`;evRoot.querySelector('#evSpinBtn').onclick=async()=>{if(evSpinning)return;const cost=evWheelCost();if(save.coins<cost){evRoot.querySelector('#evWheelResult').textContent='Not enough Skull Coins!';return}if(cost&&!confirm(`Spin for ${cost} Skull Coins?`))return;save.coins-=cost;evData.spins++;evSave();persist();evUpdateRewardDots();evSpinning=true;const btn=evRoot.querySelector('#evSpinBtn');btn.disabled=true;const idx=Math.floor(Math.random()*evWheelPrizes.length),prize=evWheelPrizes[idx];const angleEnd=(360-idx*30)%360;evWheelAngle+=1800+((angleEnd-(evWheelAngle%360)+360)%360);disc.style.transform=`rotate(${evWheelAngle}deg)`;evPlayWheelSpinW2();await new Promise(r=>setTimeout(r,4050));if(prize.negative==='life'){regenLives();if(save.lives>0){if(save.lives===5)save.lifeTick=Date.now();save.lives--;persist()}}else if(prize.negative==='coins'){save.coins=Math.max(0,save.coins-100);persist()}else if(!prize.negative){const reward=prize.reward||{[BOOSTERS[Math.floor(Math.random()*BOOSTERS.length)].id]:1};evAward(reward)}const notice=prize.negative==='loser'?'LOSER! Better luck next spin.':prize.label;evSpinning=false;evRoot.querySelector('#evWheelResult').textContent=notice;evRoot.querySelector('#evWheelCoins').textContent=save.coins;evRoot.querySelector('#evSpinCount').textContent=evData.spins;btn.textContent='SPIN · '+evWheelCost()+' COINS';btn.disabled=false;playSfx(prize.negative?'fail':'victory')};}
 function evGhost(){
   evRefresh();
   const own=Object.values(save.best||{}).reduce((sum,v)=>sum+Math.min(3,Math.max(0,Number(v)||0)),0);
@@ -108,8 +120,49 @@ async function evFetchGhostParade(){
     }).join('');
   }catch(e){if(rows.isConnected)rows.innerHTML=`<div class="ev-ghost-message">Could not load leaderboard: ${evGhostEscape(e?.message||'Network error')}</div>`}
 }
-function evClash(){evRefresh();evDisplay(`${evHeader('CARNIVAL CLASH')}<section class="ev-clash-intro"><div class="ev-event-title"><h2>THE HAUNTED ARCADE</h2><span class="ev-countdown" id="evClashCountdown" aria-label="Time remaining in this round">${evCountdownText(evClashEnd())}</span></div><p class="ev-dim">Play either mini-game to earn points in the same competition.</p></section><div class="ev-cards ev-clash-cards"><button type="button" class="ev-card ev-clash-card ev-clash-compact" id="evSudoku" aria-label="Play Creepy Sudoku"><div class="ev-clash-art ev-clash-art-sudoku" aria-hidden="true"></div></button><button type="button" class="ev-card ev-clash-card ev-clash-compact" id="evTetris" aria-label="Play Haunting Tetris"><div class="ev-clash-art ev-clash-art-tetris" aria-hidden="true"></div></button></div><section class="ev-panel ev-clash-board"><h3>GLOBAL CARNIVAL CLASH</h3><p class="ev-dim" id="evClashStatus">Checking Supabase rankings…</p><div id="evClashRows" aria-live="polite"></div><button type="button" class="ev-btn ev-btn-alt" id="evClashRefresh">REFRESH RANKINGS</button></section>`);evRoot.querySelector('#evSudoku').onclick=evSudokuMenu;evRoot.querySelector('#evTetris').onclick=evTetrisStart;evRoot.querySelector('#evClashRefresh').onclick=evFetchClash;evFetchClash();evBindCountdown('evClashCountdown',evClashEnd)}
-async function evFetchClash(){const status=evRoot.querySelector('#evClashStatus'),rows=evRoot.querySelector('#evClashRows');if(!status||!rows)return;status.textContent='Loading live rankings…';rows.replaceChildren();if(typeof window.gbClashLeaderboardFetch!=='function'){status.textContent='Connecting to Supabase…';return}try{const result=await window.gbClashLeaderboardFetch();if(!status.isConnected)return;if(result.error){status.textContent=result.error;return}status.textContent='Shared Sudoku + Tetris points · current 48-hour round';if(!result.rows?.length){rows.textContent='No online scores this round yet.';return}rows.innerHTML=result.rows.map(r=>`<div class="ev-board-line"><span style="display:flex;align-items:center;gap:8px"><b>#${Number(r.rank_position)}</b><img src="${evGhostEscape(window.gbGhostAvatarUrl?.(r)||'assets/avatars/01_Mr_Walker.png')}" alt="" loading="lazy" style="width:32px;height:32px;object-fit:cover;border-radius:50%"><span>${evGhostEscape(r.display_name||'Carnival Guest')}</span></span><strong>${Number(r.points||0).toLocaleString()} pts</strong></div>`).join('')}catch(error){if(status.isConnected)status.textContent='Could not load rankings: '+(error.message||'Network error')}}
+const evClashPrizeData=[
+  {place:'#1',coins:1000,rewards:[['assets/ferris.png','Ferris Wheel',3]]},
+  {place:'#2',coins:700,rewards:[['assets/clownbomb.png','Clownbomb',2]]},
+  {place:'#3',coins:400,rewards:[['assets/rocket-h.png','Rocket',2]]},
+  {place:'#4 - 5',coins:300,rewards:[['assets/clownbomb.png','Clownbomb',1]]},
+  {place:'#6 - 10',coins:200,rewards:[['assets/rocket-h.png','Rocket',1]]}
+];
+function evClash(){
+  evRefresh();
+  evDisplay(`${evHeader('CARNIVAL CLASH')}<section class="ev-clash-intro"><div class="ev-event-title"><h2>THE HAUNTED ARCADE</h2><span class="ev-countdown" id="evClashCountdown" aria-label="Time remaining in this round">${evCountdownText(evClashEnd())}</span></div><p class="ev-dim ev-clash-copy">Earn points from any of these games.</p></section><div class="ev-cards ev-clash-cards"><button type="button" class="ev-card ev-clash-card ev-clash-compact" id="evSudoku" aria-label="Play Creepy Sudoku"><div class="ev-clash-art ev-clash-art-sudoku" aria-hidden="true"></div></button><button type="button" class="ev-card ev-clash-card ev-clash-compact" id="evTetris" aria-label="Play Haunting Tetris"><div class="ev-clash-art ev-clash-art-tetris" aria-hidden="true"></div></button></div><section class="ev-panel ev-clash-board"><h3>GLOBAL CARNIVAL CLASH LEADERBOARD</h3><div class="ev-clash-status" id="evClashStatus" aria-live="polite">Loading live rankings…</div><div id="evClashRows" class="ev-clash-rows" aria-live="polite"></div><div class="ev-clash-actions"><button type="button" class="ev-btn ev-btn-alt ev-clash-refresh" id="evClashRefresh">REFRESH</button><button type="button" class="ev-btn ev-clash-rewards-btn" id="evClashRewardsBtn">REWARDS</button></div></section>`);
+  evRoot.querySelector('#evSudoku').onclick=evSudokuMenu;
+  evRoot.querySelector('#evTetris').onclick=evTetrisStart;
+  evRoot.querySelector('#evClashRefresh').onclick=evFetchClash;
+  evRoot.querySelector('#evClashRewardsBtn').onclick=evClashRewardsView;
+  evFetchClash();
+  evBindCountdown('evClashCountdown',evClashEnd);
+}
+async function evFetchClash(){
+  const status=evRoot.querySelector('#evClashStatus'),rows=evRoot.querySelector('#evClashRows');
+  if(!status||!rows)return;
+  status.textContent='Loading live rankings…';
+  rows.innerHTML='';
+  if(typeof window.gbClashLeaderboardFetch!=='function'){
+    status.textContent='Sign in to view rankings.';
+    return;
+  }
+  try{
+    const result=await window.gbClashLeaderboardFetch();
+    if(!status.isConnected||!rows.isConnected)return;
+    if(result.error){status.textContent=result.error;return}
+    status.textContent='';
+    if(!result.rows?.length){rows.innerHTML='<div class="ev-clash-message">No online scores this round yet.</div>';return}
+    rows.innerHTML=result.rows.slice(0,10).map(r=>{
+      const rank=Number(r.rank_position)||0;
+      const rankClass=rank===1?' is-top1':rank===2?' is-top2':rank===3?' is-top3':'';
+      return `<div class="ev-clash-row${rankClass}"><div class="ev-clash-rankwrap"><span class="ev-clash-rank">#${rank}</span><img class="ev-clash-avatar" src="${evGhostEscape(window.gbGhostAvatarUrl?.(r)||'assets/avatars/01_Mr_Walker.png')}" alt="" loading="lazy"><span class="ev-clash-name">${evGhostEscape(r.display_name||'Carnival Guest')}</span></div><strong class="ev-clash-score">${Number(r.points||0).toLocaleString()} pts</strong></div>`;
+    }).join('');
+  }catch(error){if(status.isConnected)status.textContent='Could not load rankings: '+(error.message||'Network error')}
+}
+function evClashRewardsView(){
+  const rows=evClashPrizeData.map(p=>`<div class="ev-clash-prize-row"><div class="ev-clash-prize-place">${p.place}</div><div class="ev-clash-prize-loot"><div class="ev-clash-loot-item"><img src="assets/coin-skull-new.png" alt="Coins"><span>${Number(p.coins).toLocaleString()}</span></div>${p.rewards.map(([src,label,count])=>`<div class="ev-clash-loot-item"><img src="${src}" alt="${label}"><span>${count>1?'x'+count:label==='Rocket'?'x1':'x1'}</span></div>`).join('')}</div></div>`).join('');
+  evDisplay(`${evHeader('REWARDS',evClash)}<section class="ev-panel ev-clash-rewards-screen"><h2>HAUNTED ARCADE REWARDS</h2><div class="ev-clash-prize-list">${rows}</div></section>`,evClash);
+}
 function evClashEarn(type,amount){if(typeof window.gbClashSubmit==='function')window.gbClashSubmit(type,amount).catch(e=>console.warn('Clash score was not synced:',e));}
 function evWeekly(){
  evRefresh();
