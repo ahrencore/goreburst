@@ -60,3 +60,33 @@
 #gb-profile-layer .gbpr-mail-card small{color:#c6a2d3;font-size:11px}
 #gb-profile-layer .gbpr-mail-card p{font-size:12px;white-space:pre-wrap;color:#e7c9e8}
 #gb-profile-layer .gbpr-mail-card em{color:#f7c58a;font-size:11px}
+
+/* PFP friend-request notification: top-right INSIDE the portrait's ornate HUD circle.
+   Portrait geometry in index.html: left 3.05%, top 10.5%, width 13.65%, height 67.7%.
+   At ~45 degrees, the dot sits on the portrait's upper-right arc, not below it. */
+#menu .top.art-hud > #gbpr-pfp-request-dot{
+  position:absolute!important;
+  display:block;
+  left:14.55%!important;
+  top:19.3%!important;
+  right:auto!important;
+  bottom:auto!important;
+  width:10px!important;
+  height:10px!important;
+  min-width:10px!important;
+  border:0!important;
+  outline:none!important;
+  border-radius:50%!important;
+  background:#ff193b!important;
+  box-shadow:0 0 7px 2px #ff294e,0 0 13px #ff294e85!important;
+  z-index:7!important;
+  pointer-events:none!important;
+}
+#menu .top.art-hud > #gbpr-pfp-request-dot[hidden]{display:none!important}
+/* Notification trail inside Profile. Only incoming requests trigger this. */
+#gb-profile-layer .gbpr-hub-links button.gbpr-request-pending{position:relative}
+#gb-profile-layer .gbpr-hub-links button.gbpr-request-pending::after{
+  content:"";position:absolute;top:9px;right:12px;width:10px;height:10px;
+  border:0;border-radius:50%;background:#ff193b;box-shadow:0 0 8px 2px #ff294e;
+  pointer-events:none;
+}
