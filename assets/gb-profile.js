@@ -252,8 +252,25 @@ async function gbprOpenMail(id){
  }
  const welcome=m.source_event==='welcome_gift';
  const testCoins=m.source_event==='reward_claim_test' && m.reward?.coins===100;
- host.innerHTML=`<div class="gbpr-open-letter ${welcome?'gbpr-welcome-mail':''}"><button type="button" class="gbpr-btn secondary gbpr-letter-back" id="gbpr-mail-back">‹ INBOX</button><div class="gbpr-tag">${welcome?'✦ AN OFFICIAL INVITATION ✦':'OFFICIAL MAIL'}</div><h3>${safe(m.title)}</h3><small>${new Date(m.created_at).toLocaleDateString()}</small><p>${safe(m.body)}</p>${welcome?`<div class="gbpr-welcome-gifts"><div><span>♥</span><b>UNLIMITED LIVES</b><small>1 HOUR</small></div><div><img src="assets/rocket-h.png" alt="Rocket"><b>ROCKET</b><small>×1</small></div><div><img src="assets/clownbomb.png" alt="Clownbomb"><b>CLOWNBOMB</b><small>×1</small></div><div><img src="assets/ferris.png" alt="Ferris Wheel"><b>FERRIS WHEEL</b><small>×1</small></div></div><button type="button" class="gbpr-btn gbpr-welcome-claim" id="gbpr-letter-claim" ${m.claimed_at?'disabled':''}>${m.claimed_at?'CLAIMED':'✦ CLAIM MY GIFTS ✦'}</button>`:testCoins?`<div class="gbpr-test-prize"><img src="assets/coin-skull-new.png" alt="Skull Coins"><strong>100 SKULL COINS</strong></div><button type="button" class="gbpr-btn gbpr-test-claim" id="gbpr-test-claim" ${m.claimed_at?'disabled':''}>${m.claimed_at?'CLAIMED':'✦ CLAIM 100 COINS ✦'}</button><button type="button" class="gbpr-btn secondary" id="gbpr-test-sync" ${!m.claimed_at?'hidden':''}>SYNC CLAIMED GIFT TO THIS DEVICE</button><p class="gbpr-muted" id="gbpr-test-status">${m.claimed_at?'Claimed on server · device reward not yet checked':'Test reward · credited to Supabase inventory'}</p>`:m.category==='event_reward'?'<em>Other event rewards are not claimable yet.</em>':''}</div>`;
+ const eventAward=m.category==='event_reward' && !welcome && !testCoins;
+ host.innerHTML=`<div class="gbpr-open-letter ${welcome?'gbpr-welcome-mail':''}"><button type="button" class="gbpr-btn secondary gbpr-letter-back" id="gbpr-mail-back">‹ INBOX</button><div class="gbpr-tag">${welcome?'✦ AN OFFICIAL INVITATION ✦':'OFFICIAL MAIL'}</div><h3>${safe(m.title)}</h3><small>${new Date(m.created_at).toLocaleDateString()}</small><p>${safe(m.body)}</p>${welcome?`<div class="gbpr-welcome-gifts"><div><span>♥</span><b>UNLIMITED LIVES</b><small>1 HOUR</small></div><div><img src="assets/rocket-h.png" alt="Rocket"><b>ROCKET</b><small>×1</small></div><div><img src="assets/clownbomb.png" alt="Clownbomb"><b>CLOWNBOMB</b><small>×1</small></div><div><img src="assets/ferris.png" alt="Ferris Wheel"><b>FERRIS WHEEL</b><small>×1</small></div></div><button type="button" class="gbpr-btn gbpr-welcome-claim" id="gbpr-letter-claim" ${m.claimed_at?'disabled':''}>${m.claimed_at?'CLAIMED':'✦ CLAIM MY GIFTS ✦'}</button>`:testCoins?`<div class="gbpr-test-prize"><img src="assets/coin-skull-new.png" alt="Skull Coins"><strong>100 SKULL COINS</strong></div><button type="button" class="gbpr-btn gbpr-test-claim" id="gbpr-test-claim" ${m.claimed_at?'disabled':''}>${m.claimed_at?'CLAIMED':'✦ CLAIM 100 COINS ✦'}</button><button type="button" class="gbpr-btn secondary" id="gbpr-test-sync" ${!m.claimed_at?'hidden':''}>SYNC CLAIMED GIFT TO THIS DEVICE</button><p class="gbpr-muted" id="gbpr-test-status">${m.claimed_at?'Claimed on server · device reward not yet checked':'Test reward · credited to Supabase inventory'}</p>`:eventAward?`<div class="gbpr-test-prize"><img src="assets/coin-skull-new.png" alt="Reward"><strong>EVENT PRIZE</strong></div><button type="button" class="gbpr-btn gbpr-test-claim" id="gbpr-event-award-claim" ${m.claimed_at?'disabled':''}>${m.claimed_at?'CLAIMED':'✦ CLAIM EVENT PRIZE ✦'}</button><p class="gbpr-muted" id="gbpr-event-award-status">${m.claimed_at?'Claimed on server. Check Account → CHECK CLAIMED REWARDS for device sync.':'Only verified and approved event prizes can be claimed.'}</p>`:''}</div>`;
  host.querySelector('#gbpr-mail-back').onclick=gbprDrawMailList;
+ const eventClaim=host.querySelector('#gbpr-event-award-claim');
+ if(eventClaim)eventClaim.onclick=async()=>{
+   const status=host.querySelector('#gbpr-event-award-status');
+   if(!sb||!user){status.textContent='Please sign in first.';return}
+   eventClaim.disabled=true;eventClaim.textContent='VERIFYING PRIZE…';
+   try{
+     const {data,error}=await sb.rpc('gb_claim_event_mail',{p_mail:m.id});
+     if(error)throw error;
+     const result=Array.isArray(data)?data[0]:null;
+     if(!result?.award_id)throw Error('No verified award returned.');
+     m.claimed_at=new Date().toISOString();eventClaim.textContent='CLAIMED';
+     status.textContent='Reward credited to your Supabase inventory. Open ACCOUNT → CHECK CLAIMED REWARDS to review device sync.';
+     void gbprRefreshMailDot();
+   }catch(err){eventClaim.disabled=false;eventClaim.textContent='✦ CLAIM EVENT PRIZE ✦';status.textContent='Claim unavailable: '+(err.message||'Not approved yet');}
+ };
+
  const testClaim=host.querySelector('#gbpr-test-claim');
  if(testClaim)testClaim.onclick=async()=>{
   testClaim.disabled=true;testClaim.textContent='CLAIMING…';
