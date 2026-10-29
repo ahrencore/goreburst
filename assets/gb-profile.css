@@ -138,6 +138,8 @@
 #gb-profile-layer .gbpr-open-letter h3{font:900 22px Georgia,serif;text-align:center;color:#ffe3ac;text-shadow:0 0 10px #f35dbe}
 #gb-profile-layer .gbpr-open-letter p{white-space:pre-line;line-height:1.55;color:#ffe6f3}
 #gb-profile-layer .gbpr-letter-back{margin-bottom:12px;padding:8px 12px!important}
-
-/* Isolated 100-coin test mail; no changes to existing PFP dot styling */
-.gbpr-test-prize{display:flex;align-items:center;justify-content:center;gap:12px;margin:15px 0;padding:12px;border:1px solid #eb78dd;border-radius:14px;background:#351741;box-shadow:0 0 12px #e955bb6a}.gbpr-test-prize img{width:45px;height:45px;object-fit:contain}.gbpr-test-prize strong{color:#ffe7b1;font:900 15px Georgia,serif;text-shadow:0 0 8px #fa70cc}.gbpr-test-claim{width:100%;border-radius:24px!important;box-shadow:0 0 14px #ed63d8a0!important}
+/* Event prize presentation only. Does not change claiming or profile HUD. */
+.gbpr-event-loot-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:15px 0;padding:12px;border:1.5px solid #e777da;border-radius:17px;background:linear-gradient(155deg,#391649,#210d32);box-shadow:0 0 13px #ef61df75,inset 0 0 14px #a44cb62d}
+.gbpr-event-loot-item{min-width:0;display:flex;align-items:center;gap:8px;padding:7px;background:#34163a;border:1px solid #ae6ac3;border-radius:12px;color:#ffe6b2;font-weight:800;font-size:13px}
+.gbpr-event-loot-item img{width:37px;height:37px;object-fit:contain;flex-shrink:0;filter:drop-shadow(0 0 7px #f87cda88)}
+@media(max-width:350px){.gbpr-event-loot-grid{gap:5px;padding:7px}.gbpr-event-loot-item{gap:5px;font-size:11px}.gbpr-event-loot-item img{width:30px;height:30px}}

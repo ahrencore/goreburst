@@ -236,6 +236,25 @@ async function gbprLoadMail(){
  gbprRefreshMailDot();
  gbprDrawMailList();
 }
+// Visual-only rewards: display actual Gore Burst item icons from the attached server reward.
+// Does not issue or alter a single prize.
+function gbprEventRewardIcons(reward){
+ if(!reward||typeof reward!=='object'||Array.isArray(reward))return '';
+ const specs=[
+  ['coins','assets/coin-skull-new.png','Skull Coins'],
+  ['RV','assets/rocket-h.png','Rocket'],
+  ['CB','assets/clownbomb.png','Clownbomb'],
+  ['FW','assets/ferris.png','Ferris Wheel'],
+  ['hammer','assets/booster-hammer.webp','Circus Hammer'],
+  ['watch','assets/booster-watch.webp',"Mr. Walker's Watch"],
+  ['cards','assets/booster-cards.webp','Art of Distraction'],
+  ['musicbox','assets/booster-musicbox.webp','Surprise Music Box']
+ ];
+ const items=specs.filter(([key])=>Number.isSafeInteger(reward[key])&&reward[key]>0).map(([key,src,name])=>
+  `<span class="gbpr-event-loot-item"><img src="${src}" alt="${safe(name)}" loading="lazy"><span>${Number(reward[key]).toLocaleString()}${key==='coins'?'':' ×'}</span></span>`
+ ).join('');
+ return items?`<div class="gbpr-event-loot-grid" aria-label="Event reward items">${items}</div>`:'';
+}
 function gbprDrawMailList(){
  const host=$p('gbpr-mail-list');if(!host)return;
  if(!gbprMailItems.length){host.innerHTML=gbprSocialMessage('No mail yet.');return}
@@ -253,7 +272,7 @@ async function gbprOpenMail(id){
  const welcome=m.source_event==='welcome_gift';
  const testCoins=m.source_event==='reward_claim_test' && m.reward?.coins===100;
  const eventAward=m.category==='event_reward' && !welcome && !testCoins;
- host.innerHTML=`<div class="gbpr-open-letter ${welcome?'gbpr-welcome-mail':''}"><button type="button" class="gbpr-btn secondary gbpr-letter-back" id="gbpr-mail-back">‹ INBOX</button><div class="gbpr-tag">${welcome?'✦ AN OFFICIAL INVITATION ✦':'OFFICIAL MAIL'}</div><h3>${safe(m.title)}</h3><small>${new Date(m.created_at).toLocaleDateString()}</small><p>${safe(m.body)}</p>${welcome?`<div class="gbpr-welcome-gifts"><div><span>♥</span><b>UNLIMITED LIVES</b><small>1 HOUR</small></div><div><img src="assets/rocket-h.png" alt="Rocket"><b>ROCKET</b><small>×1</small></div><div><img src="assets/clownbomb.png" alt="Clownbomb"><b>CLOWNBOMB</b><small>×1</small></div><div><img src="assets/ferris.png" alt="Ferris Wheel"><b>FERRIS WHEEL</b><small>×1</small></div></div><button type="button" class="gbpr-btn gbpr-welcome-claim" id="gbpr-letter-claim" ${m.claimed_at?'disabled':''}>${m.claimed_at?'CLAIMED':'✦ CLAIM MY GIFTS ✦'}</button>`:testCoins?`<div class="gbpr-test-prize"><img src="assets/coin-skull-new.png" alt="Skull Coins"><strong>100 SKULL COINS</strong></div><button type="button" class="gbpr-btn gbpr-test-claim" id="gbpr-test-claim" ${m.claimed_at?'disabled':''}>${m.claimed_at?'CLAIMED':'✦ CLAIM 100 COINS ✦'}</button><button type="button" class="gbpr-btn secondary" id="gbpr-test-sync" ${!m.claimed_at?'hidden':''}>SYNC CLAIMED GIFT TO THIS DEVICE</button><p class="gbpr-muted" id="gbpr-test-status">${m.claimed_at?'Claimed on server · device reward not yet checked':'Test reward · credited to Supabase inventory'}</p>`:eventAward?`<div class="gbpr-test-prize"><img src="assets/coin-skull-new.png" alt="Reward"><strong>EVENT PRIZE</strong></div><button type="button" class="gbpr-btn gbpr-test-claim" id="gbpr-event-award-claim" ${m.claimed_at?'disabled':''}>${m.claimed_at?'CLAIMED':'✦ CLAIM EVENT PRIZE ✦'}</button><p class="gbpr-muted" id="gbpr-event-award-status">${m.claimed_at?'Claimed on server. Check Account → CHECK CLAIMED REWARDS for device sync.':'Only verified and approved event prizes can be claimed.'}</p>`:''}</div>`;
+ host.innerHTML=`<div class="gbpr-open-letter ${welcome?'gbpr-welcome-mail':''}"><button type="button" class="gbpr-btn secondary gbpr-letter-back" id="gbpr-mail-back">‹ INBOX</button><div class="gbpr-tag">${welcome?'✦ AN OFFICIAL INVITATION ✦':'OFFICIAL MAIL'}</div><h3>${safe(m.title)}</h3><small>${new Date(m.created_at).toLocaleDateString()}</small><p>${safe(m.body)}</p>${welcome?`<div class="gbpr-welcome-gifts"><div><span>♥</span><b>UNLIMITED LIVES</b><small>1 HOUR</small></div><div><img src="assets/rocket-h.png" alt="Rocket"><b>ROCKET</b><small>×1</small></div><div><img src="assets/clownbomb.png" alt="Clownbomb"><b>CLOWNBOMB</b><small>×1</small></div><div><img src="assets/ferris.png" alt="Ferris Wheel"><b>FERRIS WHEEL</b><small>×1</small></div></div><button type="button" class="gbpr-btn gbpr-welcome-claim" id="gbpr-letter-claim" ${m.claimed_at?'disabled':''}>${m.claimed_at?'CLAIMED':'✦ CLAIM MY GIFTS ✦'}</button>`:testCoins?`<div class="gbpr-test-prize"><img src="assets/coin-skull-new.png" alt="Skull Coins"><strong>100 SKULL COINS</strong></div><button type="button" class="gbpr-btn gbpr-test-claim" id="gbpr-test-claim" ${m.claimed_at?'disabled':''}>${m.claimed_at?'CLAIMED':'✦ CLAIM 100 COINS ✦'}</button><button type="button" class="gbpr-btn secondary" id="gbpr-test-sync" ${!m.claimed_at?'hidden':''}>SYNC CLAIMED GIFT TO THIS DEVICE</button><p class="gbpr-muted" id="gbpr-test-status">${m.claimed_at?'Claimed on server · device reward not yet checked':'Test reward · credited to Supabase inventory'}</p>`:eventAward?`${gbprEventRewardIcons(m.reward)||'<div class="gbpr-test-prize"><strong>EVENT PRIZE</strong></div>'}<button type="button" class="gbpr-btn gbpr-test-claim" id="gbpr-event-award-claim" ${m.claimed_at?'disabled':''}>${m.claimed_at?'CLAIMED':'✦ CLAIM EVENT PRIZE ✦'}</button><p class="gbpr-muted" id="gbpr-event-award-status">${m.claimed_at?'Claimed on server. Check Account → CHECK CLAIMED REWARDS for device sync.':'Only verified and approved event prizes can be claimed.'}</p>`:''}</div>`;
  host.querySelector('#gbpr-mail-back').onclick=gbprDrawMailList;
  const eventClaim=host.querySelector('#gbpr-event-award-claim');
  if(eventClaim)eventClaim.onclick=async()=>{
