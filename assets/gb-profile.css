@@ -92,3 +92,30 @@
 }
 
 /* Phase 3 guest session: show registration panel, leave the approved PFP dot coordinates unchanged. */
+
+
+/* Gore Burst compact-phone adjustments ONLY: iPhone 7 / similar 375x667 CSS viewports.
+   No large-phone or tablet rules are changed; no art or board geometry is regenerated. */
+@media screen and (max-width:390px) and (max-height:700px) and (orientation:portrait){
+  /* Keep existing full-screen art; make overlays fit in the remaining viewport. */
+  #setup .gb-setup-frame{inset:1% 2.5% 1.5%!important;height:auto!important;max-height:97%!important}
+  #setup .gb-setup-content{max-height:88%!important;overflow-y:auto!important;overscroll-behavior:contain!important;scrollbar-width:thin}
+  #setup .gb-setup-content .tricks{max-height:92px!important}
+  #setup .gb-setup-content .trick img{max-height:54px!important}
+  #setup .gb-setup-content .gb-rule{margin-top:4px!important;margin-bottom:4px!important}
+  #result .gb-win-shell{inset:1% 2.5% 1.5%!important;height:auto!important;max-height:97%!important}
+  #result .gb-win-content{max-height:88%!important;overflow-y:auto!important;overscroll-behavior:contain!important}
+  #result .gb-win-stars{max-height:78px!important}
+  #game .board{max-width:94%!important;max-height:60%!important;margin-left:auto!important;margin-right:auto!important}
+  #game .boosters{height:10%!important;bottom:1.5%!important}
+  #game .booster img{padding:2px!important}
+  /* Event and player-profile lists remain scrollable and keep their glow. */
+  .ev-root{padding:9px 9px 18px!important}
+  .ev-root .ev-head{top:-9px!important;padding:8px 0!important}
+  .ev-root .ev-head strong{font-size:18px!important}
+  .ev-root .ev-clash-board,.ev-root .ev-ghost-shell{padding:9px!important}
+  .ev-root .ev-clash-row,.ev-root .ev-ghost-row{padding:7px 8px!important;gap:5px!important}
+  .ev-root .ev-clash-avatar,.ev-root .ev-ghost-avatar{width:34px!important;height:34px!important}
+  #gb-profile-layer .gbpr-modal{max-height:96dvh!important}
+  #gb-profile-layer .gbpr-scroll{max-height:calc(96dvh - 56px)!important;overflow-y:auto!important}
+}

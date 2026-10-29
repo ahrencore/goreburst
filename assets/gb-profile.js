@@ -164,7 +164,7 @@ async function connect(){
    if(attempt.error){console.info('Gore Burst guest online identity unavailable:',attempt.error.message);}
    else user=attempt.data.user;
   }
-  if(user)await fetchProfile();else {refresh();void gbprRefreshRequestDot();}
+  if(user)await fetchProfile();else {refresh();void gbprRefreshRequestDot();} if(gbprIsGuest())void gbUploadGuestStars();
  }catch(err){setMessage('gbpr-auth-status','Cannot connect to Supabase. Local gameplay remains available.');console.warn('Gore Burst profile connection:',err)}
 }
 // Social backend: registered accounts only. Guest play and game saves remain unchanged.
@@ -475,17 +475,38 @@ refresh();connect();
 
 // Ghost Parade: authenticated read-only database queries.
 // Ghost Parade beta uses best stars synced from private backups; not anti-cheat verified.
+// Guest Ghost Parade beta scores: server tracks each level's best stars once.
+// Kept separate from cloud saves and prizes; browser-supplied stars are not anti-cheat verified.
+let gbGuestStarsUploading=false,gbGuestStarsQueued=false;
+async function gbUploadGuestStars(){
+ if(!sb||!user||!gbprIsGuest()||gbGuestStarsUploading)return;
+ gbGuestStarsUploading=true;
+ try{
+  const best=readLocalGameSave().best||{};
+  const batch=Object.entries(best).filter(([k,v])=>/^\d+$/.test(String(k))&&Number(k)>0&&Number(k)<=100000&&Number.isInteger(Number(v))&&Number(v)>=1&&Number(v)<=3).map(([level,stars])=>({level:Number(level),stars:Number(stars)}));
+  if(batch.length){const {error}=await sb.rpc('gb_guest_stars_submit',{p_entries:batch});if(error)console.warn('Ghost Parade guest stars:',error.message)}
+ }catch(e){console.warn('Guest stars sync:',e?.message||e)}
+ finally{gbGuestStarsUploading=false}
+}
+window.addEventListener('gb-local-save-changed',()=>{if(gbprIsGuest()&&!gbGuestStarsQueued){gbGuestStarsQueued=true;setTimeout(()=>{gbGuestStarsQueued=false;void gbUploadGuestStars()},1400)}});
+window.addEventListener('pageshow',()=>{if(gbprIsGuest())void gbUploadGuestStars()});
+setInterval(()=>{if(gbprIsGuest()&&navigator.onLine)void gbUploadGuestStars()},30000);
 window.gbGhostParadeFetch=async function(){
   if(!sb)return {error:'Supabase has not finished initializing. Try again.'};
   const {data:{session},error:authError}=await sb.auth.getSession();
-  if(authError||!session)return {error:'Sign into your Gore Burst account to view server rankings.'};
-  const [boardResult,backupResult]=await Promise.all([
-    sb.rpc('ghost_parade_top10'),
-    gbprIsGuest()?Promise.resolve({data:null,error:null}):sb.rpc('ghost_parade_my_backup_summary')
-  ]);
-  if(boardResult.error)return {error:'Leaderboard query failed: '+boardResult.error.message};
-  if(backupResult.error)return {error:'Cloud status query failed: '+backupResult.error.message};
-  return {rows:boardResult.data||[],backup:backupResult.data||null};
+  if(authError||!session)return {error:'Online player identity is starting. Try Refresh.'};
+  if(gbprIsGuest())await gbUploadGuestStars();
+  const [registered,guests]=await Promise.all([sb.rpc('ghost_parade_top10'),sb.rpc('gb_guest_stars_top10')]);
+  if(registered.error)return {error:'Leaderboard query failed: '+registered.error.message};
+  if(guests.error)return {error:'Guest leaderboard setup required: '+guests.error.message};
+  const combined=new Map();
+  for(const r of [...(registered.data||[]),...(guests.data||[])]){
+    const id=String(r.user_id||r.player_id||r.id||('guest-'+r.display_name));
+    const prev=combined.get(id);
+    if(!prev||Number(r.total_stars||0)>Number(prev.total_stars||0))combined.set(id,r);
+  }
+  const sorted=[...combined.values()].sort((a,b)=>Number(b.total_stars||0)-Number(a.total_stars||0)).slice(0,10).map((r,i)=>({...r,rank_position:i+1}));
+  return {rows:sorted,backup:null};
 };
 
 window.gbGhostAvatarUrl=function(record){
