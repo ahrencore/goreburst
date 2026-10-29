@@ -171,16 +171,51 @@ async function connect(){
 const gbprSocialMessage=(text)=>`<div class="gbpr-social-empty">${safe(text)}</div>`;
 const gbprSocialAvatar=r=>{let url=fallbackAvatar;try{url=window.gbGhostAvatarUrl?.(r)||avatarFile(avatarIndex(r?.avatar_key))}catch{}return safe(url)};
 const gbprFriendCard=(r,actions)=>`<div class="gbpr-social-card"><img src="${gbprSocialAvatar(r)}" alt=""><span><b>${safe(r.display_name||'Carnival Guest')}</b><small>@${safe(r.username||'unknown')}</small></span><div class="gbpr-social-card-actions">${actions}</div></div>`;
+// Welcome gift: one-time, per-account local inventory application.
+// The SQL RPC owns the claim; this receipt prevents replay on the same game save.
+window.gbWelcomeApplyGift=function(accountId,mailId,grant,claimedAt){
+ try{
+  if(!accountId||!mailId||!grant||typeof save==='undefined'||typeof persist!=='function')return false;
+  save.gbWelcomeReceipts=save.gbWelcomeReceipts||{};
+  const receipt=accountId+':'+mailId;
+  if(save.gbWelcomeReceipts[receipt])return true;
+  if(!save.preSpecials)save.preSpecials={RV:0,CB:0,FW:0};
+  for(const item of ['RV','CB','FW']){
+    const amount=Number(grant[item]||0);
+    if(amount!==1)return false;
+  }
+  for(const item of ['RV','CB','FW'])save.preSpecials[item]=Math.max(0,Number(save.preSpecials[item])||0)+1;
+  // Claim timestamp comes from the trusted database RPC, so replays cannot restart the hour.
+  const until=new Date(claimedAt).getTime()+3600000;
+  if(Number.isFinite(until))save.gbUnlimitedLivesUntil=Math.max(Number(save.gbUnlimitedLivesUntil)||0,until);
+  save.gbWelcomeReceipts[receipt]=true;
+  persist();
+  if(typeof lifeText==='function')lifeText();
+  return true;
+ }catch(e){console.warn('Welcome reward apply:',e);return false}
+};
+// Keep normal gameplay life rules unchanged except during the one-hour welcome benefit.
+if(typeof consumeFailedLife==='function' && typeof canAttempt==='function' && typeof lifeText==='function'){
+ const gbOriginalConsumeFailedLife=consumeFailedLife,gbOriginalCanAttempt=canAttempt,gbOriginalLifeText=lifeText;
+ const gbHasUnlimitedLives=()=>typeof save!=='undefined' && Number(save.gbUnlimitedLivesUntil||0)>Date.now();
+ consumeFailedLife=function(){if(gbHasUnlimitedLives()){gbOriginalLifeText();return;}return gbOriginalConsumeFailedLife();};
+ canAttempt=function(){if(gbHasUnlimitedLives())return true;return gbOriginalCanAttempt();};
+ lifeText=function(){gbOriginalLifeText();if(gbHasUnlimitedLives()){
+    const el=document.getElementById('lives');if(el){el.textContent='∞';el.title='Unlimited lives until '+new Date(save.gbUnlimitedLivesUntil).toLocaleTimeString();}
+    const countdown=document.getElementById('lifeCountdown');if(countdown){const secs=Math.max(0,Math.ceil((save.gbUnlimitedLivesUntil-Date.now())/1000));countdown.textContent=Math.floor(secs/60)+':'+String(secs%60).padStart(2,'0');countdown.style.display='block';}
+  }};
+}
 async function gbprLoadMail(){
  const host=$p('gbpr-mail-list');if(!host)return;
  if(!user){host.innerHTML=gbprSocialMessage('Sign in to see official mail. Guest mail support will be added with anonymous accounts.');return}
  if(!sb){host.innerHTML=gbprSocialMessage('Connecting…');return}
  host.textContent='Loading mail…';
- const {data,error}=await sb.from('gb_inbox').select('id,title,body,category,created_at,claimed_at').order('created_at',{ascending:false}).limit(60);
+ const {data,error}=await sb.from('gb_inbox').select('id,title,body,category,created_at,claimed_at,source_event,reward').order('created_at',{ascending:false}).limit(60);
  if(!host.isConnected)return;
  if(error){host.innerHTML=gbprSocialMessage('Mailbox unavailable. Complete the social SQL setup first.');return}
  if(!data?.length){host.innerHTML=gbprSocialMessage('No mail yet.');return}
- host.innerHTML=data.map(m=>`<article class="gbpr-mail-card"><b>${safe(m.title)}</b><small>${new Date(m.created_at).toLocaleDateString()}</small><p>${safe(m.body)}</p>${m.category==='event_reward'?'<em>Reward claims are not enabled yet.</em>':''}</article>`).join('');
+ host.innerHTML=data.map(m=>{const welcome=m.source_event==='welcome_gift';return `<article class="gbpr-mail-card ${welcome?'gbpr-welcome-mail':''}"><div class="gbpr-tag">${welcome?'✦ AN OFFICIAL INVITATION ✦':'OFFICIAL MAIL'}</div><b>${safe(m.title)}</b><small>${new Date(m.created_at).toLocaleDateString()}</small><p>${safe(m.body)}</p>${welcome?`<div class="gbpr-welcome-gifts"><div><span>♥</span><b>UNLIMITED LIVES</b><small>1 HOUR</small></div><div><img src="assets/rocket-h.png" alt="Rocket"><b>ROCKET</b><small>×1</small></div><div><img src="assets/clownbomb.png" alt="Clownbomb"><b>CLOWNBOMB</b><small>×1</small></div><div><img src="assets/ferris.png" alt="Ferris Wheel"><b>FERRIS WHEEL</b><small>×1</small></div></div><button type="button" class="gbpr-btn gbpr-welcome-claim" data-welcome-id="${m.id}" ${m.claimed_at?'disabled':''}>${m.claimed_at?'CLAIMED':'✦ CLAIM MY GIFTS ✦'}</button>`:m.category==='event_reward'?'<em>Other event rewards are not claimable yet.</em>':''}</article>`}).join('');
+ host.querySelectorAll('[data-welcome-id]').forEach(b=>b.onclick=async()=>{b.disabled=true;b.textContent='CLAIMING…';try{const {data:rows,error}=await sb.rpc('gb_welcome_claim',{p_mail:b.dataset.welcomeId});if(error)throw error;const gift=rows?.[0];if(!gift)throw Error('No gift returned');if(typeof window.gbWelcomeApplyGift!=='function')throw Error('Game reward hook not loaded. Keep your mail and reload.');const ok=window.gbWelcomeApplyGift(user.id,gift.mail_id,gift.reward_data,gift.claimed_at);if(!ok)throw Error('Could not apply gift to game save');await gbprLoadMail();}catch(e){b.disabled=false;b.textContent='✦ CLAIM MY GIFTS ✦';alert(e.message||'Claim failed');}});
 }
 async function gbprLoadFriends(){
  const host=$p('gbpr-friend-list');if(!host||!gbprRegistered()||!profile?.username||!sb)return;
