@@ -43,13 +43,19 @@ const prEditScreen=prScreen('edit','EDIT PROFILE');prEditScreen.append(prEdit,pr
 const prAccountScreen=prScreen('account','ACCOUNT');prAccountScreen.append(prLogin,prSaveInfo,prCloud);
 const prAccountSigned=document.createElement('div');prAccountSigned.className='gbpr-panel';prAccountSigned.innerHTML='<div class="gbpr-tag">ACCOUNT STATUS</div><p id="gbpr-simple-status" class="gbpr-muted"></p>';
 prAccountScreen.insertBefore(prAccountSigned,prSaveInfo);
-const prMailScreen=prScreen('mail','MAILBOX');prMailScreen.insertAdjacentHTML('beforeend','<div class="gbpr-panel"><div class="gbpr-tag">CARNIVAL MAIL</div><p id="gbpr-mail-note" class="gbpr-muted">Event reward mail will appear here when secure server-side delivery is enabled. No prizes have been granted.</p></div>');
-const prFriendsScreen=prScreen('friends','FRIENDS');prFriendsScreen.insertAdjacentHTML('beforeend','<div class="gbpr-panel"><div class="gbpr-tag">FIND YOUR CARNIVAL CREW</div><p id="gbpr-friends-note" class="gbpr-muted">Create an account and choose a unique username to add friends. Friend requests will become available once the server-side friends system is connected.</p><button type="button" class="gbpr-btn" id="gbpr-friends-account">ACCOUNT</button></div>');
+const prMailScreen=prScreen('mail','MAILBOX');
+prMailScreen.insertAdjacentHTML('beforeend',`<section class="gbpr-panel"><div class="gbpr-tag">CARNIVAL MAIL</div><div class="gbpr-social-actions"><button type="button" class="gbpr-btn secondary" id="gbpr-mail-refresh">REFRESH</button></div><div id="gbpr-mail-list" aria-live="polite" class="gbpr-social-list">Loading mail…</div><p class="gbpr-muted">Event prizes will become claimable after the reward distribution system is approved and activated.</p></section>`);
+const prFriendsScreen=prScreen('friends','FRIENDS');
+prFriendsScreen.insertAdjacentHTML('beforeend',`<section class="gbpr-panel"><div class="gbpr-tag">FIND YOUR CARNIVAL CREW</div><p id="gbpr-friends-note" class="gbpr-muted"></p><button type="button" class="gbpr-btn" id="gbpr-friends-account">ACCOUNT</button><div id="gbpr-friends-controls" class="gbpr-hide"><form id="gbpr-friend-search" class="gbpr-social-search"><input type="search" maxlength="20" minlength="3" placeholder="Search @username" aria-label="Find player by username" required><button type="submit" class="gbpr-btn">SEARCH</button></form><div id="gbpr-friend-results" class="gbpr-social-list" aria-live="polite"></div><div class="gbpr-tag" style="margin-top:16px">YOUR FRIENDS & REQUESTS</div><div id="gbpr-friend-list" class="gbpr-social-list" aria-live="polite"></div><button type="button" class="gbpr-btn secondary" id="gbpr-friends-refresh">REFRESH</button></div></section>`);
 let prCurrent='hub';
 function prNavigate(name){
  prCurrent=name;prScroll.querySelectorAll('.gbpr-screen').forEach(s=>s.classList.toggle('gbpr-hide',s.id!==(name==='hub'?'gbpr-hub':'gbpr-screen-'+name)));
  const authLabel=prAccountScreen.querySelector('#gbpr-simple-status');if(authLabel)authLabel.textContent=user?'Signed in. Your account and cloud recovery options are below.':'Playing as a guest. You can register to secure your progress.';
- const f=prFriendsScreen.querySelector('#gbpr-friends-note');if(f)f.textContent=user?(profile?.username?'Friend search and invitations will be enabled after the secure friends database is installed.':'Choose your unique @username under Edit Profile before using Friends.'):'Create an account and choose a unique @username to add friends. Guest players can still compete and play.';
+ const f=prFriendsScreen.querySelector('#gbpr-friends-note');if(f)f.textContent=user?(profile?.username?'Search by unique @username.':'Choose your unique @username under Edit Profile first.'):'Create an account and choose a unique @username to add friends.';
+ prFriendsScreen.querySelector('#gbpr-friends-account').classList.toggle('gbpr-hide',!!(user&&profile?.username));
+ prFriendsScreen.querySelector('#gbpr-friends-controls').classList.toggle('gbpr-hide',!(user&&profile?.username));
+ if(name==='friends'&&user&&profile?.username)gbprLoadFriends();
+ if(name==='mail')gbprLoadMail();
  prScroll.scrollTop=0;
 }
 prScroll.querySelectorAll('[data-gbpr-nav]').forEach(b=>b.onclick=()=>prNavigate(b.dataset.gbprNav));
@@ -88,6 +94,41 @@ $p('gbpr-signout').onclick=async()=>{if(!sb)return;const {error}=await sb.auth.s
 $p('gbpr-upload').onchange=async e=>{const file=e.target.files?.[0];e.target.value='';if(!file)return;if(!user||!sb){setMessage('gbpr-upload-status','Please sign in before uploading a photo.');return}if(!['image/jpeg','image/png','image/webp'].includes(file.type)){setMessage('gbpr-upload-status','Choose a JPG, PNG or WebP image.');return}if(file.size>8*1024*1024){setMessage('gbpr-upload-status','Choose an image smaller than 8 MB.');return}
  setMessage('gbpr-upload-status','Preparing photo…');try{const bmp=await createImageBitmap(file);const canvas=document.createElement('canvas');canvas.width=512;canvas.height=512;const ctx=canvas.getContext('2d');if(!ctx)throw Error('Image processing unavailable');const d=Math.min(bmp.width,bmp.height);ctx.drawImage(bmp,(bmp.width-d)/2,(bmp.height-d)/2,d,d,0,0,512,512);bmp.close?.();const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/webp',.84));if(!blob)throw Error('Could not prepare photo');const path=user.id+'/profile-'+Date.now()+'.webp';setMessage('gbpr-upload-status','Uploading photo…');const upload=await sb.storage.from('avatars').upload(path,blob,{contentType:'image/webp',upsert:false});if(upload.error)throw upload.error;const updated=await sb.from('profiles').update({avatar_path:path}).eq('id',user.id);if(updated.error)throw updated.error;profile={...profile,avatar_path:path};avatarPreview=null;setMessage('gbpr-upload-status','Photo uploaded!',true);refresh()}catch(err){setMessage('gbpr-upload-status',err.message||'Upload failed')}};
 async function connect(){try{const {createClient}=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');sb=createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});const {data,error}=await sb.auth.getUser();if(error&&error.name!=='AuthSessionMissingError')setMessage('gbpr-auth-status',error.message);user=data?.user||null;if(user)await fetchProfile();else refresh();sb.auth.onAuthStateChange((event,session)=>{const next=session?.user||null;if(next?.id!==user?.id){user=next;profile=null;refresh();if(user)setTimeout(fetchProfile,0)}})}catch(err){setMessage('gbpr-auth-status','Cannot connect to Supabase. Check internet access and reload.');console.warn('Gore Burst profile connection:',err)}}
+// Social backend: registered accounts only. Guest play and game saves remain unchanged.
+const gbprSocialMessage=(text)=>`<div class="gbpr-social-empty">${safe(text)}</div>`;
+const gbprSocialAvatar=r=>{let url=fallbackAvatar;try{url=window.gbGhostAvatarUrl?.(r)||avatarFile(avatarIndex(r?.avatar_key))}catch{}return safe(url)};
+const gbprFriendCard=(r,actions)=>`<div class="gbpr-social-card"><img src="${gbprSocialAvatar(r)}" alt=""><span><b>${safe(r.display_name||'Carnival Guest')}</b><small>@${safe(r.username||'unknown')}</small></span><div class="gbpr-social-card-actions">${actions}</div></div>`;
+async function gbprLoadMail(){
+ const host=$p('gbpr-mail-list');if(!host)return;
+ if(!user){host.innerHTML=gbprSocialMessage('Sign in to see official mail. Guest mail support will be added with anonymous accounts.');return}
+ if(!sb){host.innerHTML=gbprSocialMessage('Connecting…');return}
+ host.textContent='Loading mail…';
+ const {data,error}=await sb.from('gb_inbox').select('id,title,body,category,created_at,claimed_at').order('created_at',{ascending:false}).limit(60);
+ if(!host.isConnected)return;
+ if(error){host.innerHTML=gbprSocialMessage('Mailbox unavailable. Complete the social SQL setup first.');return}
+ if(!data?.length){host.innerHTML=gbprSocialMessage('No mail yet.');return}
+ host.innerHTML=data.map(m=>`<article class="gbpr-mail-card"><b>${safe(m.title)}</b><small>${new Date(m.created_at).toLocaleDateString()}</small><p>${safe(m.body)}</p>${m.category==='event_reward'?'<em>Reward claims are not enabled yet.</em>':''}</article>`).join('');
+}
+async function gbprLoadFriends(){
+ const host=$p('gbpr-friend-list');if(!host||!user||!profile?.username||!sb)return;
+ host.textContent='Loading friends…';
+ const {data,error}=await sb.rpc('gb_friend_list');if(!host.isConnected)return;
+ if(error){host.innerHTML=gbprSocialMessage('Friends unavailable. Complete the social SQL setup first.');return}
+ if(!data?.length){host.innerHTML=gbprSocialMessage('No friends or pending requests yet.');return}
+ host.innerHTML=data.map(r=>gbprFriendCard(r,r.kind==='incoming'?`<button data-gbpr-action="accept" data-id="${r.link_id}">ACCEPT</button><button data-gbpr-action="decline" data-id="${r.link_id}">DECLINE</button>`:r.kind==='outgoing'?`<button data-gbpr-action="remove" data-id="${r.link_id}">CANCEL</button>`:`<button data-gbpr-action="remove" data-id="${r.link_id}">REMOVE</button>`)).join('');
+ host.querySelectorAll('[data-gbpr-action]').forEach(b=>b.onclick=async()=>{b.disabled=true;const {error}=await sb.rpc('gb_friend_action',{p_link:b.dataset.id,p_action:b.dataset.gbprAction});if(error)alert(error.message);await gbprLoadFriends()});
+}
+prMailScreen.querySelector('#gbpr-mail-refresh').onclick=gbprLoadMail;
+prFriendsScreen.querySelector('#gbpr-friends-refresh').onclick=gbprLoadFriends;
+prFriendsScreen.querySelector('#gbpr-friend-search').onsubmit=async e=>{
+ e.preventDefault();const host=$p('gbpr-friend-results');if(!sb||!user||!profile?.username)return;
+ const q=e.currentTarget.querySelector('input').value.trim().replace(/^@/,'');if(q.length<3){host.innerHTML=gbprSocialMessage('Enter at least three characters.');return}
+ host.textContent='Searching…';
+ const {data,error}=await sb.rpc('gb_friend_search',{p_query:q});if(error){host.innerHTML=gbprSocialMessage(error.message);return}
+ if(!data?.length){host.innerHTML=gbprSocialMessage('No matching players.');return}
+ host.innerHTML=data.map(r=>gbprFriendCard(r,`<button data-gbpr-add="${r.id}">ADD</button>`)).join('');
+ host.querySelectorAll('[data-gbpr-add]').forEach(b=>b.onclick=async()=>{b.disabled=true;const {data,error}=await sb.rpc('gb_friend_request',{p_target:b.dataset.gbprAdd});if(error){alert(error.message);b.disabled=false}else{b.textContent='SENT';await gbprLoadFriends()}});
+};
 // Private cloud backups are NOT verified match results or official leaderboard data.
 // Every account gets a separate device binding to prevent silent cross-account writes.
 const cloudSaveKey='gb-cloud-backup-enabled-v2';

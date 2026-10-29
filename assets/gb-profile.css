@@ -41,3 +41,22 @@
 #gb-profile-layer .gbpr-screen:not(#gbpr-hub)>.gbpr-panel{border:2px solid #c76cdb;box-shadow:0 0 12px #ce56d582,inset 0 0 16px #8843cc29}
 #gb-profile-layer .gbpr-screen:not(#gbpr-hub) .gbpr-btn{border-radius:999px;box-shadow:0 0 10px #f15cc381}
 @media(prefers-reduced-motion:reduce){#gb-profile-layer .gbpr-hub-links button{transition:none}}
+
+/* Social pages: compact neon controls and readable rows */
+#gb-profile-layer .gbpr-social-search{display:flex;gap:8px;margin:10px 0 14px}
+#gb-profile-layer .gbpr-social-search input{flex:1;min-width:0;padding:10px;color:#fff;border:1.5px solid #c56cd6;border-radius:12px;background:#1e0d2e;font:14px system-ui}
+#gb-profile-layer .gbpr-social-list{display:grid;gap:9px;margin:10px 0}
+#gb-profile-layer .gbpr-social-empty{padding:13px;border:1px dashed #a95fbc;border-radius:12px;text-align:center;color:#e7bce9;font-size:12px}
+#gb-profile-layer .gbpr-social-card{display:flex;align-items:center;gap:10px;border:1.5px solid #cb6edf;border-radius:13px;padding:9px;background:linear-gradient(120deg,#3d164a,#24112f);box-shadow:0 0 10px #ed58d35c}
+#gb-profile-layer .gbpr-social-card>img{width:43px;height:43px;object-fit:cover;border-radius:50%;border:1.5px solid #f9a8ed;flex-shrink:0}
+#gb-profile-layer .gbpr-social-card>span{flex:1;min-width:0;display:grid;gap:1px}
+#gb-profile-layer .gbpr-social-card b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
+#gb-profile-layer .gbpr-social-card small{color:#d4b3e9;font-size:11px}
+#gb-profile-layer .gbpr-social-card-actions{display:flex;gap:4px;flex-wrap:wrap;justify-content:end}
+#gb-profile-layer .gbpr-social-card-actions button{border:1px solid #fab2ea;border-radius:999px;background:#76247c;color:white;padding:7px 9px;font-size:10px;font-weight:800}
+#gb-profile-layer .gbpr-social-card-actions button:disabled{opacity:.5}
+#gb-profile-layer .gbpr-mail-card{border:1.5px solid #d46fdf;border-radius:14px;padding:12px;background:linear-gradient(125deg,#41174f,#211029);box-shadow:0 0 9px #ed53d35a}
+#gb-profile-layer .gbpr-mail-card b{display:block;color:#ffe0b4;font:800 16px Georgia,serif}
+#gb-profile-layer .gbpr-mail-card small{color:#c6a2d3;font-size:11px}
+#gb-profile-layer .gbpr-mail-card p{font-size:12px;white-space:pre-wrap;color:#e7c9e8}
+#gb-profile-layer .gbpr-mail-card em{color:#f7c58a;font-size:11px}
