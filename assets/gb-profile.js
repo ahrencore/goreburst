@@ -285,7 +285,9 @@ async function gbprOpenMail(id){
      const result=Array.isArray(data)?data[0]:null;
      if(!result?.award_id)throw Error('No verified award returned.');
      m.claimed_at=new Date().toISOString();eventClaim.textContent='CLAIMED';
-     status.textContent='Reward credited to your Supabase inventory. Open ACCOUNT → CHECK CLAIMED REWARDS to review device sync.';
+     status.textContent='Prize claimed! Updating your game inventory…';
+     const sync=await gbRewardCheck({automatic:true,statusElement:status});
+     if(!sync?.applied)status.textContent='Prize saved on Supabase. '+(sync?.message||'Automatic device sync needs review in Account.');
      void gbprRefreshMailDot();
    }catch(err){eventClaim.disabled=false;eventClaim.textContent='✦ CLAIM EVENT PRIZE ✦';status.textContent='Claim unavailable: '+(err.message||'Not approved yet');}
  };
@@ -407,11 +409,12 @@ function retainsClaimReceipts(candidate,baseline){
 // Important: a receipt cannot prove whether its rewards were already included in
 // an unrelated older save; ambiguous accounts must be reviewed before merge.
 let gbRewardSyncBusy=false;
-async function gbRewardCheck(){
- const out=$p('gbpr-rewards-status'),btn=$p('gbpr-rewards-check');
- if(!out||!btn)return;
- if(gbRewardSyncBusy)return;
- gbRewardSyncBusy=true;btn.disabled=true;out.textContent='Checking verified claims…';
+async function gbRewardCheck(options={}){
+ const automatic=!!options?.automatic;
+ const out=options?.statusElement||$p('gbpr-rewards-status'),btn=$p('gbpr-rewards-check');
+ if(!out)return {applied:false,message:'Sync panel unavailable.'};
+ if(gbRewardSyncBusy)return {applied:false,message:'Sync already in progress.'};
+ gbRewardSyncBusy=true;if(btn)btn.disabled=true;out.textContent='Checking verified claims…';
  try{
    if(!user||!sb)throw Error('Sign in to check claimed rewards.');
    const uid=user.id;
@@ -426,7 +429,7 @@ async function gbRewardCheck(){
    const rewards=Array.isArray(data)?data:[];
    const receipts=claimReceipts(snap);
    const missing=rewards.filter(r=>r.award_id && !receipts[uid+':'+r.award_id]);
-   if(!missing.length){out.textContent='All completed event claims are already recorded on this device.';return}
+   if(!missing.length){out.textContent='All completed event claims are already recorded on this device.';return {applied:true,alreadyRecorded:true}}
    const amounts={coins:0,RV:0,CB:0,FW:0,hammer:0,watch:0,cards:0,musicbox:0};
    for(const row of missing){
      const reward=row.reward_data;
@@ -451,7 +454,7 @@ async function gbRewardCheck(){
    const boosters={hammer:0,watch:0,cards:0,musicbox:0,...(snap.boosterInventory||{})};
    const summary=Object.entries(amounts).filter(([,n])=>n>0).map(([k,n])=>k+' ×'+n).join(' · ')||'No items';
    out.textContent=missing.length+' confirmed claim(s) need review: '+summary;
-   if(!confirm('Add these '+missing.length+' completed claim(s) to THIS device exactly once? '+summary+'\n\nOnly continue if you have not already received these items through another restore or manual sync. A local safety copy will be saved.'))return;
+   if(!automatic && !confirm('Add these '+missing.length+' completed claim(s) to THIS device exactly once? '+summary+'\n\nOnly continue if you have not already received these items through another restore or manual sync. A local safety copy will be saved.'))return {applied:false,message:'Sync cancelled.'};
    // Require a stable local snapshot across the asynchronous server checks.
    if(localStorage.getItem('gb-playable-v4')!==raw||user.id!==uid)throw Error('Game save changed during review. Please check again.');
    const next=structuredClone(snap);
@@ -467,8 +470,9 @@ async function gbRewardCheck(){
    localStorage.setItem('gb-playable-v4',JSON.stringify(next));
    try{sessionStorage.setItem('gb-post-test-sync-cloud-review',uid)}catch(_){}
    location.reload();
- }catch(e){out.textContent='Sync stopped safely: '+(e?.message||'Unknown error')}
- finally{gbRewardSyncBusy=false;btn.disabled=false}
+   return {applied:true};
+ }catch(e){const message='Sync stopped safely: '+(e?.message||'Unknown error');out.textContent=message;return {applied:false,message}}
+ finally{gbRewardSyncBusy=false;if(btn)btn.disabled=false}
 }
 $p('gbpr-rewards-check').onclick=gbRewardCheck;
 
@@ -822,17 +826,3 @@ window.gbClashSubmit=async function(game,points){
 window.gbWeeklySubmit=async function(stages){if(!sb||!user)return {error:'Online player identity unavailable'};const {error}=await sb.rpc('weekly_nightmare_submit_beta',{p_stages:Number(stages)});if(error)throw error;return {ok:true}};
 window.gbWeeklyTop10=async function(){if(!sb)return {rows:[],error:'Offline'};const {data,error}=await sb.rpc('weekly_nightmare_top10');return {rows:data||[],error:error?.message||null}};
 
-
-// Phase 5N: server-issued Sudoku sessions. Tetris and Weekly Nightmare remain provisional.
-window.gbSudokuStartVerified=async function(difficulty){
-  if(!sb||!user) return null;
-  const {data,error}=await sb.rpc('gb_sudoku_session_start',{p_difficulty:difficulty});
-  if(error) throw error;
-  return data;
-};
-window.gbSudokuFinishVerified=async function(sessionId,values){
-  if(!sb||!user)return false;
-  const {data,error}=await sb.rpc('gb_sudoku_session_finish',{p_session:sessionId,p_board:values});
-  if(error)throw error;
-  return data===true;
-};
