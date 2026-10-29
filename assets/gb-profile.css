@@ -90,3 +90,5 @@
   border:0;border-radius:50%;background:#ff193b;box-shadow:0 0 8px 2px #ff294e;
   pointer-events:none;
 }
+
+/* Phase 3 guest session: show registration panel, leave the approved PFP dot coordinates unchanged. */

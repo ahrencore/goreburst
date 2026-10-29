@@ -18,7 +18,7 @@ let gbprDotQueryId=0;
 async function gbprRefreshRequestDot(){
   const seq=++gbprDotQueryId;
   const friendsButton=prHub?.querySelector('[data-gbpr-nav="friends"]');
-  if(!sb||!user||!profile?.username){
+  if(!sb||!gbprRegistered()||!profile?.username){
     gbprPfpDot.hidden=true;
     friendsButton?.classList.remove('gbpr-request-pending');
     return;
@@ -77,17 +77,17 @@ prFriendsScreen.insertAdjacentHTML('beforeend',`<section class="gbpr-panel"><div
 let prCurrent='hub';
 function prNavigate(name){
  prCurrent=name;prScroll.querySelectorAll('.gbpr-screen').forEach(s=>s.classList.toggle('gbpr-hide',s.id!==(name==='hub'?'gbpr-hub':'gbpr-screen-'+name)));
- const authLabel=prAccountScreen.querySelector('#gbpr-simple-status');if(authLabel)authLabel.textContent=user?'Signed in. Your account and cloud recovery options are below.':'Playing as a guest. You can register to secure your progress.';
- const f=prFriendsScreen.querySelector('#gbpr-friends-note');if(f)f.textContent=user?(profile?.username?'Search by unique @username.':'Choose your unique @username under Edit Profile first.'):'Create an account and choose a unique @username to add friends.';
- prFriendsScreen.querySelector('#gbpr-friends-account').classList.toggle('gbpr-hide',!!(user&&profile?.username));
- prFriendsScreen.querySelector('#gbpr-friends-controls').classList.toggle('gbpr-hide',!(user&&profile?.username));
- if(name==='friends'&&user&&profile?.username)gbprLoadFriends();
+ const authLabel=prAccountScreen.querySelector('#gbpr-simple-status');if(authLabel)authLabel.textContent=gbprRegistered()?'Signed in. Your account and cloud recovery options are below.':'Playing as a guest. Create an account to secure your progress.';
+ const f=prFriendsScreen.querySelector('#gbpr-friends-note');if(f)f.textContent=gbprRegistered()?(profile?.username?'Search by unique @username.':'Choose your unique @username under Edit Profile first.'):'Create an account and choose a unique @username to add friends.';
+ prFriendsScreen.querySelector('#gbpr-friends-account').classList.toggle('gbpr-hide',!!(gbprRegistered()&&profile?.username));
+ prFriendsScreen.querySelector('#gbpr-friends-controls').classList.toggle('gbpr-hide',!(gbprRegistered()&&profile?.username));
+ if(name==='friends'&&gbprRegistered()&&profile?.username)gbprLoadFriends();
  if(name==='mail')gbprLoadMail();
  prScroll.scrollTop=0;
 }
 prScroll.querySelectorAll('[data-gbpr-nav]').forEach(b=>b.onclick=()=>prNavigate(b.dataset.gbprNav));
 prScroll.querySelectorAll('[data-gbpr-home]').forEach(b=>b.onclick=()=>prNavigate('hub'));
-prFriendsScreen.querySelector('#gbpr-friends-account').onclick=()=>prNavigate(user?'edit':'account');
+prFriendsScreen.querySelector('#gbpr-friends-account').onclick=()=>prNavigate(gbprRegistered()?'edit':'account');
 const prUpdateHub=()=>{
  const level=prHub.querySelector('#gbpr-hub-level'),stars=prHub.querySelector('#gbpr-hub-stars');
  if(level)level.textContent=String(localLevel());
@@ -96,6 +96,8 @@ const prUpdateHub=()=>{
 };
 
 let sb=null,user=null,profile=null,signup=false,working=false,avatarPreview=null;
+const gbprIsGuest=()=>Boolean(user?.is_anonymous);
+const gbprRegistered=()=>Boolean(user&&!user.is_anonymous);
 const avatarFile=i=>'assets/avatars/'+String(i+1).padStart(2,'0')+'_'+KEYS[i]+'.png';
 const avatarKey=i=>String(i+1).padStart(2,'0')+'_'+KEYS[i];
 const avatarIndex=key=>Math.max(0,KEYS.findIndex((x,i)=>avatarKey(i)===key));
@@ -104,23 +106,67 @@ const localLevel=()=>{try{const data=JSON.parse(localStorage.getItem('gb-playabl
 function setMessage(id,txt,success=false){const el=$p(id);el.textContent=txt;el.classList.toggle('gbpr-success',success)}
 function avatarUrl(){if(avatarPreview!==null)return avatarFile(avatarPreview);if(!user){const ix=Number(localStorage.getItem('gb-guest-avatar'));if(Number.isInteger(ix)&&ix>=0&&ix<15)return avatarFile(ix)}if(profile?.avatar_path){return SUPABASE_URL+'/storage/v1/object/public/avatars/'+profile.avatar_path.split('/').map(encodeURIComponent).join('/')}return avatarFile(avatarIndex(profile?.avatar_key))}
 function syncMenuAvatar(){const el=document.getElementById('gbMenuAvatar');if(el){el.src=avatarUrl();el.onerror=()=>{el.onerror=null;el.src=fallbackAvatar}}}
-function refresh(){syncMenuAvatar();const signed=!!user;$p('gbpr-auth-panel').classList.toggle('gbpr-hide',signed);$p('gbpr-account-panel').classList.toggle('gbpr-hide',!signed);$p('gbpr-display').textContent=profile?.display_name||'Carnival Guest';$p('gbpr-handle').textContent=profile?.username?'@'+profile.username:(signed?'Choose a unique username':'Guest player');$p('gbpr-level').textContent='LEVEL '+localLevel()+' · Local progress';$p('gbpr-current-avatar').src=avatarUrl();$p('gbpr-new-name').value=profile?.display_name||'Carnival Guest';$p('gbpr-new-handle').value=profile?.username||'';$p('gbpr-avatar-help').textContent=signed?'Tap any character to save it. You can also upload your own photo.':'Sign in to save a PFP to your account. Tap to preview characters.';document.querySelectorAll('.gbpr-avatar').forEach((b,i)=>b.classList.toggle('chosen',(avatarPreview!==null?avatarPreview:avatarIndex(profile?.avatar_key))===i));}
+function refresh(){syncMenuAvatar();const signed=gbprRegistered();$p('gbpr-auth-panel').classList.toggle('gbpr-hide',signed);$p('gbpr-account-panel').classList.toggle('gbpr-hide',!signed);$p('gbpr-display').textContent=profile?.display_name||'Carnival Guest';$p('gbpr-handle').textContent=profile?.username?'@'+profile.username:(signed?'Choose a unique username':'Guest player');$p('gbpr-level').textContent='LEVEL '+localLevel()+' · Local progress';$p('gbpr-current-avatar').src=avatarUrl();$p('gbpr-new-name').value=profile?.display_name||'Carnival Guest';$p('gbpr-new-handle').value=profile?.username||'';$p('gbpr-avatar-help').textContent=signed?'Tap any character to save it. You can also upload your own photo.':'Sign in to save a PFP to your account. Tap to preview characters.';document.querySelectorAll('.gbpr-avatar').forEach((b,i)=>b.classList.toggle('chosen',(avatarPreview!==null?avatarPreview:avatarIndex(profile?.avatar_key))===i));}
 function view(open){layer.classList.toggle('open',open);if(open){avatarPreview=null;refresh();prUpdateHub();prNavigate('hub');void gbprRefreshRequestDot();$p('gbpr-close').focus()}}
 $p('gbpr-close').onclick=()=>view(false);
 document.getElementById('profile').addEventListener('click',()=>view(true));
 layer.addEventListener('pointerdown',e=>e.stopPropagation());
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&layer.classList.contains('open'))view(false)});
 $p('gbpr-avatar-list').innerHTML=AVATARS.map((name,i)=>`<button type="button" class="gbpr-avatar" data-index="${i}"><img loading="lazy" src="${avatarFile(i)}" alt=""></button>`).join('');
-async function fetchProfile(){if(!sb||!user)return;const {data,error}=await sb.from('profiles').select('id,username,display_name,avatar_key,avatar_path').eq('id',user.id).maybeSingle();if(error){setMessage('gbpr-edit-status',error.message);return}profile=data||null;refresh();void gbprRefreshRequestDot();window.gbCloudReady?.()}
-for(const el of document.querySelectorAll('.gbpr-avatar'))el.onclick=async()=>{const i=Number(el.dataset.index);avatarPreview=i;refresh();if(!user||!sb){try{localStorage.setItem('gb-guest-avatar',String(i))}catch(e){};return;}setMessage('gbpr-upload-status','Saving avatar…');const {error}=await sb.from('profiles').update({avatar_key:avatarKey(i),avatar_path:null}).eq('id',user.id);if(error){setMessage('gbpr-upload-status',error.message);return}profile={...profile,avatar_key:avatarKey(i),avatar_path:null};avatarPreview=null;setMessage('gbpr-upload-status','Avatar saved!',true);refresh()};
+async function fetchProfile(){if(!sb||!user)return;const {data,error}=await sb.from('profiles').select('id,username,display_name,avatar_key,avatar_path').eq('id',user.id).maybeSingle();if(error){setMessage('gbpr-edit-status',error.message);return}profile=data||null;refresh();void gbprRefreshRequestDot();if(gbprRegistered())window.gbCloudReady?.()}
+for(const el of document.querySelectorAll('.gbpr-avatar'))el.onclick=async()=>{const i=Number(el.dataset.index);avatarPreview=i;refresh();if(!gbprRegistered()||!sb){try{localStorage.setItem('gb-guest-avatar',String(i))}catch(e){};return;}setMessage('gbpr-upload-status','Saving avatar…');const {error}=await sb.from('profiles').update({avatar_key:avatarKey(i),avatar_path:null}).eq('id',user.id);if(error){setMessage('gbpr-upload-status',error.message);return}profile={...profile,avatar_key:avatarKey(i),avatar_path:null};avatarPreview=null;setMessage('gbpr-upload-status','Avatar saved!',true);refresh()};
 function setAuthMode(isSignup){signup=isSignup;$p('gbpr-auth-submit').textContent=signup?'CREATE ACCOUNT':'SIGN IN';$p('gbpr-login-tab').classList.toggle('secondary',signup);$p('gbpr-signup-tab').classList.toggle('secondary',!signup);$p('gbpr-password').autocomplete=signup?'new-password':'current-password';setMessage('gbpr-auth-status','')}
 $p('gbpr-login-tab').onclick=()=>setAuthMode(false);$p('gbpr-signup-tab').onclick=()=>setAuthMode(true);
-$p('gbpr-auth-form').onsubmit=async e=>{e.preventDefault();if(!sb){setMessage('gbpr-auth-status','Connection not ready. Check internet and reload.');return}if(working)return;working=true;$p('gbpr-auth-submit').disabled=true;const email=$p('gbpr-email').value.trim(),password=$p('gbpr-password').value;setMessage('gbpr-auth-status',signup?'Creating account…':'Signing in…');try{const {data,error}=signup?await sb.auth.signUp({email,password}):await sb.auth.signInWithPassword({email,password});if(error)throw error;setMessage('gbpr-auth-status',data.session?'Welcome to the freakshow!':'Account created. Check your email for a confirmation link.',true);if(data.session){user=data.user;await fetchProfile()}}catch(err){setMessage('gbpr-auth-status',err.message||'Authentication failed')}finally{working=false;$p('gbpr-auth-submit').disabled=false}};
-$p('gbpr-edit-form').onsubmit=async e=>{e.preventDefault();if(!sb||!user)return;const username=$p('gbpr-new-handle').value.trim().toLowerCase();const display_name=$p('gbpr-new-name').value.trim();if(username&&!/^[a-z0-9_]{3,20}$/.test(username)){setMessage('gbpr-edit-status','Username must be 3–20 letters, numbers or underscores.');return}if(!display_name){setMessage('gbpr-edit-status','Choose a display name.');return}setMessage('gbpr-edit-status','Saving…');const {error}=await sb.from('profiles').update({username:username||null,display_name}).eq('id',user.id);if(error){setMessage('gbpr-edit-status',error.code==='23505'?'This username is already taken.':error.message);return}profile={...profile,username:username||null,display_name};setMessage('gbpr-edit-status','Profile updated!',true);refresh()};
+$p('gbpr-auth-form').onsubmit=async e=>{
+ e.preventDefault();if(!sb){setMessage('gbpr-auth-status','Connection not ready.');return}
+ if(working)return;working=true;$p('gbpr-auth-submit').disabled=true;
+ const email=$p('gbpr-email').value.trim(),password=$p('gbpr-password').value;
+ setMessage('gbpr-auth-status',signup?'Securing your carnival account…':'Signing in…');
+ try{
+  let result;
+  if(signup&&gbprIsGuest()){
+   // Convert this exact anonymous identity; never create a second account ID.
+   result=await sb.auth.updateUser({email,password});
+   if(result.error)throw result.error;
+   setMessage('gbpr-auth-status','Check your email for a confirmation link. Keep this browser session until confirmed.',true);
+  }else if(signup){
+   result=await sb.auth.signUp({email,password});if(result.error)throw result.error;
+   setMessage('gbpr-auth-status',result.data?.session?'Welcome!':'Check your email to confirm your account.',true);
+  }else{
+   if(gbprIsGuest()&&!confirm('Signing into a different account will replace the current guest login on this browser. Your local level save stays here, but the guest account may be unrecoverable. Continue?'))return;
+   result=await sb.auth.signInWithPassword({email,password});if(result.error)throw result.error;
+   setMessage('gbpr-auth-status','Welcome back!',true);
+  }
+  if(result?.data?.user){user=result.data.user;await fetchProfile();}
+ }catch(err){setMessage('gbpr-auth-status',err.message||'Authentication failed')}
+ finally{working=false;$p('gbpr-auth-submit').disabled=false}
+};
+$p('gbpr-edit-form').onsubmit=async e=>{e.preventDefault();if(!sb||!gbprRegistered())return;const username=$p('gbpr-new-handle').value.trim().toLowerCase();const display_name=$p('gbpr-new-name').value.trim();if(username&&!/^[a-z0-9_]{3,20}$/.test(username)){setMessage('gbpr-edit-status','Username must be 3–20 letters, numbers or underscores.');return}if(!display_name){setMessage('gbpr-edit-status','Choose a display name.');return}setMessage('gbpr-edit-status','Saving…');const {error}=await sb.from('profiles').update({username:username||null,display_name}).eq('id',user.id);if(error){setMessage('gbpr-edit-status',error.code==='23505'?'This username is already taken.':error.message);return}profile={...profile,username:username||null,display_name};setMessage('gbpr-edit-status','Profile updated!',true);refresh()};
 $p('gbpr-signout').onclick=async()=>{if(!sb)return;const {error}=await sb.auth.signOut();if(error){setMessage('gbpr-edit-status',error.message);return}user=null;profile=null;avatarPreview=null;cloudReset();refresh();void gbprRefreshRequestDot()};
 $p('gbpr-upload').onchange=async e=>{const file=e.target.files?.[0];e.target.value='';if(!file)return;if(!user||!sb){setMessage('gbpr-upload-status','Please sign in before uploading a photo.');return}if(!['image/jpeg','image/png','image/webp'].includes(file.type)){setMessage('gbpr-upload-status','Choose a JPG, PNG or WebP image.');return}if(file.size>8*1024*1024){setMessage('gbpr-upload-status','Choose an image smaller than 8 MB.');return}
  setMessage('gbpr-upload-status','Preparing photo…');try{const bmp=await createImageBitmap(file);const canvas=document.createElement('canvas');canvas.width=512;canvas.height=512;const ctx=canvas.getContext('2d');if(!ctx)throw Error('Image processing unavailable');const d=Math.min(bmp.width,bmp.height);ctx.drawImage(bmp,(bmp.width-d)/2,(bmp.height-d)/2,d,d,0,0,512,512);bmp.close?.();const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/webp',.84));if(!blob)throw Error('Could not prepare photo');const path=user.id+'/profile-'+Date.now()+'.webp';setMessage('gbpr-upload-status','Uploading photo…');const upload=await sb.storage.from('avatars').upload(path,blob,{contentType:'image/webp',upsert:false});if(upload.error)throw upload.error;const updated=await sb.from('profiles').update({avatar_path:path}).eq('id',user.id);if(updated.error)throw updated.error;profile={...profile,avatar_path:path};avatarPreview=null;setMessage('gbpr-upload-status','Photo uploaded!',true);refresh()}catch(err){setMessage('gbpr-upload-status',err.message||'Upload failed')}};
-async function connect(){try{const {createClient}=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');sb=createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});const {data,error}=await sb.auth.getUser();if(error&&error.name!=='AuthSessionMissingError')setMessage('gbpr-auth-status',error.message);user=data?.user||null;if(user)await fetchProfile();else {refresh();void gbprRefreshRequestDot();}sb.auth.onAuthStateChange((event,session)=>{const next=session?.user||null;if(next?.id!==user?.id){user=next;profile=null;refresh();void gbprRefreshRequestDot();if(user)setTimeout(fetchProfile,0)}})}catch(err){setMessage('gbpr-auth-status','Cannot connect to Supabase. Check internet access and reload.');console.warn('Gore Burst profile connection:',err)}}
+async function connect(){
+ try{
+  const {createClient}=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+  sb=createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+  const {data,error}=await sb.auth.getUser();
+  if(error&&error.name!=='AuthSessionMissingError')setMessage('gbpr-auth-status',error.message);
+  user=data?.user||null;
+  sb.auth.onAuthStateChange((event,session)=>{
+   const next=session?.user||null;
+   if(next?.id!==user?.id||next?.is_anonymous!==user?.is_anonymous){
+    user=next;profile=null;refresh();void gbprRefreshRequestDot();if(user)setTimeout(fetchProfile,0);
+   }
+  });
+  if(!user){
+   // Anonymous auth is optional on the Supabase dashboard. Keep local gameplay usable if disabled.
+   const attempt=await sb.auth.signInAnonymously();
+   if(attempt.error){console.info('Gore Burst guest online identity unavailable:',attempt.error.message);}
+   else user=attempt.data.user;
+  }
+  if(user)await fetchProfile();else {refresh();void gbprRefreshRequestDot();}
+ }catch(err){setMessage('gbpr-auth-status','Cannot connect to Supabase. Local gameplay remains available.');console.warn('Gore Burst profile connection:',err)}
+}
 // Social backend: registered accounts only. Guest play and game saves remain unchanged.
 const gbprSocialMessage=(text)=>`<div class="gbpr-social-empty">${safe(text)}</div>`;
 const gbprSocialAvatar=r=>{let url=fallbackAvatar;try{url=window.gbGhostAvatarUrl?.(r)||avatarFile(avatarIndex(r?.avatar_key))}catch{}return safe(url)};
@@ -137,7 +183,7 @@ async function gbprLoadMail(){
  host.innerHTML=data.map(m=>`<article class="gbpr-mail-card"><b>${safe(m.title)}</b><small>${new Date(m.created_at).toLocaleDateString()}</small><p>${safe(m.body)}</p>${m.category==='event_reward'?'<em>Reward claims are not enabled yet.</em>':''}</article>`).join('');
 }
 async function gbprLoadFriends(){
- const host=$p('gbpr-friend-list');if(!host||!user||!profile?.username||!sb)return;
+ const host=$p('gbpr-friend-list');if(!host||!gbprRegistered()||!profile?.username||!sb)return;
  host.textContent='Loading friends…';
  const {data,error}=await sb.rpc('gb_friend_list');if(!host.isConnected)return;
  if(error){host.innerHTML=gbprSocialMessage('Friends unavailable. Complete the social SQL setup first.');return}
@@ -148,7 +194,7 @@ async function gbprLoadFriends(){
 prMailScreen.querySelector('#gbpr-mail-refresh').onclick=gbprLoadMail;
 prFriendsScreen.querySelector('#gbpr-friends-refresh').onclick=gbprLoadFriends;
 prFriendsScreen.querySelector('#gbpr-friend-search').onsubmit=async e=>{
- e.preventDefault();const host=$p('gbpr-friend-results');if(!sb||!user||!profile?.username)return;
+ e.preventDefault();const host=$p('gbpr-friend-results');if(!sb||!gbprRegistered()||!profile?.username)return;
  const q=e.currentTarget.querySelector('input').value.trim().replace(/^@/,'');if(q.length<3){host.innerHTML=gbprSocialMessage('Enter at least three characters.');return}
  host.textContent='Searching…';
  const {data,error}=await sb.rpc('gb_friend_search',{p_query:q});if(error){host.innerHTML=gbprSocialMessage(error.message);return}
@@ -244,7 +290,7 @@ async function fetchCloudRecord(id){
   return data;
 }
 async function checkCloudSave(initiated=false){
-  if(cloudChecking||!sb||!user)return;
+  if(cloudChecking||!sb||!gbprRegistered())return;
   cloudChecking=true;const uid=user.id;cloudPanel().classList.add('gbpr-hide');
   if(initiated)cloudStatus('Comparing this device with Supabase…');
   try{
@@ -420,7 +466,7 @@ window.addEventListener('pageshow',()=>{if(canAutoBackup())queueCloudUpload()});
 setInterval(()=>{if(canAutoBackup()&&!cloudBusy&&!cloudChecking&&navigator.onLine)queueCloudUpload()},20000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&canAutoBackup())queueCloudUpload()});
 window.gbCloudReady=()=>{
-  if(!user)return;
+  if(!gbprRegistered())return;
   if(cloudActiveAccount!==user.id){cloudReset();cloudActiveAccount=user.id;}
   checkCloudSave(false);
 };
@@ -435,7 +481,7 @@ window.gbGhostParadeFetch=async function(){
   if(authError||!session)return {error:'Sign into your Gore Burst account to view server rankings.'};
   const [boardResult,backupResult]=await Promise.all([
     sb.rpc('ghost_parade_top10'),
-    sb.rpc('ghost_parade_my_backup_summary')
+    gbprIsGuest()?Promise.resolve({data:null,error:null}):sb.rpc('ghost_parade_my_backup_summary')
   ]);
   if(boardResult.error)return {error:'Leaderboard query failed: '+boardResult.error.message};
   if(backupResult.error)return {error:'Cloud status query failed: '+backupResult.error.message};
@@ -458,7 +504,7 @@ window.gbClashLeaderboardFetch=async function(){
   return error?{error:'Carnival Clash database setup required: '+error.message}:{rows:data||[]};
 };
 window.gbClashSubmit=async function(game,points){
-  if(!sb||!user)return; // local mode works for guests
+  if(!sb||!user)return; // offline local mode
   const kind=String(game);const pts=Number(points);
   if(!(kind==='tetris'&&[10,20,30,40].includes(pts)||{sudoku_easy:50,sudoku_medium:100,sudoku_hard:150}[kind]===pts))return;
   const {error}=await sb.rpc('carnival_clash_submit_beta',{p_game:kind,p_points:pts,p_event_id:crypto.randomUUID()});
@@ -466,6 +512,6 @@ window.gbClashSubmit=async function(game,points){
 };
 
 // Weekly Nightmare beta reporting: only stage totals; prizes must await trusted validation.
-window.gbWeeklySubmit=async function(stages){if(!sb||!user)return {error:'Sign in required'};const {error}=await sb.rpc('weekly_nightmare_submit_beta',{p_stages:Number(stages)});if(error)throw error;return {ok:true}};
+window.gbWeeklySubmit=async function(stages){if(!sb||!user)return {error:'Online player identity unavailable'};const {error}=await sb.rpc('weekly_nightmare_submit_beta',{p_stages:Number(stages)});if(error)throw error;return {ok:true}};
 window.gbWeeklyTop10=async function(){if(!sb)return {rows:[],error:'Offline'};const {data,error}=await sb.rpc('weekly_nightmare_top10');return {rows:data||[],error:error?.message||null}};
 
