@@ -138,3 +138,6 @@
 #gb-profile-layer .gbpr-open-letter h3{font:900 22px Georgia,serif;text-align:center;color:#ffe3ac;text-shadow:0 0 10px #f35dbe}
 #gb-profile-layer .gbpr-open-letter p{white-space:pre-line;line-height:1.55;color:#ffe6f3}
 #gb-profile-layer .gbpr-letter-back{margin-bottom:12px;padding:8px 12px!important}
+
+/* Isolated 100-coin test mail; no changes to existing PFP dot styling */
+.gbpr-test-prize{display:flex;align-items:center;justify-content:center;gap:12px;margin:15px 0;padding:12px;border:1px solid #eb78dd;border-radius:14px;background:#351741;box-shadow:0 0 12px #e955bb6a}.gbpr-test-prize img{width:45px;height:45px;object-fit:contain}.gbpr-test-prize strong{color:#ffe7b1;font:900 15px Georgia,serif;text-shadow:0 0 8px #fa70cc}.gbpr-test-claim{width:100%;border-radius:24px!important;box-shadow:0 0 14px #ed63d8a0!important}
