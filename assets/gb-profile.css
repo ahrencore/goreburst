@@ -23,3 +23,21 @@
 .gbpr-avatar img{display:block!important;width:100%!important;height:100%!important;object-fit:contain!important;border:0!important;border-radius:50%!important}
 .gbpr-avatar.chosen{outline:2px solid #ffd68c!important;outline-offset:1px!important;box-shadow:0 0 12px #ff70c2!important}
 .gbpr-avatar span{display:none!important}
+
+/* New compact neon profile hub, scoped to the profile only. */
+#gb-profile-layer .gbpr-screen.gbpr-hide{display:none!important}
+#gb-profile-layer .gbpr-hub-identity .gbpr-hero{margin:3px 0 13px;border:2px solid #f18aef;box-shadow:0 0 14px #e849ce9c,0 0 23px #8665ec6b,inset 0 0 16px #d84dbc30;background:radial-gradient(circle at 40% 0%,#5a205d,#21102d)}
+#gb-profile-layer .gbpr-hub-identity .gbpr-hero img{object-fit:cover;width:86px;height:86px}
+#gb-profile-layer .gbpr-hub-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+#gb-profile-layer .gbpr-hub-stats>div{padding:12px 7px;text-align:center;border:1.5px solid #d46adb;border-radius:15px;background:linear-gradient(#49204d,#24102d);box-shadow:0 0 12px #c34edf66}
+#gb-profile-layer .gbpr-hub-stats small{display:block;color:#ffdbaa;font:800 11px Georgia,serif;letter-spacing:1px}
+#gb-profile-layer .gbpr-hub-stats strong{display:block;margin-top:4px;color:#fff0fa;font:800 22px Georgia,serif;text-shadow:0 0 9px #f85dcf}
+#gb-profile-layer .gbpr-hub-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+#gb-profile-layer .gbpr-hub-links button{min-width:0;min-height:79px;padding:11px 6px;background:linear-gradient(160deg,#8f329a,#421850 68%,#281133);border:2px solid #f08de3;border-radius:18px;box-shadow:0 0 13px #e548cc92,inset 0 0 13px #f8aeef35;color:#ffe7ff;font:900 24px Georgia,serif;text-shadow:0 0 10px #f8a4ef;cursor:pointer}
+#gb-profile-layer .gbpr-hub-links button span{display:block;font:900 clamp(11px,3vw,15px) Georgia,serif;letter-spacing:.6px;margin-top:6px}
+#gb-profile-layer .gbpr-hub-links button:active{transform:scale(.98)}
+#gb-profile-layer .gbpr-subhead{display:flex;align-items:center;gap:12px;margin:4px 0 14px}
+#gb-profile-layer .gbpr-subhead h3{margin:0;font:900 19px Georgia,serif;color:#ffe1ac;text-shadow:0 0 12px #f46ddc}
+#gb-profile-layer .gbpr-screen:not(#gbpr-hub)>.gbpr-panel{border:2px solid #c76cdb;box-shadow:0 0 12px #ce56d582,inset 0 0 16px #8843cc29}
+#gb-profile-layer .gbpr-screen:not(#gbpr-hub) .gbpr-btn{border-radius:999px;box-shadow:0 0 10px #f15cc381}
+@media(prefers-reduced-motion:reduce){#gb-profile-layer .gbpr-hub-links button{transition:none}}

@@ -29,6 +29,39 @@ const layer=document.createElement('aside');layer.id='gb-profile-layer';layer.se
 <p class="gbpr-error" id="gbpr-cloud-status" aria-live="polite">Cloud backup is off. Your browser save is unchanged.</p></div>
 </div>`;
 document.getElementById('app').append(layer);
+
+// Compact player hub: existing forms and cloud recovery remain intact in their own screens.
+const prScroll=layer.querySelector('.gbpr-scroll');
+const prPanels=[...prScroll.children];
+const prHero=prPanels[0],prLogin=prPanels[1],prEdit=prPanels[2],prAvatar=prPanels[3],prSaveInfo=prPanels[4],prCloud=prPanels[5];
+const prHub=document.createElement('section');prHub.id='gbpr-hub';prHub.className='gbpr-screen';
+prHub.innerHTML=`<div class="gbpr-hub-identity"></div><div class="gbpr-hub-stats"><div><small>LEVEL</small><strong id="gbpr-hub-level">1</strong></div><div><small>STARS</small><strong id="gbpr-hub-stars">0 ★</strong></div></div><div class="gbpr-hub-links"><button type="button" data-gbpr-nav="mail">✉ <span>MAILBOX</span></button><button type="button" data-gbpr-nav="friends">♧ <span>FRIENDS</span></button><button type="button" data-gbpr-nav="edit">✦ <span>EDIT PROFILE</span></button><button type="button" data-gbpr-nav="account">⚙ <span>ACCOUNT</span></button></div>`;
+prScroll.prepend(prHub);
+prHub.querySelector('.gbpr-hub-identity').append(prHero);
+const prScreen=(id,title)=>{const section=document.createElement('section');section.id='gbpr-screen-'+id;section.className='gbpr-screen gbpr-hide';section.innerHTML=`<div class="gbpr-subhead"><button type="button" class="gbpr-btn secondary" data-gbpr-home>‹ BACK</button><h3>${title}</h3></div>`;prScroll.append(section);return section};
+const prEditScreen=prScreen('edit','EDIT PROFILE');prEditScreen.append(prEdit,prAvatar);
+const prAccountScreen=prScreen('account','ACCOUNT');prAccountScreen.append(prLogin,prSaveInfo,prCloud);
+const prAccountSigned=document.createElement('div');prAccountSigned.className='gbpr-panel';prAccountSigned.innerHTML='<div class="gbpr-tag">ACCOUNT STATUS</div><p id="gbpr-simple-status" class="gbpr-muted"></p>';
+prAccountScreen.insertBefore(prAccountSigned,prSaveInfo);
+const prMailScreen=prScreen('mail','MAILBOX');prMailScreen.insertAdjacentHTML('beforeend','<div class="gbpr-panel"><div class="gbpr-tag">CARNIVAL MAIL</div><p id="gbpr-mail-note" class="gbpr-muted">Event reward mail will appear here when secure server-side delivery is enabled. No prizes have been granted.</p></div>');
+const prFriendsScreen=prScreen('friends','FRIENDS');prFriendsScreen.insertAdjacentHTML('beforeend','<div class="gbpr-panel"><div class="gbpr-tag">FIND YOUR CARNIVAL CREW</div><p id="gbpr-friends-note" class="gbpr-muted">Create an account and choose a unique username to add friends. Friend requests will become available once the server-side friends system is connected.</p><button type="button" class="gbpr-btn" id="gbpr-friends-account">ACCOUNT</button></div>');
+let prCurrent='hub';
+function prNavigate(name){
+ prCurrent=name;prScroll.querySelectorAll('.gbpr-screen').forEach(s=>s.classList.toggle('gbpr-hide',s.id!==(name==='hub'?'gbpr-hub':'gbpr-screen-'+name)));
+ const authLabel=prAccountScreen.querySelector('#gbpr-simple-status');if(authLabel)authLabel.textContent=user?'Signed in. Your account and cloud recovery options are below.':'Playing as a guest. You can register to secure your progress.';
+ const f=prFriendsScreen.querySelector('#gbpr-friends-note');if(f)f.textContent=user?(profile?.username?'Friend search and invitations will be enabled after the secure friends database is installed.':'Choose your unique @username under Edit Profile before using Friends.'):'Create an account and choose a unique @username to add friends. Guest players can still compete and play.';
+ prScroll.scrollTop=0;
+}
+prScroll.querySelectorAll('[data-gbpr-nav]').forEach(b=>b.onclick=()=>prNavigate(b.dataset.gbprNav));
+prScroll.querySelectorAll('[data-gbpr-home]').forEach(b=>b.onclick=()=>prNavigate('hub'));
+prFriendsScreen.querySelector('#gbpr-friends-account').onclick=()=>prNavigate(user?'edit':'account');
+const prUpdateHub=()=>{
+ const level=prHub.querySelector('#gbpr-hub-level'),stars=prHub.querySelector('#gbpr-hub-stars');
+ if(level)level.textContent=String(localLevel());
+ let best={};try{best=JSON.parse(localStorage.getItem('gb-playable-v4')||'{}').best||{}}catch{}
+ if(stars)stars.textContent=Object.values(best).reduce((n,v)=>n+Math.max(0,Math.min(3,Number(v)||0)),0)+' ★';
+};
+
 let sb=null,user=null,profile=null,signup=false,working=false,avatarPreview=null;
 const avatarFile=i=>'assets/avatars/'+String(i+1).padStart(2,'0')+'_'+KEYS[i]+'.png';
 const avatarKey=i=>String(i+1).padStart(2,'0')+'_'+KEYS[i];
@@ -39,7 +72,7 @@ function setMessage(id,txt,success=false){const el=$p(id);el.textContent=txt;el.
 function avatarUrl(){if(avatarPreview!==null)return avatarFile(avatarPreview);if(!user){const ix=Number(localStorage.getItem('gb-guest-avatar'));if(Number.isInteger(ix)&&ix>=0&&ix<15)return avatarFile(ix)}if(profile?.avatar_path){return SUPABASE_URL+'/storage/v1/object/public/avatars/'+profile.avatar_path.split('/').map(encodeURIComponent).join('/')}return avatarFile(avatarIndex(profile?.avatar_key))}
 function syncMenuAvatar(){const el=document.getElementById('gbMenuAvatar');if(el){el.src=avatarUrl();el.onerror=()=>{el.onerror=null;el.src=fallbackAvatar}}}
 function refresh(){syncMenuAvatar();const signed=!!user;$p('gbpr-auth-panel').classList.toggle('gbpr-hide',signed);$p('gbpr-account-panel').classList.toggle('gbpr-hide',!signed);$p('gbpr-display').textContent=profile?.display_name||'Carnival Guest';$p('gbpr-handle').textContent=profile?.username?'@'+profile.username:(signed?'Choose a unique username':'Guest player');$p('gbpr-level').textContent='LEVEL '+localLevel()+' · Local progress';$p('gbpr-current-avatar').src=avatarUrl();$p('gbpr-new-name').value=profile?.display_name||'Carnival Guest';$p('gbpr-new-handle').value=profile?.username||'';$p('gbpr-avatar-help').textContent=signed?'Tap any character to save it. You can also upload your own photo.':'Sign in to save a PFP to your account. Tap to preview characters.';document.querySelectorAll('.gbpr-avatar').forEach((b,i)=>b.classList.toggle('chosen',(avatarPreview!==null?avatarPreview:avatarIndex(profile?.avatar_key))===i));}
-function view(open){layer.classList.toggle('open',open);if(open){avatarPreview=null;refresh();$p('gbpr-close').focus()}}
+function view(open){layer.classList.toggle('open',open);if(open){avatarPreview=null;refresh();prUpdateHub();prNavigate('hub');$p('gbpr-close').focus()}}
 $p('gbpr-close').onclick=()=>view(false);
 document.getElementById('profile').addEventListener('click',()=>view(true));
 layer.addEventListener('pointerdown',e=>e.stopPropagation());
@@ -348,21 +381,3 @@ window.gbGhostAvatarUrl=function(record){
   }
   return avatarFile(avatarIndex(record?.avatar_key));
 };
-
-// Carnival Clash beta: browser-submitted scores are NOT server-verified; do not award prizes from them.
-window.gbClashLeaderboardFetch=async function(){
-  if(!sb)return {error:'Supabase connection is starting. Try Refresh Rankings.'};
-  const {data,error}=await sb.rpc('carnival_clash_top10');
-  return error?{error:'Carnival Clash database setup required: '+error.message}:{rows:data||[]};
-};
-window.gbClashSubmit=async function(game,points){
-  if(!sb||!user)return; // local mode works for guests
-  const kind=String(game);const pts=Number(points);
-  if(!(kind==='tetris'&&[10,20,30,40].includes(pts)||{sudoku_easy:50,sudoku_medium:100,sudoku_hard:150}[kind]===pts))return;
-  const {error}=await sb.rpc('carnival_clash_submit_beta',{p_game:kind,p_points:pts,p_event_id:crypto.randomUUID()});
-  if(error)console.warn('Carnival Clash beta submission:',error.message);
-};
-
-// Weekly Nightmare beta reporting: only stage totals; prizes must await trusted validation.
-window.gbWeeklySubmit=async function(stages){if(!sb||!user)return {error:'Sign in required'};const {error}=await sb.rpc('weekly_nightmare_submit_beta',{p_stages:Number(stages)});if(error)throw error;return {ok:true}};
-window.gbWeeklyTop10=async function(){if(!sb)return {rows:[],error:'Offline'};const {data,error}=await sb.rpc('weekly_nightmare_top10');return {rows:data||[],error:error?.message||null}};
