@@ -177,8 +177,32 @@ function evWeekly(){
  evBindCountdown('evWeeklyDetailCountdown',evWeeklyBoundary);
  evLoadWeeklyRankings();
 }
-const evWeeklyPrizes=['#1 · 5,000 coins + 3 of each starting special + 2 of each booster','#2 · 3,000 coins + 2 of each starting special + 1 of each booster','#3 · 1,000 coins + 1 of each starting special','#4–5 · 500 coins + Rocket + Ferris Wheel','#6–10 · 300 coins + Clownbomb'];
-function evWeeklyRewards(){evDisplay(`${evHeader('REWARDS',evWeekly)}<section class="ev-nightmare-ranks"><h2>WEEKLY NIGHTMARE REWARDS</h2><div class="ev-prizes">${evWeeklyPrizes.map(x=>`<div class="ev-board-line">${x}</div>`).join('')}</div></section>`,evWeekly);}
+// Approved Weekly Nightmare prize display. This does not alter leaderboard scoring or payout processing.
+const evWeeklyPrizes=[
+  {place:'#1',coins:5000,specials:3,boosters:2},
+  {place:'#2',coins:3000,specials:2,boosters:1},
+  {place:'#3',coins:1500,specials:1,boosters:1},
+  {place:'#4 – #10',coins:1000,specials:0,boosters:0}
+];
+const evWeeklyIconRewards=[
+  ['assets/rocket-h.png','Rocket','specials'],
+  ['assets/clownbomb.png','Clownbomb','specials'],
+  ['assets/ferris.png','Ferris Wheel','specials'],
+  ['assets/booster-hammer.webp','Circus Hammer','boosters'],
+  ['assets/booster-watch.webp',"Mr. Walker's Watch",'boosters'],
+  ['assets/booster-cards.webp','Art of Distraction','boosters'],
+  ['assets/booster-musicbox.webp','Surprise Music Box','boosters']
+];
+function evWeeklyRewards(){
+  const rows=evWeeklyPrizes.map((p,i)=>{
+    const items=[`<span class="ev-weekly-loot-item"><img src="assets/coin-skull-new.png" alt="Skull Coins"><b>${p.coins.toLocaleString()}</b></span>`];
+    for(const [src,name,key] of evWeeklyIconRewards){
+      if(p[key])items.push(`<span class="ev-weekly-loot-item" title="${name}"><img src="${src}" alt="${name}"><b>×${p[key]}</b></span>`);
+    }
+    return `<div class="ev-weekly-prize-row ev-weekly-prize-${i+1}"><div class="ev-weekly-prize-rank">${p.place}</div><div class="ev-weekly-loot">${items.join('')}</div></div>`;
+  }).join('');
+  evDisplay(`${evHeader('REWARDS',evWeekly)}<section class="ev-panel ev-weekly-rewards-screen"><h2>WEEKLY NIGHTMARE REWARDS</h2><div class="ev-weekly-prize-list">${rows}</div></section>`,evWeekly);
+}
 async function evLoadWeeklyRankings(){const host=evRoot.querySelector('#evNightmareRankings');if(!host)return;
  if(typeof window.gbWeeklyTop10!=='function'){host.textContent='Rankings unavailable';return}
  try{const result=await window.gbWeeklyTop10();if(!host.isConnected)return;if(result.error){host.textContent='Rankings unavailable';return}

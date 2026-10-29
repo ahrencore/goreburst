@@ -252,3 +252,19 @@
 .ev-clash-loot-item img{width:28px;height:28px;object-fit:contain;filter:drop-shadow(0 0 8px #ff55c7a6)}
 .ev-clash-loot-item span{font-weight:800;color:#fff5d5;letter-spacing:.2px}
 @media(max-width:380px){.ev-clash-prize-row{grid-template-columns:1fr}.ev-clash-prize-place{text-align:left}}
+
+
+/* Mr. Walker's Weekly Nightmare — premium illustrated rewards screen */
+.ev-weekly-rewards-screen{margin-top:13px;padding:15px 12px;border:2px solid #ed78e7;border-radius:22px;background:radial-gradient(circle at 50% 0%,#50206b,#251034 64%,#16091f);box-shadow:0 0 15px #f24dcd99,0 0 30px #6e50f355,inset 0 0 20px #a34ad73b}
+.ev-weekly-rewards-screen h2{text-align:center;font:900 clamp(19px,5.7vw,27px) Georgia,serif;letter-spacing:.7px;color:#ffe7b8;text-shadow:0 0 9px #ff69d0,0 0 18px #815bff;margin:2px 0 16px}
+.ev-weekly-prize-list{display:grid;gap:11px}
+.ev-weekly-prize-row{border:1.5px solid #c16cdd;border-radius:16px;padding:12px 10px;background:linear-gradient(135deg,#3d194e,#20102f);box-shadow:0 0 10px #e05fce66,inset 0 0 13px #ab56eb19;display:grid;grid-template-columns:57px minmax(0,1fr);gap:10px;align-items:center}
+.ev-weekly-prize-1{border-color:#ffd37e;box-shadow:0 0 13px #ffd16e85,inset 0 0 13px #fff3ac20}
+.ev-weekly-prize-2{border-color:#d7b9ff;box-shadow:0 0 13px #ae84fa85,inset 0 0 13px #e8cfff15}
+.ev-weekly-prize-3{border-color:#ffac8d;box-shadow:0 0 13px #ff9a7e7a,inset 0 0 13px #ffd1af15}
+.ev-weekly-prize-rank{font:900 17px Georgia,serif;text-align:center;color:#ffe3af;text-shadow:0 0 8px #ff78d7}
+.ev-weekly-loot{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.ev-weekly-loot-item{display:flex;align-items:center;justify-content:center;gap:4px;min-height:38px;padding:4px 7px;border:1px solid #9d5bb0;border-radius:11px;background:#241231b8;box-shadow:inset 0 0 8px #ffffff12}
+.ev-weekly-loot-item img{width:29px;height:29px;object-fit:contain;filter:drop-shadow(0 0 5px #f363de77)}
+.ev-weekly-loot-item b{font:900 12px Georgia,serif;color:#ffecc2;white-space:nowrap}
+@media(max-width:360px){.ev-weekly-prize-row{grid-template-columns:1fr;gap:5px}.ev-weekly-prize-rank{text-align:left}}
