@@ -72,6 +72,12 @@ const prEditScreen=prScreen('edit','EDIT PROFILE');prEditScreen.append(prEdit,pr
 const prAccountScreen=prScreen('account','ACCOUNT');prAccountScreen.append(prLogin,prSaveInfo,prCloud);
 const prAccountSigned=document.createElement('div');prAccountSigned.className='gbpr-panel';prAccountSigned.innerHTML='<div class="gbpr-tag">ACCOUNT STATUS</div><p id="gbpr-simple-status" class="gbpr-muted"></p>';
 prAccountScreen.insertBefore(prAccountSigned,prSaveInfo);
+// Reward synchronization is scoped to completed, server-verified award receipts.
+const prRewardSync=document.createElement('section');
+prRewardSync.className='gbpr-panel';
+prRewardSync.innerHTML='<div class="gbpr-tag">CLAIMED REWARDS</div><p class="gbpr-muted">Check confirmed event claims before syncing rewards to this device. Existing coins and boosters are never replaced by the server balance.</p><button type="button" class="gbpr-btn" id="gbpr-rewards-check">CHECK CLAIMED REWARDS</button><p class="gbpr-error" id="gbpr-rewards-status" aria-live="polite"></p>';
+prAccountScreen.insertBefore(prRewardSync,prCloud);
+
 const prMailScreen=prScreen('mail','MAILBOX');
 prMailScreen.insertAdjacentHTML('beforeend',`<section class="gbpr-panel"><div class="gbpr-tag">CARNIVAL MAIL</div><div class="gbpr-social-actions"><button type="button" class="gbpr-btn secondary" id="gbpr-mail-refresh">REFRESH</button></div><div id="gbpr-mail-list" aria-live="polite" class="gbpr-social-list">Loading mail…</div><p class="gbpr-muted">Event prizes will become claimable after the reward distribution system is approved and activated.</p></section>`);
 const prFriendsScreen=prScreen('friends','FRIENDS');
@@ -360,6 +366,75 @@ function retainsClaimReceipts(candidate,baseline){
     saveFingerprint(have[k])===saveFingerprint(required[k])
   );
 }
+
+// Generic completed-event claim receipts. Does not approve or pay event awards.
+// Important: a receipt cannot prove whether its rewards were already included in
+// an unrelated older save; ambiguous accounts must be reviewed before merge.
+let gbRewardSyncBusy=false;
+async function gbRewardCheck(){
+ const out=$p('gbpr-rewards-status'),btn=$p('gbpr-rewards-check');
+ if(!out||!btn)return;
+ if(gbRewardSyncBusy)return;
+ gbRewardSyncBusy=true;btn.disabled=true;out.textContent='Checking verified claims…';
+ try{
+   if(!user||!sb)throw Error('Sign in to check claimed rewards.');
+   const uid=user.id;
+   const bound=localStorage.getItem(cloudBindingKey);
+   if(bound!==uid)throw Error('This save is not confirmed for this account. Open CHECK CLOUD SAVE and link this device before syncing.');
+   const raw=localStorage.getItem('gb-playable-v4');
+   if(!raw)throw Error('No existing game save on this device.');
+   const snap=validSnapshot(JSON.parse(raw));
+   const {data,error}=await sb.rpc('gb_completed_reward_receipts');
+   if(error)throw error;
+   if(user.id!==uid)throw Error('Account changed. Try again.');
+   const rewards=Array.isArray(data)?data:[];
+   const receipts=claimReceipts(snap);
+   const missing=rewards.filter(r=>r.award_id && !receipts[uid+':'+r.award_id]);
+   if(!missing.length){out.textContent='All completed event claims are already recorded on this device.';return}
+   const amounts={coins:0,RV:0,CB:0,FW:0,hammer:0,watch:0,cards:0,musicbox:0};
+   for(const row of missing){
+     const reward=row.reward_data;
+     if(!reward||typeof reward!=='object'||Array.isArray(reward))throw Error('Invalid reward receipt.');
+     for(const [key,n] of Object.entries(reward)){
+       if(!(key in amounts)||!Number.isSafeInteger(n)||n<0||n>1000000)throw Error('Unexpected reward type or amount: '+key);
+       amounts[key]+=n;
+     }
+   }
+   // A cloud snapshot that already contains a receipt indicates that the award
+   // is already in cloud balances: restore/reconcile that save, never add twice.
+   const cloud=await fetchCloudRecord(uid);
+   if(cloud){
+     const cloudReceipts=claimReceipts(cloud.snapshot);
+     const overlap=missing.filter(r=>cloudReceipts[uid+':'+r.award_id]);
+     if(overlap.length)throw Error('Some claims are already in your cloud save. Use CHECK CLOUD SAVE to reconcile; no rewards were added.');
+     if(cloudAuthorized && Number(cloud.save_revision)!==Number(cloudKnownRevision??0))throw Error('Cloud changed elsewhere. Check Cloud Save before applying rewards.');
+   }
+   const coins=Number(snap.coins);
+   if(!Number.isSafeInteger(coins)||coins<0)throw Error('Invalid local coin balance.');
+   const pre={RV:0,CB:0,FW:0,...(snap.preSpecials||{})};
+   const boosters={hammer:0,watch:0,cards:0,musicbox:0,...(snap.boosterInventory||{})};
+   const summary=Object.entries(amounts).filter(([,n])=>n>0).map(([k,n])=>k+' ×'+n).join(' · ')||'No items';
+   out.textContent=missing.length+' confirmed claim(s) need review: '+summary;
+   if(!confirm('Add these '+missing.length+' completed claim(s) to THIS device exactly once? '+summary+'\n\nOnly continue if you have not already received these items through another restore or manual sync. A local safety copy will be saved.'))return;
+   // Require a stable local snapshot across the asynchronous server checks.
+   if(localStorage.getItem('gb-playable-v4')!==raw||user.id!==uid)throw Error('Game save changed during review. Please check again.');
+   const next=structuredClone(snap);
+   next.coins=coins+amounts.coins;
+   next.preSpecials={...pre,RV:Number(pre.RV)+amounts.RV,CB:Number(pre.CB)+amounts.CB,FW:Number(pre.FW)+amounts.FW};
+   next.boosterInventory={...boosters,hammer:Number(boosters.hammer)+amounts.hammer,watch:Number(boosters.watch)+amounts.watch,cards:Number(boosters.cards)+amounts.cards,musicbox:Number(boosters.musicbox)+amounts.musicbox};
+   for(const val of [next.coins,...Object.values(next.preSpecials),...Object.values(next.boosterInventory)])if(!Number.isSafeInteger(val)||val<0)throw Error('Unsafe resource amount; no changes made.');
+   const marked={...receipts};
+   for(const r of missing)marked[uid+':'+r.award_id]={reward:r.reward_data,completed_at:r.completed_at};
+   next.gbServerRewardReceipts=marked;
+   const backup='gb-before-event-sync:'+uid+':'+Date.now();
+   localStorage.setItem(backup,raw);
+   localStorage.setItem('gb-playable-v4',JSON.stringify(next));
+   try{sessionStorage.setItem('gb-post-test-sync-cloud-review',uid)}catch(_){}
+   location.reload();
+ }catch(e){out.textContent='Sync stopped safely: '+(e?.message||'Unknown error')}
+ finally{gbRewardSyncBusy=false;btn.disabled=false}
+}
+$p('gbpr-rewards-check').onclick=gbRewardCheck;
 
 function localDominatesCloud(local,cloud){
   // Only used for the SAME ACCOUNT already authorized to auto-backup on this device.
