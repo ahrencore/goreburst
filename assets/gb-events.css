@@ -182,3 +182,44 @@
 .ev-wheel-spin-btn{border:2px solid #ffb3e8;border-radius:999px;min-height:52px;background:linear-gradient(#e947b7,#97217c 55%,#50155d);box-shadow:0 0 17px #fd53d9a6,0 0 28px #8a5af366,inset 0 2px 6px #ffe6f8a9;font:900 17px Georgia,serif;letter-spacing:1px;text-shadow:0 0 7px #ffc4ec}
 .ev-wheel-spin-btn:active{filter:brightness(1.15);transform:scale(.985)}
 .ev-wheel-spin-btn:disabled{opacity:.65}
+
+/* Events homepage: Daily Quests and Wheel of Misfortune matched card geometry.
+   Artwork is unchanged; both promos retain identical aspect ratio and position. */
+.ev-root .ev-cards > .ev-card[data-ev="daily"],
+.ev-root .ev-cards > .ev-card[data-ev="wheel"]{
+  display:flex;
+  flex-direction:column;
+  align-self:stretch;
+  height:100%;
+}
+.ev-root .ev-cards > .ev-card[data-ev="daily"] > .ev-promo-art,
+.ev-root .ev-cards > .ev-card[data-ev="wheel"] > .ev-promo-art{
+  width:100%;
+  aspect-ratio:2 / 1;
+  flex:0 0 auto;
+  margin:0;
+  padding:0;
+}
+.ev-root .ev-cards > .ev-card[data-ev="daily"] > b,
+.ev-root .ev-cards > .ev-card[data-ev="wheel"] > b{
+  box-sizing:border-box;
+  display:block;
+  position:relative;
+  margin:9px 9px 0;
+  min-height:38px;
+  line-height:19px;
+  flex:0 0 auto;
+}
+.ev-root .ev-cards > .ev-card[data-ev="daily"] > small,
+.ev-root .ev-cards > .ev-card[data-ev="wheel"] > small{
+  display:block;
+  margin:0 9px 10px;
+  min-height:15px;
+  line-height:15px;
+  flex:0 0 auto;
+}
+/* Preserve notification dots beside the title, away from busy promo artwork. */
+.ev-root .ev-cards > .ev-card.ev-has-reward[data-ev="daily"] > b,
+.ev-root .ev-cards > .ev-card.ev-has-reward[data-ev="wheel"] > b{
+  max-width:calc(100% - 31px);
+}
