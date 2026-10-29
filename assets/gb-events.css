@@ -172,3 +172,13 @@
 .ev-weekly-result-secondary{background:linear-gradient(#7647b6,#361755);box-shadow:0 0 12px #a666f888,inset 0 1px 7px #b785fc77}
 .ev-weekly-result-actions button:disabled{opacity:.46;filter:grayscale(.6);cursor:default}
 @media(prefers-reduced-motion:reduce){.ev-weekly-result-spark{animation:none}}
+
+/* Wheel of Misfortune: independent rotating disc, fixed neon rim/pointer/medallion */
+.ev-wheel-panel{border:2px solid #fa72de;box-shadow:0 0 14px #f248cd8c,0 0 34px #7b3af74d,inset 0 0 22px #7136ad38;background:radial-gradient(circle at 50% 29%,#54225a,#210b2c 65%,#16091f)}
+.ev-wheel-wallet{display:flex;justify-content:center;gap:5px;color:#ffe0b3;font-weight:750;font-size:12px;letter-spacing:.2px}
+.ev-wheel-glow{width:min(100%,390px);filter:drop-shadow(0 0 9px #f34edcaa) drop-shadow(0 0 14px #603df677)}
+.ev-wheel-glow img{user-select:none;-webkit-user-drag:none}
+.ev-wheel-glow .ev-rim,.ev-wheel-glow .ev-pointer,.ev-wheel-glow .ev-center{transform:none!important}
+.ev-wheel-spin-btn{border:2px solid #ffb3e8;border-radius:999px;min-height:52px;background:linear-gradient(#e947b7,#97217c 55%,#50155d);box-shadow:0 0 17px #fd53d9a6,0 0 28px #8a5af366,inset 0 2px 6px #ffe6f8a9;font:900 17px Georgia,serif;letter-spacing:1px;text-shadow:0 0 7px #ffc4ec}
+.ev-wheel-spin-btn:active{filter:brightness(1.15);transform:scale(.985)}
+.ev-wheel-spin-btn:disabled{opacity:.65}
