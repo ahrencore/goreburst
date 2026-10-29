@@ -246,7 +246,7 @@ async function gbprOpenMail(id){
  }
  const welcome=m.source_event==='welcome_gift';
  const testCoins=m.source_event==='reward_claim_test' && m.reward?.coins===100;
- host.innerHTML=`<div class="gbpr-open-letter ${welcome?'gbpr-welcome-mail':''}"><button type="button" class="gbpr-btn secondary gbpr-letter-back" id="gbpr-mail-back">‹ INBOX</button><div class="gbpr-tag">${welcome?'✦ AN OFFICIAL INVITATION ✦':'OFFICIAL MAIL'}</div><h3>${safe(m.title)}</h3><small>${new Date(m.created_at).toLocaleDateString()}</small><p>${safe(m.body)}</p>${welcome?`<div class="gbpr-welcome-gifts"><div><span>♥</span><b>UNLIMITED LIVES</b><small>1 HOUR</small></div><div><img src="assets/rocket-h.png" alt="Rocket"><b>ROCKET</b><small>×1</small></div><div><img src="assets/clownbomb.png" alt="Clownbomb"><b>CLOWNBOMB</b><small>×1</small></div><div><img src="assets/ferris.png" alt="Ferris Wheel"><b>FERRIS WHEEL</b><small>×1</small></div></div><button type="button" class="gbpr-btn gbpr-welcome-claim" id="gbpr-letter-claim" ${m.claimed_at?'disabled':''}>${m.claimed_at?'CLAIMED':'✦ CLAIM MY GIFTS ✦'}</button>`:testCoins?`<div class="gbpr-test-prize"><img src="assets/coin-skull-new.png" alt="Skull Coins"><strong>100 SKULL COINS</strong></div><button type="button" class="gbpr-btn gbpr-test-claim" id="gbpr-test-claim" ${m.claimed_at?'disabled':''}>${m.claimed_at?'CLAIMED':'✦ CLAIM 100 COINS ✦'}</button><p class="gbpr-muted" id="gbpr-test-status">Test reward · credited to Supabase inventory</p>`:m.category==='event_reward'?'<em>Other event rewards are not claimable yet.</em>':''}</div>`;
+ host.innerHTML=`<div class="gbpr-open-letter ${welcome?'gbpr-welcome-mail':''}"><button type="button" class="gbpr-btn secondary gbpr-letter-back" id="gbpr-mail-back">‹ INBOX</button><div class="gbpr-tag">${welcome?'✦ AN OFFICIAL INVITATION ✦':'OFFICIAL MAIL'}</div><h3>${safe(m.title)}</h3><small>${new Date(m.created_at).toLocaleDateString()}</small><p>${safe(m.body)}</p>${welcome?`<div class="gbpr-welcome-gifts"><div><span>♥</span><b>UNLIMITED LIVES</b><small>1 HOUR</small></div><div><img src="assets/rocket-h.png" alt="Rocket"><b>ROCKET</b><small>×1</small></div><div><img src="assets/clownbomb.png" alt="Clownbomb"><b>CLOWNBOMB</b><small>×1</small></div><div><img src="assets/ferris.png" alt="Ferris Wheel"><b>FERRIS WHEEL</b><small>×1</small></div></div><button type="button" class="gbpr-btn gbpr-welcome-claim" id="gbpr-letter-claim" ${m.claimed_at?'disabled':''}>${m.claimed_at?'CLAIMED':'✦ CLAIM MY GIFTS ✦'}</button>`:testCoins?`<div class="gbpr-test-prize"><img src="assets/coin-skull-new.png" alt="Skull Coins"><strong>100 SKULL COINS</strong></div><button type="button" class="gbpr-btn gbpr-test-claim" id="gbpr-test-claim" ${m.claimed_at?'disabled':''}>${m.claimed_at?'CLAIMED':'✦ CLAIM 100 COINS ✦'}</button><button type="button" class="gbpr-btn secondary" id="gbpr-test-sync" ${!m.claimed_at?'hidden':''}>SYNC CLAIMED GIFT TO THIS DEVICE</button><p class="gbpr-muted" id="gbpr-test-status">${m.claimed_at?'Claimed on server · device reward not yet checked':'Test reward · credited to Supabase inventory'}</p>`:m.category==='event_reward'?'<em>Other event rewards are not claimable yet.</em>':''}</div>`;
  host.querySelector('#gbpr-mail-back').onclick=gbprDrawMailList;
  const testClaim=host.querySelector('#gbpr-test-claim');
  if(testClaim)testClaim.onclick=async()=>{
@@ -259,9 +259,46 @@ async function gbprOpenMail(id){
    if(!result)throw Error('No claim confirmation returned');
    m.claimed_at=new Date().toISOString();
    testClaim.textContent='CLAIMED';
-   status.textContent='Server credit confirmed. Supabase Skull Coins: '+Number(result.new_coin_balance).toLocaleString()+'. Game HUD sync is not yet verified.';
+   const syncBtn=host.querySelector('#gbpr-test-sync');if(syncBtn)syncBtn.hidden=false;
+   status.textContent='Server credit confirmed. Supabase Skull Coins: '+Number(result.new_coin_balance).toLocaleString()+'. Tap SYNC to add the claimed reward to this device once.';
    void gbprRefreshMailDot();
   }catch(err){testClaim.disabled=false;testClaim.textContent='✦ CLAIM 100 COINS ✦';status.textContent='Claim not confirmed: '+(err.message||'Unknown error');}
+ };
+
+ const testSync=host.querySelector('#gbpr-test-sync');
+ if(testSync)testSync.onclick=async()=>{
+   const status=host.querySelector('#gbpr-test-status');
+   testSync.disabled=true;
+   try{
+     if(!user||!sb)throw Error('Sign in with the account that claimed this reward.');
+     const uid=user.id;
+     const bound=localStorage.getItem('gb-cloud-device-account-v2');
+     if(bound&&bound!==uid)throw Error('This device save is linked to another player. Open Account → CHECK CLOUD SAVE first; no coins were changed.');
+     const {data,error}=await sb.rpc('gb_test_claim_receipt',{p_mail:m.id});
+     if(error)throw error;
+     const receipt=Array.isArray(data)?data[0]:null;
+     if(!receipt||receipt.reward_coins!==100||!receipt.completed_at||!receipt.award_id)throw Error('The server has not confirmed this exact 100-coin claim.');
+     const key='gb-playable-v4',raw=localStorage.getItem(key);
+     if(!raw)throw Error('No local game save found; no coins changed.');
+     const snap=JSON.parse(raw);
+     if(!snap||typeof snap!=='object'||Array.isArray(snap)||!Number.isInteger(Number(snap.current))||Number(snap.current)<1)throw Error('Invalid local save; no coins changed.');
+     const receipts=(snap.gbServerRewardReceipts&&typeof snap.gbServerRewardReceipts==='object'&&!Array.isArray(snap.gbServerRewardReceipts))?snap.gbServerRewardReceipts:{};
+     const receiptKey=uid+':'+receipt.award_id;
+     if(receipts[receiptKey]){status.textContent='Already synchronized to this device; no extra coins added.';testSync.textContent='ALREADY SYNCED';return;}
+     const coins=Number(snap.coins);
+     if(!Number.isSafeInteger(coins)||coins<0||coins>2000000000)throw Error('Unexpected coin balance; no coins changed.');
+     const confirmed=confirm('Add the 100 already-claimed Skull Coins to THIS device’s current '+coins.toLocaleString()+'-coin save? The game will reload. Only do this on your second account.');
+     if(!confirmed)return;
+     const backupKey='gb-before-claim-sync:'+uid+':'+receipt.award_id;
+     // Do not overwrite an existing safety copy.
+     if(localStorage.getItem(backupKey)===null)localStorage.setItem(backupKey,raw);
+     snap.coins=coins+100;
+     snap.gbServerRewardReceipts={...receipts,[receiptKey]:{amount:100,completed_at:receipt.completed_at}};
+     localStorage.setItem(key,JSON.stringify(snap));
+     // Reload because the main game keeps an in-memory copy of this save.
+     location.reload();
+   }catch(err){status.textContent='Sync stopped: '+(err.message||'Unknown error')}
+   finally{testSync.disabled=false}
  };
 
  const claim=host.querySelector('#gbpr-letter-claim');if(claim)claim.onclick=async()=>{
