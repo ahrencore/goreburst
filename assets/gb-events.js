@@ -9,6 +9,11 @@ const evNow=()=>new Date();
 const evDay=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kuala_Lumpur',year:'numeric',month:'2-digit',day:'2-digit'}).format(evNow());
 function evKLparts(){const p=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Kuala_Lumpur',year:'numeric',month:'numeric',day:'numeric',weekday:'short'}).formatToParts(evNow());return Object.fromEntries(p.filter(x=>x.type!=='literal').map(x=>[x.type,x.value]))}
 function evWeek(){const p=evKLparts(),date=new Date(Date.UTC(+p.year,+p.month-1,+p.day)),dow=date.getUTCDay();date.setUTCDate(date.getUTCDate()-(dow+6)%7);return date.toISOString().slice(0,10)}
+// Countdown is presentation-only. Event boundaries are calculated in the established game calendar.
+function evCountdownText(target){const delta=Math.max(0,target-Date.now());if(!delta)return '0H';const hours=Math.ceil(delta/3600000),days=Math.floor(hours/24);return days?`${days}D ${hours%24}H`:`${hours}H`;}
+function evClashEnd(){return EV_EPOCH+(evClashKey()+1)*172800000;}
+function evWeeklyBoundary(){const p=evKLparts(),today=new Date(Date.UTC(Number(p.year),Number(p.month)-1,Number(p.day)));const day=today.getUTCDay();const jump=evOpenWeek()?(6-day):(day===6?2:1);return Date.UTC(Number(p.year),Number(p.month)-1,Number(p.day)+jump)-8*3600000;}
+function evBindCountdown(id,getEnd){const node=evRoot.querySelector('#'+id);if(!node)return;node.textContent=evCountdownText(getEnd());const handler=()=>{if(!node.isConnected){clearInterval(timer);return}node.textContent=evCountdownText(getEnd())};const timer=setInterval(handler,60000);}
 function evOpenWeek(){let d=evKLparts().weekday;return ['Mon','Tue','Wed','Thu','Fri'].includes(d)}
 const EV_EPOCH=Date.parse('2026-10-25T16:00:00Z');
 const evClashKey=()=>Math.floor((Date.now()-EV_EPOCH)/172800000);
@@ -27,52 +32,245 @@ const evMissions=[
  ["Mr. Walker's Favorite",'attempts',5,'1 Surprise Music Box',{musicbox:1}]
 ];
 function evMission(i){let [name,key,target,reward]=evMissions[i];if(i===7&&save.current<4){key='pieces';target=15;name='Freakshow Collector'}return {name,key,target,reward}}
-function dailyRecord(key,num=1){evRefresh();evData.missions[key]=Math.max(0,(evData.missions[key]||0)+num);evSave()}
+// Compact, plain-language instructions for the existing ten mission objectives.
+// Keep targets tied to evMission(), including the early-game Ghostbusters substitute.
+function evMissionDescription(i,q){
+ switch(i){
+  case 0: return `Attempt ${q.target} levels`;
+  case 1: return `Collect ${q.target} Hearts`;
+  case 2: return `Make ${q.target} matches`;
+  case 3: return `Create ${q.target} Rocket special`;
+  case 4: return `Make ${q.target} matches`;
+  case 5: return `Collect ${q.target} pieces`;
+  case 6: return `Make ${q.target} swaps`;
+  case 7: return q.key==='ghosts'?`Clear ${q.target} Ghosts`:`Collect ${q.target} pieces`;
+  case 8: return `Create ${q.target} special piece`;
+  case 9: return `Attempt ${q.target} levels`;
+  default: return '';
+ }
+}
+function evDailyReadyCount(){evRefresh();return evMissions.reduce((n,_,i)=>{const q=evMission(i);return n+(!evData.claims.includes(i)&&(evData.missions[q.key]||0)>=q.target?1:0)},0)}
+function evUpdateRewardDots(){
+ const ready=evDailyReadyCount()>0;
+ // All claimable event rewards funnel through this indicator predicate. Never flag completed claims.
+ const wheelReady=evData.spins===0;const flags={daily:ready,wheel:wheelReady};const any=Object.values(flags).some(Boolean);
+ document.querySelectorAll('[data-ev="daily"]').forEach(card=>{card.classList.toggle('ev-has-reward',ready);card.setAttribute('aria-label','Daily Quests'+(ready?' — rewards ready':''))});
+ document.querySelectorAll('[data-ev="wheel"]').forEach(card=>{card.classList.toggle('ev-has-reward',wheelReady);card.setAttribute('aria-label','Wheel of Misfortune'+(wheelReady?' — free spin available':''))});
+ const button=document.getElementById('events');if(button){button.classList.toggle('ev-tab-has-reward',any);button.setAttribute('aria-label','Events'+(any?' — rewards ready':''));}
+}
+const evRewardIcon={coins:'assets/coin-skull-new.png',RV:'assets/rocket-h.png',CB:'assets/clownbomb.png',FW:'assets/ferris.png',hammer:'assets/booster-hammer.webp',cards:'assets/booster-cards.webp',musicbox:'assets/booster-musicbox.webp',watch:'assets/booster-watch.webp'};
+function evRewardArt(i){const reward=evMissions[i][4];return Object.entries(reward).map(([key,n])=>`<span class="ev-daily-reward" title="${key==='coins'?'Skull Coins':key==='RV'?'Rocket':key==='CB'?'Clownbomb':key==='FW'?'Ferris Wheel':key==='hammer'?'Circus Hammer':key==='cards'?'Art of Distraction':key==='musicbox'?'Surprise Music Box':key}"><img src="${evRewardIcon[key]||evRewardIcon.coins}" alt="" draggable="false"><b>×${n}</b></span>`).join('')}
+function dailyRecord(key,num=1){evRefresh();evData.missions[key]=Math.max(0,(evData.missions[key]||0)+num);evSave();evUpdateRewardDots()}
 function evAward(reward){for(const [key,n] of Object.entries(reward)){if(key==='coins')save.coins=Math.max(0,save.coins+n);else if(['RV','CB','FW'].includes(key))save.preSpecials[key]=(save.preSpecials[key]||0)+n;else save.boosterInventory[key]=(save.boosterInventory[key]||0)+n}persist();}
 function evBtn(text,fn,cls=''){const b=document.createElement('button');b.className='ev-btn '+cls;b.textContent=text;b.addEventListener('click',fn);return b}
 function evHeader(title,back){return `<div class="ev-head"><button class="ev-btn ev-btn-alt" data-ev-back>‹ BACK</button><strong>${title}</strong><span>✦</span></div>`}
 function evDisplay(html,back=evHome){evRoot.innerHTML=html;evRoot.hidden=false;evRoot.scrollTop=0;evRoot.querySelector('[data-ev-back]')?.addEventListener('click',back);}
 function evExit(){evRoot.hidden=true;evRoot.innerHTML='';menu()}
-function evHome(){evRefresh();let stats=`${evData.weeklyBest} stages cleared`;evDisplay(`${evHeader('THE FREAKSHOW',evExit)}<div class="ev-banner" role="button" tabindex="0" id="evWeeklyCard"><span class="ev-kicker">MAIN EVENT · MONDAY–FRIDAY</span><h2>Mr. Walker's Weekly Nightmare</h2><span>${evOpenWeek()?'LIVE NOW · '+stats:'CLOSED · REOPENS MONDAY'}</span></div><div class="ev-cards"><button class="ev-card" data-ev="daily"><div class="ev-promo">🎟️</div><b>Daily Missions</b><small>10 tasks every day</small></button><button class="ev-card" data-ev="wheel"><div class="ev-promo">🎡</div><b>Wheel of Misfortune</b><small>One free spin daily</small></button><button class="ev-card" data-ev="ghost"><div class="ev-promo">👻</div><b>Ghost Parade</b><small>All-time top 10 stars</small></button><button class="ev-card" data-ev="clash"><div class="ev-promo">🏆</div><b>Carnival Clash</b><small>Sudoku + Haunting Tetris</small></button></div><div class="ev-panel"><span class="ev-dim">Events use your existing Gore Burst profile and local save. Ghost Parade is LIVE in beta. Best stars from signed-in cloud backups sync automatically. Other competitions are still local.</span></div>`,evExit);evRoot.querySelector('[data-ev-back]').onclick=evExit;evRoot.querySelector('#evWeeklyCard').onclick=evWeekly;evRoot.querySelector('#evWeeklyCard').onkeydown=e=>{if(e.key==='Enter')evWeekly()};for(const b of evRoot.querySelectorAll('[data-ev]'))b.onclick=({daily:evDaily,wheel:evWheel,ghost:evGhost,clash:evClash})[b.dataset.ev];}
+function evHome(){evRefresh();let stats=`${evData.weeklyBest} stages cleared`;evDisplay(`${evHeader('THE FREAKSHOW',evExit)}<div class="ev-banner" role="button" tabindex="0" id="evWeeklyCard"><span class="ev-kicker">MAIN EVENT · MONDAY–FRIDAY</span><h2>Mr. Walker's Weekly Nightmare <small class="ev-countdown" id="evWeeklyHomeCountdown">${evCountdownText(evWeeklyBoundary())}</small></h2><span>${evOpenWeek()?'LIVE NOW · '+stats:'CLOSED · REOPENS MONDAY'}</span></div><div class="ev-cards"><button class="ev-card" data-ev="daily"><div class="ev-promo ev-promo-art"><img src="assets/promo-daily-quests.png" alt="" loading="lazy" draggable="false"></div><b>Daily Quests</b><small>10 tasks every day</small></button><button class="ev-card" data-ev="wheel"><div class="ev-promo ev-promo-art"><img src="assets/promo-wheel-misfortune.png" alt="" loading="lazy" draggable="false"></div><b>Wheel of Misfortune</b><small>One free spin daily</small></button><button class="ev-card" data-ev="ghost"><div class="ev-promo ev-promo-art"><img src="assets/promo-hall-of-stars.png" alt="" loading="lazy" draggable="false"></div><b>Hall of Stars</b><small>Ghost Parade · All-time top 10 stars</small></button><button class="ev-card" data-ev="clash"><div class="ev-promo ev-promo-art"><img src="assets/promo-carnival-clash.png" alt="" loading="lazy" draggable="false"></div><b>Carnival Clash</b><small>Sudoku + Haunting Tetris</small></button></div>`,evExit);evRoot.querySelector('[data-ev-back]').onclick=evExit;evRoot.querySelector('#evWeeklyCard').onclick=evWeekly;evRoot.querySelector('#evWeeklyCard').onkeydown=e=>{if(e.key==='Enter')evWeekly()};for(const b of evRoot.querySelectorAll('[data-ev]'))b.onclick=({daily:evDaily,wheel:evWheel,ghost:evGhost,clash:evClash})[b.dataset.ev];evBindCountdown('evWeeklyHomeCountdown',evWeeklyBoundary);evUpdateRewardDots();}
 document.getElementById('events').onclick=()=>{ensureAudioGesture?.();evHome()};
-function evDaily(){evRefresh();let count=0;const items=evMissions.map((m,i)=>{const q=evMission(i),done=Math.min(q.target,evData.missions[q.key]||0),claimed=evData.claims.includes(i);if(claimed)count++;return `<div class="ev-mission"><div><b>${i+1}. ${q.name}</b><div class="ev-dim">${q.key==='attempts'?'Play levels (wins or losses)':q.key==='hearts'?'Collect hearts':q.key==='matches'?'Successful matches':q.key==='rockets'?'Create a rocket':q.key==='pieces'?'Collect pieces':q.key==='swaps'?'Valid swaps':q.key==='ghosts'?'Remove Ghosts':'Use a created special'} · ${done}/${q.target}</div><div class="ev-meter"><span style="width:${done/q.target*100}%"></span></div><small>Reward: ${q.reward}</small></div><button class="ev-btn" data-claim="${i}" ${claimed||done<q.target?'disabled':''}>${claimed?'CLAIMED':'CLAIM'}</button></div>`}).join('');evDisplay(`${evHeader('DAILY MISSIONS')}<div class="ev-panel"><h2>Ten Tickets to Trouble</h2><div class="ev-dim">${count} of 10 claimed · Resets at midnight (Malaysia time)</div>${items}</div>`);evRoot.querySelectorAll('[data-claim]').forEach(b=>b.onclick=()=>{const i=+b.dataset.claim,q=evMission(i);if(evData.claims.includes(i)||(evData.missions[q.key]||0)<q.target)return;evData.claims.push(i);evAward(evMissions[i][4]);evSave();playSfx('victory');evDaily()})}
-const evWheelPrizes=[{label:'100 COINS',reward:{coins:100}},{label:'300 COINS',reward:{coins:300}},{label:'500 COINS',reward:{coins:500}},{label:'ROCKET',reward:{RV:1}},{label:'CLOWNBOMB',reward:{CB:1}},{label:'FERRIS WHEEL',reward:{FW:1}},{label:'HAMMER',reward:{hammer:1}},{label:'WATCH',reward:{watch:1}},{label:'MYSTERY BOOSTER',reward:null},{label:'LOSE 1 LIFE',negative:'life'},{label:'−100 COINS',negative:'coins'},{label:'LOSER!',negative:'loser'}];
+function evDaily(){
+ evRefresh();
+ const claimedCount=evData.claims.length;
+ const sorted=evMissions.map((_,i)=>{const q=evMission(i),done=Math.min(q.target,evData.missions[q.key]||0),claimed=evData.claims.includes(i);return {i,q,done,claimed,ready:!claimed&&done>=q.target}}).sort((a,b)=>Number(b.ready)-Number(a.ready)||Number(a.claimed)-Number(b.claimed)||a.i-b.i);
+ const items=sorted.map(({i,q,done,claimed,ready})=>`<div class="ev-daily-item ${claimed?'ev-daily-claimed':ready?'ev-daily-ready':'ev-daily-pending'}"><div class="ev-daily-content"><div class="ev-daily-info"><b>${q.name}</b><span class="ev-daily-objective">${evMissionDescription(i,q)}</span><small>${done}/${q.target}</small><div class="ev-meter"><span style="width:${done/q.target*100}%"></span></div></div><div class="ev-daily-art">${evRewardArt(i)}</div></div><button class="ev-daily-claim" type="button" data-claim="${i}" ${claimed||!ready?'disabled':''}>${claimed?'CLAIMED':ready?'CLAIM':'IN PROGRESS'}</button></div>`).join('');
+ evDisplay(`${evHeader('DAILY MISSIONS')}<section class="ev-daily-panel"><h2>TEN TICKETS TO TROUBLE</h2><p class="ev-daily-counter">${claimedCount} / 10 CLAIMED · RESETS DAILY</p><div class="ev-daily-list">${items}</div></section>`);
+ evRoot.querySelectorAll('[data-claim]').forEach(b=>b.onclick=()=>{const i=+b.dataset.claim,q=evMission(i);if(evData.claims.includes(i)||(evData.missions[q.key]||0)<q.target)return;evData.claims.push(i);evAward(evMissions[i][4]);evSave();evUpdateRewardDots();playSfx('victory');evDaily()});evUpdateRewardDots();
+}
+const evWheelPrizes=[{label:'ROCKET',reward:{RV:1}},{label:'CLOWNBOMB',reward:{CB:1}},{label:'FERRIS WHEEL',reward:{FW:1}},{label:'HAMMER',reward:{hammer:1}},{label:'WATCH',reward:{watch:1}},{label:'500 COINS',reward:{coins:500}},{label:'300 COINS',reward:{coins:300}},{label:'100 COINS',reward:{coins:100}},{label:'MYSTERY BOOSTER',reward:null},{label:'LOSE 1 LIFE',negative:'life'},{label:'−100 COINS',negative:'coins'},{label:'LOSER!',negative:'loser'}];
+// Wheel of Misfortune spin only: W2 Enchanted Misfortune.
+// Separate from the Ferris Wheel special's `playSfx('wheel')` cue.
+function evPlayWheelSpinW2(){
+  try {
+    if(typeof gbPrefs!=='undefined' && !gbPrefs.sound) return;
+    const volume=typeof gbPrefs!=='undefined' ? Math.max(0,Math.min(100,Number(gbPrefs.soundVolume)||0))/100 : 0.75;
+    if(volume<=0) return;
+    const audio=new Audio('assets/sfx/wheel-misfortune-w2.mp3');
+    audio.volume=volume;
+    audio.play().catch(()=>{});
+  } catch(e) {}
+}
 let evWheelAngle=0,evSpinning=false;
 function evWheelCost(){return evData.spins===0?0:Math.min(1000,evData.spins*200)}
-function evWheel(){evRefresh();const base='assets/events/';const layer=(name,cls)=>`<img class="${cls}" src="${base}${name}.png" alt="">`;evDisplay(`${evHeader('WHEEL OF MISFORTUNE')}<div class="ev-panel"><div class="ev-dim">Skull Coins: <b id="evWheelCoins">${save.coins}</b> · Spins today: <b id="evSpinCount">${evData.spins}</b></div><div class="ev-wheel-wrap">${layer('02_rotating_disc','ev-disc')}${layer('01_stationary_frame','ev-rim')}${layer('04_center_medallion','ev-center')}${layer('03_fixed_pointer','ev-pointer')}</div><div class="ev-btn-row"><button class="ev-btn" id="evSpinBtn">${evWheelCost()===0?'FREE SPIN':'SPIN · '+evWheelCost()+' COINS'}</button></div><div id="evWheelResult" class="ev-gift"></div><p class="ev-dim">First spin free. Then 200, 400, 600, 800, and 1,000 coins per spin (1,000 maximum). Three unlucky outcomes included.</p></div>`);const disc=evRoot.querySelector('.ev-disc');disc.style.transform=`rotate(${evWheelAngle}deg)`;evRoot.querySelector('#evSpinBtn').onclick=async()=>{if(evSpinning)return;const cost=evWheelCost();if(save.coins<cost){evRoot.querySelector('#evWheelResult').textContent='Not enough Skull Coins!';return}if(cost&&!confirm(`Spin for ${cost} Skull Coins?`))return;save.coins-=cost;evData.spins++;evSave();persist();evSpinning=true;const btn=evRoot.querySelector('#evSpinBtn');btn.disabled=true;const idx=Math.floor(Math.random()*evWheelPrizes.length),prize=evWheelPrizes[idx];const angleEnd=(360-idx*30)%360;evWheelAngle+=1800+((angleEnd-(evWheelAngle%360)+360)%360);disc.style.transform=`rotate(${evWheelAngle}deg)`;playSfx('wheel');await new Promise(r=>setTimeout(r,4050));if(prize.negative==='life'){regenLives();if(save.lives>0){if(save.lives===5)save.lifeTick=Date.now();save.lives--;persist()}}else if(prize.negative==='coins'){save.coins=Math.max(0,save.coins-100);persist()}else if(!prize.negative){const reward=prize.reward||{[BOOSTERS[Math.floor(Math.random()*BOOSTERS.length)].id]:1};evAward(reward)}const notice=prize.negative==='loser'?'LOSER! Better luck next spin.':prize.label;evSpinning=false;evRoot.querySelector('#evWheelResult').textContent=notice;evRoot.querySelector('#evWheelCoins').textContent=save.coins;evRoot.querySelector('#evSpinCount').textContent=evData.spins;btn.textContent='SPIN · '+evWheelCost()+' COINS';btn.disabled=false;playSfx(prize.negative?'fail':'victory')};}
+function evWheel(){evRefresh();const base='assets/events/';const layer=(name,cls)=>`<img class="${cls}" src="${base}${name}.png" alt="">`;evDisplay(`${evHeader('WHEEL OF MISFORTUNE')}<div class="ev-panel ev-wheel-panel"><div class="ev-wheel-wallet">Skull Coins: <b id="evWheelCoins">${save.coins}</b> · Spins today: <b id="evSpinCount">${evData.spins}</b></div><div class="ev-wheel-wrap ev-wheel-glow">${layer('02_rotating_disc','ev-disc')}${layer('01_stationary_frame','ev-rim')}${layer('04_center_medallion','ev-center')}${layer('03_fixed_pointer','ev-pointer')}</div><div class="ev-btn-row"><button class="ev-btn ev-wheel-spin-btn" id="evSpinBtn">${evWheelCost()===0?'FREE SPIN':'SPIN · '+evWheelCost()+' COINS'}</button></div><div id="evWheelResult" class="ev-gift"></div></div>`);const disc=evRoot.querySelector('.ev-disc');disc.style.transform=`rotate(${evWheelAngle}deg)`;evRoot.querySelector('#evSpinBtn').onclick=async()=>{if(evSpinning)return;const cost=evWheelCost();if(save.coins<cost){evRoot.querySelector('#evWheelResult').textContent='Not enough Skull Coins!';return}if(cost&&!confirm(`Spin for ${cost} Skull Coins?`))return;save.coins-=cost;evData.spins++;evSave();persist();evUpdateRewardDots();evSpinning=true;const btn=evRoot.querySelector('#evSpinBtn');btn.disabled=true;const idx=Math.floor(Math.random()*evWheelPrizes.length),prize=evWheelPrizes[idx];const angleEnd=(360-idx*30)%360;evWheelAngle+=1800+((angleEnd-(evWheelAngle%360)+360)%360);disc.style.transform=`rotate(${evWheelAngle}deg)`;evPlayWheelSpinW2();await new Promise(r=>setTimeout(r,4050));if(prize.negative==='life'){regenLives();if(save.lives>0){if(save.lives===5)save.lifeTick=Date.now();save.lives--;persist()}}else if(prize.negative==='coins'){save.coins=Math.max(0,save.coins-100);persist()}else if(!prize.negative){const reward=prize.reward||{[BOOSTERS[Math.floor(Math.random()*BOOSTERS.length)].id]:1};evAward(reward)}const notice=prize.negative==='loser'?'LOSER! Better luck next spin.':prize.label;evSpinning=false;evRoot.querySelector('#evWheelResult').textContent=notice;evRoot.querySelector('#evWheelCoins').textContent=save.coins;evRoot.querySelector('#evSpinCount').textContent=evData.spins;btn.textContent='SPIN · '+evWheelCost()+' COINS';btn.disabled=false;playSfx(prize.negative?'fail':'victory')};}
 function evGhost(){
   evRefresh();
   const own=Object.values(save.best||{}).reduce((sum,v)=>sum+Math.min(3,Math.max(0,Number(v)||0)),0);
-  evDisplay(`${evHeader('GHOST PARADE')}<div class="ev-panel"><h2>👻 Hall of Stars</h2><p class="ev-dim">Permanent all-server Top 10 · each level contributes only its highest star rating, maximum 3 stars.</p><div class="ev-board-line"><span>Stars on this device</span><strong>${own} ★</strong></div><div id="gbGhostCloudSummary" class="ev-dim" aria-live="polite">Checking signed-in cloud backup…</div><div class="ev-panel"><h3>SERVER TOP 10</h3><p class="ev-dim">LIVE BETA: best stars from signed-in cloud backups count toward the all-time Top 10. Each level counts once.</p><div id="gbGhostOnlineRows" class="ev-dim" aria-live="polite">Loading rankings…</div><button class="ev-btn ev-btn-alt" id="gbGhostReload" type="button">REFRESH RANKINGS</button></div><p class="ev-dim">No rewards — just recognition.</p></div>`);
+  evDisplay(`${evHeader('GHOST PARADE')}<section class="ev-panel ev-ghost-shell"><div class="ev-ghost-title"><h2>👻 Hall of Stars</h2></div><div class="ev-ghost-stars"><span>Current Stars</span><strong>${own} ★</strong></div><section class="ev-ghost-board"><div class="ev-ghost-board-head"><h3>All-Time Top 10 Players</h3></div><div id="gbGhostOnlineRows" class="ev-ghost-loading" aria-live="polite">Loading rankings…</div><button class="ev-btn ev-ghost-refresh" id="gbGhostReload" type="button">REFRESH</button></section></section>`);
   evRoot.querySelector('#gbGhostReload').onclick=evFetchGhostParade;
   evFetchGhostParade();
 }
 function evGhostEscape(input){return String(input??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 async function evFetchGhostParade(){
-  const rows=evRoot.querySelector('#gbGhostOnlineRows'), cloud=evRoot.querySelector('#gbGhostCloudSummary');
-  if(!rows||!cloud)return;
-  rows.textContent='Loading server rankings…';cloud.textContent='Checking signed-in cloud backup…';
+  const rows=evRoot.querySelector('#gbGhostOnlineRows');
+  if(!rows)return;
+  rows.innerHTML='<div class="ev-ghost-message">Loading rankings…</div>';
   if(typeof window.gbGhostParadeFetch!=='function'){
-    rows.textContent='Profile connection is starting. Please try Refresh Rankings.';
-    cloud.textContent='Your local stars are safe on this device.';
+    rows.innerHTML='<div class="ev-ghost-message">Sign in to view the leaderboard.</div>';
     return;
   }
   try{
     const response=await window.gbGhostParadeFetch();
-    if(!rows.isConnected||!cloud.isConnected)return;
-    if(response.error){rows.textContent=response.error;cloud.textContent='Sign in to compare your private cloud backup with your device.';return}
-    const backup=response.backup;
-    cloud.textContent=backup?`Private cloud backup: ${Number(backup.total_stars||0)} stars across ${Number(backup.levels_scored||0)} levels · included in beta rankings after sync.`:'No private cloud backup found for your signed-in account. Your device stars are unchanged.';
-    if(!response.rows?.length){rows.textContent='No server stars recorded yet. Sign in, save progress to Supabase, and refresh.';return}
-    rows.innerHTML=response.rows.map(r=>`<div class="ev-board-line"><span style="display:flex;gap:8px;align-items:center"><b>#${Number(r.rank_position)}</b><img src="${evGhostEscape(window.gbGhostAvatarUrl?.(r)||'assets/avatars/01_Mr_Walker.png')}" alt="" loading="lazy" style="width:30px;height:30px;border-radius:50%;object-fit:cover"><span>${evGhostEscape(r.display_name||'Carnival Guest')}</span></span><strong>${Number(r.total_stars||0).toLocaleString()} ★</strong></div>`).join('');
-  }catch(e){if(rows.isConnected)rows.textContent='Could not load leaderboard: '+(e?.message||'Network error');if(cloud.isConnected)cloud.textContent='Your on-device stars remain safe.'}
+    if(!rows.isConnected)return;
+    if(response.error){rows.innerHTML=`<div class="ev-ghost-message">${evGhostEscape(response.error)}</div>`;return}
+    if(!response.rows?.length){rows.innerHTML='<div class="ev-ghost-message">No stars recorded yet.</div>';return}
+    rows.innerHTML=response.rows.slice(0,10).map(r=>{
+      const rank=Number(r.rank_position)||0;
+      const rankClass=rank===1?' is-top1':rank===2?' is-top2':rank===3?' is-top3':'';
+      return `<div class="ev-ghost-row${rankClass}"><div class="ev-ghost-rankwrap"><span class="ev-ghost-rank">#${rank}</span><img class="ev-ghost-avatar" src="${evGhostEscape(window.gbGhostAvatarUrl?.(r)||'assets/avatars/01_Mr_Walker.png')}" alt="" loading="lazy"><span class="ev-ghost-name">${evGhostEscape(r.display_name||'Carnival Guest')}</span></div><strong class="ev-ghost-score">${Number(r.total_stars||0).toLocaleString()} ★</strong></div>`;
+    }).join('');
+  }catch(e){if(rows.isConnected)rows.innerHTML=`<div class="ev-ghost-message">Could not load leaderboard: ${evGhostEscape(e?.message||'Network error')}</div>`}
 }
-function evClash(){evRefresh();evDisplay(`${evHeader('CARNIVAL CLASH')}<div class="ev-panel"><h2>🏆 The Haunted Arcade</h2><p class="ev-dim">A new competition begins every 48 hours. Earn points in both mini-games.</p><div class="ev-board-line"><span>Your Clash points this round (on this device)</span><b>${evData.clashPoints}</b></div><div class="ev-board-line"><span>Sudoku points</span><b>${evData.clashSudoku}</b></div><div class="ev-board-line"><span>Tetris points</span><b>${evData.clashLines*10}</b></div><div class="ev-panel"><h3>GLOBAL CARNIVAL CLASH</h3><p class="ev-dim" id="evClashStatus">Checking Supabase rankings…</p><div id="evClashRows" aria-live="polite"></div><button type="button" class="ev-btn ev-btn-alt" id="evClashRefresh">REFRESH RANKINGS</button></div></div><div class="ev-cards"><button class="ev-card" id="evSudoku"><div class="ev-promo">💀</div><b>Creepy Sudoku</b><small>Easy +50 · Medium +100 · Hard +150</small></button><button class="ev-card" id="evTetris"><div class="ev-promo">🧱</div><b>Haunting Tetris</b><small>Each cleared line +10</small></button></div>`);evRoot.querySelector('#evSudoku').onclick=evSudokuMenu;evRoot.querySelector('#evTetris').onclick=evTetrisStart;evRoot.querySelector('#evClashRefresh').onclick=evFetchClash;evFetchClash()}
-async function evFetchClash(){const status=evRoot.querySelector('#evClashStatus'),rows=evRoot.querySelector('#evClashRows');if(!status||!rows)return;status.textContent='Loading live rankings…';rows.replaceChildren();if(typeof window.gbClashLeaderboardFetch!=='function'){status.textContent='Connecting to Supabase…';return}try{const result=await window.gbClashLeaderboardFetch();if(!status.isConnected)return;if(result.error){status.textContent=result.error;return}status.textContent='Shared Sudoku + Tetris points · current 48-hour round';if(!result.rows?.length){rows.textContent='No online scores this round yet.';return}rows.innerHTML=result.rows.map(r=>`<div class="ev-board-line"><span style="display:flex;align-items:center;gap:8px"><b>#${Number(r.rank_position)}</b><img src="${evGhostEscape(window.gbGhostAvatarUrl?.(r)||'assets/avatars/01_Mr_Walker.png')}" alt="" loading="lazy" style="width:32px;height:32px;object-fit:cover;border-radius:50%"><span>${evGhostEscape(r.display_name||'Carnival Guest')}</span></span><strong>${Number(r.points||0).toLocaleString()} pts</strong></div>`).join('')}catch(error){if(status.isConnected)status.textContent='Could not load rankings: '+(error.message||'Network error')}}
+const evClashPrizeData=[
+  {place:'#1',coins:1000,rewards:[['assets/ferris.png','Ferris Wheel',3]]},
+  {place:'#2',coins:700,rewards:[['assets/clownbomb.png','Clownbomb',2]]},
+  {place:'#3',coins:400,rewards:[['assets/rocket-h.png','Rocket',2]]},
+  {place:'#4 - 5',coins:300,rewards:[['assets/clownbomb.png','Clownbomb',1]]},
+  {place:'#6 - 10',coins:200,rewards:[['assets/rocket-h.png','Rocket',1]]}
+];
+function evClash(){
+  evRefresh();
+  evDisplay(`${evHeader('CARNIVAL CLASH')}<section class="ev-clash-intro"><div class="ev-event-title"><h2>THE HAUNTED ARCADE</h2><span class="ev-countdown" id="evClashCountdown" aria-label="Time remaining in this round">${evCountdownText(evClashEnd())}</span></div><p class="ev-dim ev-clash-copy">Earn points from any of these games.</p></section><div class="ev-cards ev-clash-cards"><button type="button" class="ev-card ev-clash-card ev-clash-compact" id="evSudoku" aria-label="Play Creepy Sudoku"><div class="ev-clash-art ev-clash-art-sudoku" aria-hidden="true"></div></button><button type="button" class="ev-card ev-clash-card ev-clash-compact" id="evTetris" aria-label="Play Haunting Tetris"><div class="ev-clash-art ev-clash-art-tetris" aria-hidden="true"></div></button></div><section class="ev-panel ev-clash-board"><h3>GLOBAL CARNIVAL CLASH LEADERBOARD</h3><div class="ev-clash-status" id="evClashStatus" aria-live="polite">Loading live rankings…</div><div id="evClashRows" class="ev-clash-rows" aria-live="polite"></div><div class="ev-clash-actions"><button type="button" class="ev-btn ev-btn-alt ev-clash-refresh" id="evClashRefresh">REFRESH</button><button type="button" class="ev-btn ev-clash-rewards-btn" id="evClashRewardsBtn">REWARDS</button></div></section>`);
+  evRoot.querySelector('#evSudoku').onclick=evSudokuMenu;
+  evRoot.querySelector('#evTetris').onclick=evTetrisStart;
+  evRoot.querySelector('#evClashRefresh').onclick=evFetchClash;
+  evRoot.querySelector('#evClashRewardsBtn').onclick=evClashRewardsView;
+  evFetchClash();
+  evBindCountdown('evClashCountdown',evClashEnd);
+}
+async function evFetchClash(){
+  const status=evRoot.querySelector('#evClashStatus'),rows=evRoot.querySelector('#evClashRows');
+  if(!status||!rows)return;
+  status.textContent='Loading live rankings…';
+  rows.innerHTML='';
+  if(typeof window.gbClashLeaderboardFetch!=='function'){
+    status.textContent='Sign in to view rankings.';
+    return;
+  }
+  try{
+    const result=await window.gbClashLeaderboardFetch();
+    if(!status.isConnected||!rows.isConnected)return;
+    if(result.error){status.textContent=result.error;return}
+    status.textContent='';
+    if(!result.rows?.length){rows.innerHTML='<div class="ev-clash-message">No online scores this round yet.</div>';return}
+    rows.innerHTML=result.rows.slice(0,10).map(r=>{
+      const rank=Number(r.rank_position)||0;
+      const rankClass=rank===1?' is-top1':rank===2?' is-top2':rank===3?' is-top3':'';
+      return `<div class="ev-clash-row${rankClass}"><div class="ev-clash-rankwrap"><span class="ev-clash-rank">#${rank}</span><img class="ev-clash-avatar" src="${evGhostEscape(window.gbGhostAvatarUrl?.(r)||'assets/avatars/01_Mr_Walker.png')}" alt="" loading="lazy"><span class="ev-clash-name">${evGhostEscape(r.display_name||'Carnival Guest')}</span></div><strong class="ev-clash-score">${Number(r.points||0).toLocaleString()} pts</strong></div>`;
+    }).join('');
+  }catch(error){if(status.isConnected)status.textContent='Could not load rankings: '+(error.message||'Network error')}
+}
+function evClashRewardsView(){
+  const rows=evClashPrizeData.map(p=>`<div class="ev-clash-prize-row"><div class="ev-clash-prize-place">${p.place}</div><div class="ev-clash-prize-loot"><div class="ev-clash-loot-item"><img src="assets/coin-skull-new.png" alt="Coins"><span>${Number(p.coins).toLocaleString()}</span></div>${p.rewards.map(([src,label,count])=>`<div class="ev-clash-loot-item"><img src="${src}" alt="${label}"><span>${count>1?'x'+count:label==='Rocket'?'x1':'x1'}</span></div>`).join('')}</div></div>`).join('');
+  evDisplay(`${evHeader('REWARDS',evClash)}<section class="ev-panel ev-clash-rewards-screen"><h2>HAUNTED ARCADE REWARDS</h2><div class="ev-clash-prize-list">${rows}</div></section>`,evClash);
+}
 function evClashEarn(type,amount){if(typeof window.gbClashSubmit==='function')window.gbClashSubmit(type,amount).catch(e=>console.warn('Clash score was not synced:',e));}
-function evWeekly(){evRefresh();const rewards=['#1: 5,000 coins + 3 of every starting special + 2 of each booster','#2: 3,000 coins + 2 of each starting special + 1 of each booster','#3: 1,000 coins + 1 of each starting special','#4–5: 500 coins + Rocket + Ferris Wheel','#6–10: 300 coins + Clownbomb'];evDisplay(`${evHeader('WEEKLY NIGHTMARE')}<div class="ev-panel"><h2>Mr. Walker’s Weekly Nightmare</h2><p class="ev-dim">Monday through Friday · Same match-3 rules, larger random boards, endless stages. Special pieces can be created through matches, but no starting specials, boosters, or +5 moves.</p><div class="ev-board-line"><span>Your next stage</span><b>${evData.weeklyStage}</b></div><div class="ev-board-line"><span>Stages cleared this week</span><b>${evData.weeklyBest}</b></div><div class="ev-board-line"><span>Lives</span><b>${save.lives}/5 ♥</b></div><button class="ev-btn" id="evWeeklyGo" ${!evOpenWeek()?'disabled':''}>${evOpenWeek()?'PLAY STAGE '+evData.weeklyStage:'REOPENS MONDAY'}</button></div><div class="ev-panel"><h2>Weekly Top 10</h2><p class="ev-dim">Online rankings will become visible when secure Supabase leaderboard submission is activated. Your own stage progress is saved locally meanwhile.</p><h3>Final ranking prizes</h3><div class="ev-prizes">${rewards.map(x=>'<div class="ev-board-line">'+x+'</div>').join('')}</div></div>`);evRoot.querySelector('#evWeeklyGo').onclick=evStartWeeklyStage;}
-function evStartWeeklyStage(){evRefresh();if(!evOpenWeek()){evWeekly();return}if(!canAttempt())return;evRoot.hidden=true;evRoot.innerHTML='';eventRun=true;chosen=5+evData.weeklyStage;conf=levelConfig(chosen);const side=evData.weeklyStage%3;const size=side===0?9:8;const mask=Array.from({length:8},(_,r)=>Array.from({length:size},(_,c)=>((r===0||r===7)&&(c===0||c===size-1)&&(side===1))?'.':'X').join(''));conf={...conf,mask,moves:Math.max(34,Math.min(46,38+Math.floor(evData.weeklyStage/5))),tutorial:null,goals:{H:Math.min(38,18+evData.weeklyStage),G:Math.min(35,15+evData.weeklyStage)}};boosterTarget=null;boosterFirst=null;pinnedSpecialCells.clear();seed=((Date.now()>>>0)^(evData.weeklyStage*9181))>>>0;moves=conf.moves;starPoints=0;comboChain=0;collected=Object.fromEntries(Object.keys(conf.goals).map(t=>[t,0]));score=0;phase=0;ghostRemoved=0;ghostSpawnQueue=[];mode='free';busy=false;grid=[];blockers=[];source=null;turnFireCleared=false;freshBoard();$('result').hidden=true;$('gbFail').hidden=true;document.querySelector('#result .gb-win-shell').hidden=false;save.pendingFailure=false;persist();show('game');$('boosters').style.display='none';$('walker').hidden=true;render();say('WEEKLY NIGHTMARE · STAGE '+evData.weeklyStage)}
-function weeklyFinish(win){if(mode==='ended'||mode==='failed')return;mode=win?'ended':'failed';busy=false;playSfx(win?'victory':'fail');$('result').hidden=true;if(win){evData.weeklyBest=Math.max(evData.weeklyBest,evData.weeklyStage);evData.weeklyStage++;evSave()}else{consumeFailedLife()}const covered=document.createElement('div');covered.className='ev-root';covered.id='evWeeklyResult';covered.innerHTML=`<div class="ev-panel" style="margin-top:25%;text-align:center"><h2>${win?'STAGE CLEARED!':'STAGE FAILED'}</h2><p>${win?'You survived another nightmare.':'Retry the same stage whenever you have a life.'}</p><p>${win?'Stages passed: '+evData.weeklyBest:'Lives remaining: '+save.lives+'/5'}</p><button class="ev-btn" id="evEventRetry">${win?'NEXT STAGE':'RETRY STAGE'}</button> <button class="ev-btn ev-btn-alt" id="evEventHome">EVENTS</button></div>`;document.getElementById('app').appendChild(covered);covered.querySelector('#evEventRetry').onclick=()=>{covered.remove();evStartWeeklyStage()};covered.querySelector('#evEventHome').onclick=()=>{covered.remove();eventRun=false;$('boosters').style.display='';menu();evWeekly()};}
+function evWeekly(){
+ evRefresh();
+ evDisplay(`${evHeader('WEEKLY NIGHTMARE')}<section class="ev-nightmare-lobby">
+ <div class="ev-nightmare-art" aria-hidden="true"></div>
+ <div class="ev-nightmare-status"><span>${evOpenWeek()?'LIVE NOW':'CLOSED'}</span><span class="ev-countdown" id="evWeeklyDetailCountdown">${evCountdownText(evWeeklyBoundary())}</span></div>
+ <div class="ev-nightmare-stage">STAGE: ${evData.weeklyStage}</div>
+ <button class="ev-nightmare-enter" id="evWeeklyGo" ${!evOpenWeek()?'disabled':''}>${evOpenWeek()?'ENTER NIGHTMARE':'REOPENS MONDAY'}</button>
+ </section><section class="ev-nightmare-ranks"><h2>WEEKLY TOP 10</h2><div id="evNightmareRankings" class="ev-nightmare-rank-list">Loading rankings…</div><button class="ev-nightmare-rewards" id="evWeeklyRewards">VIEW REWARDS</button></section>`);
+ evRoot.querySelector('#evWeeklyGo').onclick=evStartWeeklyStage;
+ evRoot.querySelector('#evWeeklyRewards').onclick=evWeeklyRewards;
+ evBindCountdown('evWeeklyDetailCountdown',evWeeklyBoundary);
+ evLoadWeeklyRankings();
+}
+// Approved Weekly Nightmare prize display. This does not alter leaderboard scoring or payout processing.
+const evWeeklyPrizes=[
+  {place:'#1',coins:5000,specials:3,boosters:2},
+  {place:'#2',coins:3000,specials:2,boosters:1},
+  {place:'#3',coins:1500,specials:1,boosters:1},
+  {place:'#4 – #10',coins:1000,specials:0,boosters:0}
+];
+const evWeeklyIconRewards=[
+  ['assets/rocket-h.png','Rocket','specials'],
+  ['assets/clownbomb.png','Clownbomb','specials'],
+  ['assets/ferris.png','Ferris Wheel','specials'],
+  ['assets/booster-hammer.webp','Circus Hammer','boosters'],
+  ['assets/booster-watch.webp',"Mr. Walker's Watch",'boosters'],
+  ['assets/booster-cards.webp','Art of Distraction','boosters'],
+  ['assets/booster-musicbox.webp','Surprise Music Box','boosters']
+];
+function evWeeklyRewards(){
+  const rows=evWeeklyPrizes.map((p,i)=>{
+    const items=[`<span class="ev-weekly-loot-item"><img src="assets/coin-skull-new.png" alt="Skull Coins"><b>${p.coins.toLocaleString()}</b></span>`];
+    for(const [src,name,key] of evWeeklyIconRewards){
+      if(p[key])items.push(`<span class="ev-weekly-loot-item" title="${name}"><img src="${src}" alt="${name}"><b>×${p[key]}</b></span>`);
+    }
+    return `<div class="ev-weekly-prize-row ev-weekly-prize-${i+1}"><div class="ev-weekly-prize-rank">${p.place}</div><div class="ev-weekly-loot">${items.join('')}</div></div>`;
+  }).join('');
+  evDisplay(`${evHeader('REWARDS',evWeekly)}<section class="ev-panel ev-weekly-rewards-screen"><h2>WEEKLY NIGHTMARE REWARDS</h2><div class="ev-weekly-prize-list">${rows}</div></section>`,evWeekly);
+}
+async function evLoadWeeklyRankings(){const host=evRoot.querySelector('#evNightmareRankings');if(!host)return;
+ if(typeof window.gbWeeklyTop10!=='function'){host.textContent='Rankings unavailable';return}
+ try{const result=await window.gbWeeklyTop10();if(!host.isConnected)return;if(result.error){host.textContent='Rankings unavailable';return}
+ const rows=(result.rows||[]).slice(0,10);if(!rows.length){host.textContent='No scores yet';return}
+ host.replaceChildren();for(const r of rows){const line=document.createElement('div');line.className='ev-nightmare-rank-row';const rank=document.createElement('b');rank.textContent='#'+r.rank_position;const img=document.createElement('img');img.alt='';img.src=window.gbGhostAvatarUrl?.(r)||'assets/avatars/01.png';const name=document.createElement('span');name.textContent=r.display_name||'Carnival Guest';const stage=document.createElement('strong');stage.textContent=Number(r.stages_cleared||0)+' stages';line.append(rank,img,name,stage);host.append(line)}
+ }catch(e){if(host.isConnected)host.textContent='Rankings unavailable';}}
+function evWeeklyMask(stage){
+ // Repeatable family of distinct, connected board silhouettes, minimum six columns/rows of play.
+ const shapes=[
+ ['..XXXX..','.XXXXXX.','XXXXXXXX','XXXXXXXX','XXXXXXXX','XXXXXXXX','.XXXXXX.','..XXXX..'],
+ ['XXXXXXXX','XXXXXXXX','.XXXXXX.','..XXXX..','..XXXX..','.XXXXXX.','XXXXXXXX','XXXXXXXX'],
+ ['.XXXXXX.','XXXXXXXX','XXXXXXXX','XXX..XXX','XXX..XXX','XXXXXXXX','XXXXXXXX','.XXXXXX.'],
+ ['..XXXXX..','.XXXXXXX.','XXXXXXXXX','XXXXXXXXX','.XXXXXXX.','..XXXXX..','..XXXXX..','.XXXXXXX.','XXXXXXXXX'],
+ ['XXXXXXXXX','XXXXXXXXX','..XXXXXXX','..XXXXXXX','XXXXXXXXX','XXXXXXX..','XXXXXXX..','XXXXXXXXX','XXXXXXXXX'],
+ ['.XXXXXXX.','XXXXXXXXX','XXXXXXXXX','XXX...XXX','XXXXXXXXX','XXXXXXXXX','.XXXXXXX.','..XXXXX..','..XXXXX..']
+ ];return shapes[(stage-1)%shapes.length].map(s=>s.replaceAll(' ','')).map(s=>s);
+}
+function evStartWeeklyStage(){evRefresh();if(!evOpenWeek()){evWeekly();return}if(!canAttempt())return;
+ evRoot.hidden=true;evRoot.innerHTML='';eventRun=true;
+ const stage=evData.weeklyStage;chosen=Math.min(99,Math.max(21,21+stage*5));
+ const base=levelConfig(chosen);let goals;const types=['H','S','G','M','B','W','C'];const pick=types[(stage*3)%types.length];
+ const amount=Math.min(44,20+Math.floor(stage*1.7));
+ switch((stage-1)%6){
+  case 0: goals={[pick]:amount,SL:Math.min(12,4+Math.floor(stage/2))};break;
+  case 1: goals={[pick]:amount,CC:Math.min(6,2+Math.floor(stage/4))};break;
+  case 2: goals={[pick]:amount,JL:Math.min(4,1+Math.floor(stage/5))};break;
+  case 3: goals={[pick]:amount,FI:Math.min(3,1+Math.floor(stage/7))};break;
+  case 4: goals={[pick]:amount,SL:Math.min(14,6+Math.floor(stage/2))};break;
+  default: goals={[pick]:amount,RV:Math.min(5,2+Math.floor(stage/10))};break;
+ }
+ // Select a configuration that can actually produce the requested blocker.
+ if(goals.FI)chosen=Math.max(51,chosen);
+ if(goals.JL)chosen=Math.max(36,chosen);
+ if(goals.CC)chosen=Math.max(21,chosen);
+ conf={...base,mask:evWeeklyMask(stage),moves:Math.max(29,39-Math.floor(stage/4)),tutorial:null,goals};
+ boosterTarget=null;boosterFirst=null;pinnedSpecialCells.clear();seed=((Date.now()>>>0)^(stage*9181))>>>0;
+ moves=conf.moves;starPoints=0;comboChain=0;collected=Object.fromEntries(Object.keys(conf.goals).map(t=>[t,0]));score=0;phase=0;ghostRemoved=0;ghostSpawnQueue=[];mode='free';busy=false;grid=[];blockers=[];source=null;turnFireCleared=false;
+ freshBoard();
+ // Match blocker targets to their actual starting population, never demand absent fire.
+ for(const kind of ['SL','CC','JL','FI'])if(kind in conf.goals){
+  const available=blockers.flat().filter(b=>b?.kind===kind).length;
+  if(!available)delete conf.goals[kind];
+  else if(kind!=='FI')conf.goals[kind]=Math.min(conf.goals[kind],available);
+ }
+ collected=Object.fromEntries(Object.keys(conf.goals).map(t=>[t,0]));
+ $('result').hidden=true;$('gbFail').hidden=true;document.querySelector('#result .gb-win-shell').hidden=false;save.pendingFailure=false;persist();show('game');$('boosters').style.display='none';$('walker').hidden=true;render();say('WEEKLY NIGHTMARE · STAGE '+stage);
+}
+function weeklyFinish(win){
+ if(mode==='ended'||mode==='failed')return;
+ const finishedStage=evData.weeklyStage;
+ mode=win?'ended':'failed';busy=false;playSfx(win?'victory':'fail');$('result').hidden=true;
+ if(win){evData.weeklyBest=Math.max(evData.weeklyBest,finishedStage);evData.weeklyStage++;evSave();window.gbWeeklySubmit?.(evData.weeklyBest).catch?.(()=>{})}
+ else consumeFailedLife();
+ // Event results are deliberately separate from the campaign's victory/failed screens.
+ document.getElementById('evWeeklyResult')?.remove();
+ const covered=document.createElement('div');covered.className='ev-root ev-weekly-result-view';covered.id='evWeeklyResult';
+ covered.innerHTML=`<section class="ev-weekly-result-card ${win?'is-victory':'is-defeat'}" role="dialog" aria-modal="true" aria-label="Weekly Nightmare ${win?'stage cleared':'stage failed'}">
+ <div class="ev-weekly-result-spark" aria-hidden="true">✦ ✧ ✦</div>
+ <div class="ev-weekly-result-eyebrow">MR. WALKER'S WEEKLY NIGHTMARE</div>
+ <h2>${win?'NIGHTMARE SURVIVED!':'THE NIGHTMARE CONTINUES'}</h2>
+ <p class="ev-weekly-result-stage">STAGE ${finishedStage} ${win?'CLEARED':'FAILED'}</p>
+ ${win?'':`<p class="ev-weekly-result-lives">♥ ${save.lives}/5 LIVES LEFT</p>`}
+ <div class="ev-weekly-result-actions"><button type="button" class="ev-weekly-result-primary" id="evEventRetry" ${(!win&&save.lives<=0)||!evOpenWeek()?'disabled':''}>${win?'NEXT STAGE':'RETRY STAGE'}</button><button type="button" class="ev-weekly-result-secondary" id="evEventHome">EVENT</button></div>
+ </section>`;
+ document.getElementById('app').appendChild(covered);
+ covered.querySelector('#evEventRetry').onclick=()=>{covered.remove();eventRun=false;evStartWeeklyStage()};
+ covered.querySelector('#evEventHome').onclick=()=>{covered.remove();eventRun=false;$('boosters').style.display='';menu();evWeekly()};
+}
 const evOldBack=$('gameback').onclick;$('gameback').onclick=function(e){if(eventRun){if(mode==='ended'||mode==='failed')return;if(!confirm('Leave Weekly Nightmare stage? This attempt costs one life.'))return;consumeFailedLife();eventRun=false;$('boosters').style.display='';menu();evWeekly();return}evOldBack.call(this,e)};
 // Intercept all ordinary result actions only for the event; standard screens stay unchanged.
 const sudokuImgs=['01_Pink_Neon_Bat.png','02_Blue_Neon_Moon.png','03_Orange_Neon_Pumpkin.png','04_Green_Neon_Cat.png','05_White_Pink_Ghost.png','06_Red_Neon_Heart.png','07_Purple_Neon_Candy.png','08_Yellow_Neon_Star.png','09_Cyan_Neon_Cross.png'];
@@ -85,13 +283,11 @@ function evSudokuMenu(){
 }
 function shuffled(v){const x=[...v];for(let i=x.length-1;i>0;i--){const k=Math.floor(Math.random()*(i+1));[x[k],x[i]]=[x[i],x[k]]}return x}
 function makeSudokuSolution(){const nums=shuffled([1,2,3,4,5,6,7,8,9]);const rOrder=shuffled([0,1,2]).flatMap(b=>shuffled([0,1,2]).map(n=>b*3+n));const cOrder=shuffled([0,1,2]).flatMap(b=>shuffled([0,1,2]).map(n=>b*3+n));return Array.from({length:81},(_,i)=>nums[(rOrder[Math.floor(i/9)]*3+Math.floor(rOrder[Math.floor(i/9)]/3)+cOrder[i%9])%9])}
-async function evSudokuStart(difficulty){
-  let remote=null;
-  try{if(typeof window.gbSudokuStartVerified==='function')remote=await window.gbSudokuStartVerified(difficulty)}catch(e){console.warn('Sudoku online verification unavailable:',e)}
-  const answer=remote?.solution?.length===81?remote.solution.map(Number):makeSudokuSolution(),percent={easy:.60,medium:.45,hard:.35}[difficulty];
+function evSudokuStart(difficulty){
+  const answer=makeSudokuSolution(),percent={easy:.60,medium:.45,hard:.35}[difficulty];
   const count=Math.round(81*percent);
-  const givens=remote?.puzzle?.length===81?new Set(remote.puzzle.map((n,i)=>n?i:-1).filter(i=>i>=0)):new Set(shuffled(Array.from({length:81},(_,i)=>i)).slice(0,count));
-  sudoku={answer,values:answer.map((n,i)=>givens.has(i)?n:0),givens,selected:-1,choice:0,highlight:0,mistakes:0,wrong:new Set(),notes:false,noteMarks:{},history:[],hintsLeft:1,start:Date.now(),difficulty,done:false,remoteSession:remote?.session_id||null};
+  const givens=new Set(shuffled(Array.from({length:81},(_,i)=>i)).slice(0,count));
+  sudoku={answer,values:answer.map((n,i)=>givens.has(i)?n:0),givens,selected:-1,choice:0,highlight:0,mistakes:0,wrong:new Set(),notes:false,noteMarks:{},history:[],hintsLeft:1,start:Date.now(),difficulty,done:false};
   evSudokuRender();clearInterval(sudokuTimer);
   sudokuTimer=setInterval(()=>{if(!sudoku||sudoku.done)return;const el=evRoot.querySelector('#evSudoTime');if(el){const time=Math.floor((Date.now()-sudoku.start)/1000);el.textContent=`${String(Math.floor(time/60)).padStart(2,'0')}:${String(time%60).padStart(2,'0')}`}},1000);
 }
@@ -139,17 +335,11 @@ function evSudokuEnd(won,pts=0){
   evRoot.querySelector('#evSudoAgain').onclick=()=>evSudokuStart(s.difficulty);
   evRoot.querySelector('#evSudoBack').onclick=evClash;
 }
-async function evSudokuCheck(){
+function evSudokuCheck(){
   const s=sudoku;if(!s||s.done||!s.values.every((v,i)=>v===s.answer[i]))return;
-  s.done=true;clearInterval(sudokuTimer);
-  const pts={easy:50,medium:100,hard:150}[s.difficulty];
-  let credited=false;
-  if(s.remoteSession && typeof window.gbSudokuFinishVerified==='function'){
-    try{credited=!!(await window.gbSudokuFinishVerified(s.remoteSession,s.values))}catch(e){console.warn('Sudoku verification rejected:',e)}
-  }
-  // Offline practice still wins; only successful server sessions receive ONLINE ranking points.
-  if(credited){evRefresh();evData.clashPoints+=pts;evData.clashSudoku+=pts;evSave()}
-  if(typeof playSfx==='function')playSfx('victory');evSudokuEnd(true,credited?pts:0);
+  s.done=true;clearInterval(sudokuTimer);const pts={easy:50,medium:100,hard:150}[s.difficulty];
+  evRefresh();evData.clashPoints+=pts;evData.clashSudoku+=pts;evSave();evClashEarn('sudoku_'+s.difficulty,pts);
+  if(typeof playSfx==='function')playSfx('victory');evSudokuEnd(true,pts);
 }
 // Neon, mobile-friendly falling-block puzzle. Points are awarded for each cleared row, no hidden bonuses.
 let tetris=null,tetrisTicker=null;
@@ -169,3 +359,6 @@ document.addEventListener('keydown',e=>{if(!tetris||tetris.over||evRoot.hidden||
 // Daily mission signals track activity even when a level is not won.
 const evBaseSpecial=maybeSpecial;maybeSpecial=function(...args){const out=evBaseSpecial(...args);if(out&&!eventRun&&mode!=='talk'&&mode!=='guide'&&out.type==='RV')dailyRecord('rockets',1);return out};
 const evBaseQueue=triggerQueue;triggerQueue=async function(...args){if(!eventRun&&args[0]?.length)dailyRecord('specials',1);return await evBaseQueue(...args)};
+
+// Keep event navigation indicator in sync when menu returns after gameplay.
+queueMicrotask(evUpdateRewardDots);
