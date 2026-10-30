@@ -184,3 +184,46 @@
   min-width: 0;
   max-width: 100%;
 }
+
+/* Gore Burst 2.0 — Mailbox reward icon sizing (CSS only)
+   Fix oversized 100-Skull-Coin test image and stop horizontal overflow. */
+#gb-profile-layer .gbpr-open-letter,
+#gb-profile-layer .gbpr-test-prize,
+#gb-profile-layer .gbpr-event-loot-grid {
+  box-sizing: border-box !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+#gb-profile-layer .gbpr-test-prize {
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-wrap: wrap !important;
+  gap: 10px !important;
+  padding: 12px !important;
+  overflow: hidden !important;
+}
+#gb-profile-layer .gbpr-test-prize > img,
+#gb-profile-layer .gbpr-event-loot-item > img {
+  display: block !important;
+  box-sizing: border-box !important;
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  max-width: 40px !important;
+  min-height: 40px !important;
+  max-height: 40px !important;
+  object-fit: contain !important;
+  flex: 0 0 40px !important;
+  margin: 0 !important;
+}
+#gb-profile-layer .gbpr-test-prize > strong {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow-wrap: anywhere !important;
+  font-size: 13px !important;
+}
+#gb-profile-layer .gbpr-open-letter > p {
+  overflow-wrap: anywhere !important;
+}
