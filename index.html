@@ -501,7 +501,7 @@ html,body{overscroll-behavior:none;height:100%;height:100dvh}
 #setup button:focus-visible,#result button:focus-visible{outline:2px solid #91f1ff!important;outline-offset:3px!important}
 #setup button:active,#result button:active{filter:brightness(1.15)!important}
 @media(prefers-reduced-motion:reduce){#setup .gb-setup-frame,#result .gb-win-shell,#result .gb-failure-shell,#setup .gb-start-art,#result .gb-next-art,#result .failure-retry{animation:none!important}}
-</style><link rel="stylesheet" href="assets/gb-profile.css"><link rel="stylesheet" href="assets/gb-events.css"></head><body><div id="app">
+</style><link rel="stylesheet" href="assets/gb-profile.css"><link rel="stylesheet" href="assets/gb-events.css"><link rel="stylesheet" href="assets/gb-collectibles.css"></head><body><div id="app">
 <section class="view active" id="loading" aria-label="Loading Gore Burst"><img src="assets/loading-clean.webp" alt="Gore Burst carnival entrance"></section>
 <section class="view" id="menu"><div class="scenery"></div><div class="vignette"></div>
 <div class="top art-hud"><img id="gbMenuAvatar" src="assets/avatars/01_Mr_Walker.png" alt="Your avatar"><img class="hud-art" src="assets/art-hud.webp" alt=""/><button class="hud-profile" id="profile" aria-label="Open player profile"></button><button class="hud-lives" id="livesaction" aria-label="Lives"><span id="lives">5/5</span><small id="lifeCountdown" aria-live="off"></small></button><button class="hud-coins" id="coinsaction" aria-label="Skull Coins"><span id="money">0</span></button><button class="hud-settings" id="settings" aria-label="Settings"></button></div>
@@ -1174,7 +1174,7 @@ document.getElementById('gamepause').onclick=openGbSettings;
 document.getElementById('gbSettingsClose').onclick=closeGbSettings;
 document.getElementById('gbSettings').addEventListener('click',e=>{if(e.target.id==='gbSettings')closeGbSettings()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeGbSettings()});
-</script><script src="assets/gb-events.js"></script><script type="module" src="assets/gb-profile.js?v=auto-stars-sync-2"></script><style id="gb-events-badge-final-position">
+</script><script src="assets/gb-events.js"></script><script type="module" src="assets/gb-profile.js?v=auto-stars-sync-2"></script><script defer src="assets/gb-collectibles.js"></script><style id="gb-events-badge-final-position">
 /* Fixed badge: a child of the actual EVENTS tap area, not a pseudo-element. */
 #menu .bottom-tabs #events.ev-tab-has-reward::after{content:none!important;display:none!important}
 #menu .bottom-tabs #events{position:absolute!important;overflow:hidden!important}
