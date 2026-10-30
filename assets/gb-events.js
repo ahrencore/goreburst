@@ -283,11 +283,40 @@ function evSudokuMenu(){
 }
 function shuffled(v){const x=[...v];for(let i=x.length-1;i>0;i--){const k=Math.floor(Math.random()*(i+1));[x[k],x[i]]=[x[i],x[k]]}return x}
 function makeSudokuSolution(){const nums=shuffled([1,2,3,4,5,6,7,8,9]);const rOrder=shuffled([0,1,2]).flatMap(b=>shuffled([0,1,2]).map(n=>b*3+n));const cOrder=shuffled([0,1,2]).flatMap(b=>shuffled([0,1,2]).map(n=>b*3+n));return Array.from({length:81},(_,i)=>nums[(rOrder[Math.floor(i/9)]*3+Math.floor(rOrder[Math.floor(i/9)]/3)+cOrder[i%9])%9])}
-function evSudokuStart(difficulty){
-  const answer=makeSudokuSolution(),percent={easy:.60,medium:.45,hard:.35}[difficulty];
-  const count=Math.round(81*percent);
-  const givens=new Set(shuffled(Array.from({length:81},(_,i)=>i)).slice(0,count));
-  sudoku={answer,values:answer.map((n,i)=>givens.has(i)?n:0),givens,selected:-1,choice:0,highlight:0,mistakes:0,wrong:new Set(),notes:false,noteMarks:{},history:[],hintsLeft:1,start:Date.now(),difficulty,done:false};
+// Solve the server-issued puzzle locally for existing correct-placement and hint UI.
+// The server never sends its completed solution to the client.
+function gbSolveSudokuPuzzle(puzzle){
+  const a=[...puzzle].map(Number);if(a.length!==81)return null;
+  const candidates=(i)=>{const row=Math.floor(i/9),col=i%9,used=new Set();
+    for(let k=0;k<9;k++){used.add(a[row*9+k]);used.add(a[k*9+col]);}
+    const r0=Math.floor(row/3)*3,c0=Math.floor(col/3)*3;
+    for(let r=r0;r<r0+3;r++)for(let c=c0;c<c0+3;c++)used.add(a[r*9+c]);
+    return [1,2,3,4,5,6,7,8,9].filter(n=>!used.has(n));};
+  function recurse(){let best=-1,opts=null;
+    for(let i=0;i<81;i++)if(!a[i]){const cur=candidates(i);if(!cur.length)return false;
+      if(!opts||cur.length<opts.length){best=i;opts=cur;if(cur.length===1)break;}}
+    if(best<0)return true;
+    for(const n of opts){a[best]=n;if(recurse())return true;}a[best]=0;return false;
+  }
+  return recurse()?a:null;
+}
+async function evSudokuStart(difficulty){
+  let answer,puzzle,sessionId=null;
+  try{
+    if(typeof window.gbSudokuVerifiedStart!=='function')throw new Error('Offline');
+    const reply=await window.gbSudokuVerifiedStart(difficulty);
+    if(!reply?.session_id||!Array.isArray(reply.puzzle))throw new Error('Session unavailable');
+    puzzle=reply.puzzle.map(Number);answer=gbSolveSudokuPuzzle(puzzle);
+    if(!answer)throw new Error('Puzzle could not be solved');
+    sessionId=reply.session_id;
+  }catch(err){
+    console.warn('Verified Sudoku unavailable; using unranked local game:',err);
+    answer=makeSudokuSolution();const percent={easy:.60,medium:.45,hard:.35}[difficulty];
+    const count=Math.round(81*percent);const givensLocal=new Set(shuffled(Array.from({length:81},(_,i)=>i)).slice(0,count));
+    puzzle=answer.map((n,i)=>givensLocal.has(i)?n:0);
+  }
+  const givens=new Set(puzzle.map((n,i)=>n?i:-1).filter(i=>i>=0));
+  sudoku={answer,values:[...puzzle],verifiedSessionId:sessionId,givens,selected:-1,choice:0,highlight:0,mistakes:0,wrong:new Set(),notes:false,noteMarks:{},history:[],hintsLeft:1,start:Date.now(),difficulty,done:false};
   evSudokuRender();clearInterval(sudokuTimer);
   sudokuTimer=setInterval(()=>{if(!sudoku||sudoku.done)return;const el=evRoot.querySelector('#evSudoTime');if(el){const time=Math.floor((Date.now()-sudoku.start)/1000);el.textContent=`${String(Math.floor(time/60)).padStart(2,'0')}:${String(time%60).padStart(2,'0')}`}},1000);
 }
@@ -338,8 +367,19 @@ function evSudokuEnd(won,pts=0){
 function evSudokuCheck(){
   const s=sudoku;if(!s||s.done||!s.values.every((v,i)=>v===s.answer[i]))return;
   s.done=true;clearInterval(sudokuTimer);const pts={easy:50,medium:100,hard:150}[s.difficulty];
-  evRefresh();evData.clashPoints+=pts;evData.clashSudoku+=pts;evSave();evClashEarn('sudoku_'+s.difficulty,pts);
-  if(typeof playSfx==='function')playSfx('victory');evSudokuEnd(true,pts);
+  // Server-authoritative scoring: only the completion RPC can submit points.
+  // If offline, the puzzle remains playable but no global score is submitted.
+  (async()=>{
+    let onlineAwarded=false;
+    if(s.verifiedSessionId && typeof window.gbSudokuVerifiedFinish==='function'){
+      try{await window.gbSudokuVerifiedFinish(s.verifiedSessionId,[...s.values]);onlineAwarded=true;}
+      catch(err){console.warn('Sudoku verification failed:',err);}
+    }
+    if(onlineAwarded){evRefresh();evData.clashPoints+=pts;evData.clashSudoku+=pts;evSave();}
+    if(typeof playSfx==='function')playSfx('victory');
+    evSudokuEnd(true,onlineAwarded?pts:0);
+    if(!onlineAwarded)alert('Puzzle completed! Online points were not recorded. Please check your connection.');
+  })();
 }
 // Neon, mobile-friendly falling-block puzzle. Points are awarded for each cleared row, no hidden bonuses.
 let tetris=null,tetrisTicker=null;

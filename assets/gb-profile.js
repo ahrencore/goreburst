@@ -826,3 +826,15 @@ window.gbClashSubmit=async function(game,points){
 window.gbWeeklySubmit=async function(stages){if(!sb||!user)return {error:'Online player identity unavailable'};const {error}=await sb.rpc('weekly_nightmare_submit_beta',{p_stages:Number(stages)});if(error)throw error;return {ok:true}};
 window.gbWeeklyTop10=async function(){if(!sb)return {rows:[],error:'Offline'};const {data,error}=await sb.rpc('weekly_nightmare_top10');return {rows:data||[],error:error?.message||null}};
 
+
+// Server-issued Creepy Sudoku sessions (independent of visual Events UI).
+window.gbSudokuVerifiedStart=async function(difficulty){
+  if(!sb||!user)throw new Error('Online player session required');
+  const {data,error}=await sb.rpc('gb_sudoku_session_start',{p_difficulty:difficulty});
+  if(error)throw error;return data;
+};
+window.gbSudokuVerifiedFinish=async function(sessionId,board){
+  if(!sb||!user)throw new Error('Online player session required');
+  const {data,error}=await sb.rpc('gb_sudoku_session_finish',{p_session:sessionId,p_board:board});
+  if(error)throw error;return data;
+};
