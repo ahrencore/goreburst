@@ -268,3 +268,23 @@
 .ev-weekly-loot-item img{width:29px;height:29px;object-fit:contain;filter:drop-shadow(0 0 5px #f363de77)}
 .ev-weekly-loot-item b{font:900 12px Georgia,serif;color:#ffecc2;white-space:nowrap}
 @media(max-width:360px){.ev-weekly-prize-row{grid-template-columns:1fr;gap:5px}.ev-weekly-prize-rank{text-align:left}}
+
+/* Sudoku visual polish — scoped to Sudoku only. No gameplay or score changes. */
+.ev-root .ev-sudo-compact{max-width:490px;margin:12px auto 0;padding:18px 16px 20px;border:1.5px solid #ea83d8;border-radius:18px;background:linear-gradient(150deg,#37153f,#190b25 75%);box-shadow:0 0 17px #ef5dc366,inset 0 0 15px #f67add18;text-align:center}
+.ev-root .ev-sudo-compact-eyebrow{font:700 10px Georgia,serif;letter-spacing:1.4px;color:#ffe0a5}
+.ev-root .ev-sudo-compact h2{font:700 clamp(18px,4.8vw,24px) Georgia,serif;line-height:1.15;margin:10px 0 6px;color:#ffe1b1;text-shadow:0 0 10px #f76aca}
+.ev-root .ev-sudo-compact p{font:12px/1.4 system-ui,sans-serif;color:#eac6e3;margin:0}
+.ev-root .ev-sudo-compact .ev-sudo-difficulties{display:grid;gap:9px;margin:15px 0 0}
+.ev-root .ev-sudo-compact .ev-sudo-level{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:53px;width:100%;margin:0;padding:11px 15px;border:1.5px solid #ee85d4;border-radius:12px;background:linear-gradient(115deg,#6c246b,#34153c);box-shadow:inset 0 0 10px #f274c222,0 0 9px #ed55b655;text-align:left;line-height:1.2;cursor:pointer}
+.ev-root .ev-sudo-compact .ev-sudo-level:nth-child(2){border-color:#ca8df1;background:linear-gradient(115deg,#61277a,#2c183f)}
+.ev-root .ev-sudo-compact .ev-sudo-level:nth-child(3){border-color:#ef869f;background:linear-gradient(115deg,#853650,#341629)}
+.ev-root .ev-sudo-compact .ev-sudo-level-name{color:#fff0fb;font:700 16px Georgia,serif;letter-spacing:.7px;text-shadow:0 0 8px #f85bb9}
+.ev-root .ev-sudo-compact .ev-sudo-level-points{flex-shrink:0;color:#ffe0ab;font:700 11px Georgia,serif;letter-spacing:.3px}
+.ev-root .ev-sudo-compact .ev-sudo-level:active{transform:scale(.985)}
+.ev-root .ev-sudo-tools-clean{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:9px 0 2px;align-items:stretch}
+.ev-root .ev-sudo-tools-clean .ev-sudo-tool{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:100%;min-width:0;min-height:49px;padding:5px 1px!important;border:1.5px solid #e987d6!important;border-radius:12px!important;background:linear-gradient(155deg,#712c74,#321437)!important;box-shadow:inset 0 0 10px #ff7ccb25,0 0 9px #ee53ae77!important;color:#ffe3f5!important;line-height:1.1!important;cursor:pointer;touch-action:manipulation}
+.ev-root .ev-sudo-tools-clean .ev-sudo-tool-icon{font:700 20px Georgia,serif;color:#ffe1aa;text-shadow:0 0 8px #ffb4e8}
+.ev-root .ev-sudo-tools-clean .ev-sudo-tool-label{font:700 9px Georgia,serif;letter-spacing:.5px;color:#fff0fb}
+.ev-root .ev-sudo-tools-clean .ev-sudo-tool.active{border-color:#ffe6a7!important;background:linear-gradient(155deg,#ab3a91,#5d215d)!important;box-shadow:0 0 14px #f46ed4!important}
+.ev-root .ev-sudo-tools-clean .ev-sudo-tool:disabled{opacity:.42;filter:grayscale(.5)}
+@media(max-width:390px){.ev-root .ev-sudo-compact{padding:14px 12px 16px;margin-top:7px}.ev-root .ev-sudo-compact h2{font-size:19px}.ev-root .ev-sudo-compact .ev-sudo-level{min-height:48px;padding:8px 12px}.ev-root .ev-sudo-tools-clean{gap:4px}.ev-root .ev-sudo-tools-clean .ev-sudo-tool{min-height:43px}.ev-root .ev-sudo-tools-clean .ev-sudo-tool-icon{font-size:18px}}
