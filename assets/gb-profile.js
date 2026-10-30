@@ -838,3 +838,16 @@ window.gbSudokuVerifiedFinish=async function(sessionId,board){
   const {data,error}=await sb.rpc('gb_sudoku_session_finish',{p_session:sessionId,p_board:board});
   if(error)throw error;return data;
 };
+
+// Haunting Tetris score sessions; no UI artwork or CSS changes.
+window.gbTetrisSessionStart=async function(){
+  if(!sb||!user)return null;
+  const {data,error}=await sb.rpc('gb_tetris_session_start');
+  if(error)throw error;return data;
+};
+window.gbTetrisSessionScore=async function(sessionId,lines){
+  if(!sb||!user||!sessionId)return;
+  const n=Number(lines);if(!Number.isInteger(n)||n<1||n>4)return;
+  const {error}=await sb.rpc('gb_tetris_session_score',{p_session:sessionId,p_lines:n});
+  if(error)throw error;
+};
