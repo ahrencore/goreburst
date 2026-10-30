@@ -143,3 +143,14 @@
 .gbpr-event-loot-item{min-width:0;display:flex;align-items:center;gap:8px;padding:7px;background:#34163a;border:1px solid #ae6ac3;border-radius:12px;color:#ffe6b2;font-weight:800;font-size:13px}
 .gbpr-event-loot-item img{width:37px;height:37px;object-fit:contain;flex-shrink:0;filter:drop-shadow(0 0 7px #f87cda88)}
 @media(max-width:350px){.gbpr-event-loot-grid{gap:5px;padding:7px}.gbpr-event-loot-item{gap:5px;font-size:11px}.gbpr-event-loot-item img{width:30px;height:30px}}
+
+/* Friends' public profile: scoped to the profile overlay only. */
+#gb-profile-layer .gbpr-public-panel{text-align:center;border:2px solid #f08de6;box-shadow:0 0 20px #e65acb99,inset 0 0 18px #713db749}
+#gb-profile-layer .gbpr-public-avatar{display:block;width:104px;height:104px;object-fit:cover;border-radius:50%;margin:13px auto 9px;border:3px solid #ffb4ed;box-shadow:0 0 15px #ff7fe2,0 0 22px #9753e9}
+#gb-profile-layer .gbpr-public-panel h3{font:900 24px Georgia,serif;color:#ffe3b1;text-shadow:0 0 10px #e75de7;margin:8px 0 4px}
+#gb-profile-layer .gbpr-public-handle{color:#deb7ef;font-size:13px;margin:0 0 13px}
+#gb-profile-layer .gbpr-public-stats{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:12px 0 22px}
+#gb-profile-layer .gbpr-public-stats>div{border:1.5px solid #df78e5;border-radius:13px;padding:13px 5px;background:#3b184a;box-shadow:0 0 10px #e45bca66}
+#gb-profile-layer .gbpr-public-stats small{display:block;font:800 11px Georgia,serif;color:#ffe1ad;letter-spacing:1px}
+#gb-profile-layer .gbpr-public-stats strong{display:block;font:900 23px Georgia,serif;color:#fff0fd;margin-top:5px}
+#gb-profile-layer [data-gbpr-view]{background:linear-gradient(#d44bb7,#8228a7)!important;border-color:#ffc4ee!important;box-shadow:0 0 10px #e96ed3aa}

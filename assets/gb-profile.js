@@ -80,6 +80,8 @@ prAccountScreen.insertBefore(prRewardSync,prCloud);
 
 const prMailScreen=prScreen('mail','MAILBOX');
 prMailScreen.insertAdjacentHTML('beforeend',`<section class="gbpr-panel"><div class="gbpr-tag">CARNIVAL MAIL</div><div class="gbpr-social-actions"><button type="button" class="gbpr-btn secondary" id="gbpr-mail-refresh">REFRESH</button></div><div id="gbpr-mail-list" aria-live="polite" class="gbpr-social-list">Loading mail…</div><p class="gbpr-muted">Event prizes will become claimable after the reward distribution system is approved and activated.</p></section>`);
+const prPublicScreen=prScreen('public','CARNIVAL PLAYER');
+prPublicScreen.insertAdjacentHTML('beforeend',`<section class="gbpr-panel gbpr-public-panel"><div class="gbpr-tag">✦ CARNIVAL PLAYER ✦</div><div id="gbpr-public-content" aria-live="polite">Loading player…</div><button type="button" class="gbpr-btn secondary" id="gbpr-public-back">‹ BACK TO FRIENDS</button></section>`);
 const prFriendsScreen=prScreen('friends','FRIENDS');
 prFriendsScreen.insertAdjacentHTML('beforeend',`<section class="gbpr-panel"><div class="gbpr-tag">FIND YOUR CARNIVAL CREW</div><p id="gbpr-friends-note" class="gbpr-muted"></p><button type="button" class="gbpr-btn" id="gbpr-friends-account">ACCOUNT</button><div id="gbpr-friends-controls" class="gbpr-hide"><form id="gbpr-friend-search" class="gbpr-social-search"><input type="search" maxlength="20" minlength="3" placeholder="Search @username" aria-label="Find player by username" required><button type="submit" class="gbpr-btn">SEARCH</button></form><div id="gbpr-friend-results" class="gbpr-social-list" aria-live="polite"></div><div class="gbpr-tag" style="margin-top:16px">YOUR FRIENDS & REQUESTS</div><div id="gbpr-friend-list" class="gbpr-social-list" aria-live="polite"></div><button type="button" class="gbpr-btn secondary" id="gbpr-friends-refresh">REFRESH</button></div></section>`);
 let prCurrent='hub';
@@ -178,6 +180,17 @@ async function connect(){
 // Social backend: registered accounts only. Guest play and game saves remain unchanged.
 const gbprSocialMessage=(text)=>`<div class="gbpr-social-empty">${safe(text)}</div>`;
 const gbprSocialAvatar=r=>{let url=fallbackAvatar;try{url=window.gbGhostAvatarUrl?.(r)||avatarFile(avatarIndex(r?.avatar_key))}catch{}return safe(url)};
+async function gbprOpenPublicProfile(targetId){
+ if(!sb||!gbprRegistered()||!targetId)return;
+ prNavigate('public');
+ const host=$p('gbpr-public-content');host.textContent='Opening carnival profile…';
+ const {data,error}=await sb.rpc('gb_friend_public_profile',{p_friend:targetId});
+ if(prCurrent!=='public')return;
+ if(error||!data?.length){host.textContent=error?.message||'Profile unavailable.';return}
+ const r=data[0];
+ host.innerHTML=`<img class="gbpr-public-avatar" src="${gbprSocialAvatar(r)}" alt="Player avatar"><h3>${safe(r.display_name||'Carnival Guest')}</h3><p class="gbpr-public-handle">@${safe(r.username||'unknown')}</p><div class="gbpr-public-stats"><div><small>LEVEL</small><strong>${Math.max(1,Math.min(100000,Number(r.player_level)||1))}</strong></div><div><small>STARS</small><strong>${Math.max(0,Math.min(300000,Number(r.total_stars)||0))} ★</strong></div></div>`;
+}
+prPublicScreen.querySelector('#gbpr-public-back').onclick=()=>prNavigate('friends');
 const gbprFriendCard=(r,actions)=>`<div class="gbpr-social-card"><img src="${gbprSocialAvatar(r)}" alt=""><span><b>${safe(r.display_name||'Carnival Guest')}</b><small>@${safe(r.username||'unknown')}</small></span><div class="gbpr-social-card-actions">${actions}</div></div>`;
 // Welcome gift: one-time, per-account local inventory application.
 // The SQL RPC owns the claim; this receipt prevents replay on the same game save.
@@ -365,7 +378,8 @@ async function gbprLoadFriends(){
  const {data,error}=await sb.rpc('gb_friend_list');if(!host.isConnected)return;
  if(error){host.innerHTML=gbprSocialMessage('Friends unavailable. Complete the social SQL setup first.');return}
  if(!data?.length){host.innerHTML=gbprSocialMessage('No friends or pending requests yet.');return}
- host.innerHTML=data.map(r=>gbprFriendCard(r,r.kind==='incoming'?`<button data-gbpr-action="accept" data-id="${r.link_id}">ACCEPT</button><button data-gbpr-action="decline" data-id="${r.link_id}">DECLINE</button>`:r.kind==='outgoing'?`<button data-gbpr-action="remove" data-id="${r.link_id}">CANCEL</button>`:`<button data-gbpr-action="remove" data-id="${r.link_id}">REMOVE</button>`)).join('');
+ host.innerHTML=data.map(r=>gbprFriendCard(r,r.kind==='incoming'?`<button data-gbpr-action="accept" data-id="${r.link_id}">ACCEPT</button><button data-gbpr-action="decline" data-id="${r.link_id}">DECLINE</button>`:r.kind==='outgoing'?`<button data-gbpr-action="remove" data-id="${r.link_id}">CANCEL</button>`:`<button data-gbpr-view="${r.other_id}">VIEW PROFILE</button><button data-gbpr-action="remove" data-id="${r.link_id}">REMOVE</button>`)).join('');
+ host.querySelectorAll('[data-gbpr-view]').forEach(b=>b.onclick=()=>gbprOpenPublicProfile(b.dataset.gbprView));
  host.querySelectorAll('[data-gbpr-action]').forEach(b=>b.onclick=async()=>{b.disabled=true;const {error}=await sb.rpc('gb_friend_action',{p_link:b.dataset.id,p_action:b.dataset.gbprAction});if(error)alert(error.message);await gbprLoadFriends();await gbprRefreshRequestDot()});
 }
 prMailScreen.querySelector('#gbpr-mail-refresh').onclick=gbprLoadMail;
