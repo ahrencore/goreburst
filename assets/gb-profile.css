@@ -154,3 +154,33 @@
 #gb-profile-layer .gbpr-public-stats small{display:block;font:800 11px Georgia,serif;color:#ffe1ad;letter-spacing:1px}
 #gb-profile-layer .gbpr-public-stats strong{display:block;font:900 23px Georgia,serif;color:#fff0fd;margin-top:5px}
 #gb-profile-layer [data-gbpr-view]{background:linear-gradient(#d44bb7,#8228a7)!important;border-color:#ffc4ee!important;box-shadow:0 0 10px #e96ed3aa}
+/* Gore Burst 2.0 — Carnival Mail width containment only */
+#gb-profile-layer .gbpr-inbox-row,
+#gb-profile-layer .gbpr-mail-card {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+#gb-profile-layer .gbpr-inbox-row > * {
+  min-width: 0;
+}
+#gb-profile-layer .gbpr-inbox-title {
+  flex: 1 1 0%;
+  min-width: 0 !important;
+  overflow: hidden;
+}
+#gb-profile-layer .gbpr-inbox-title b,
+#gb-profile-layer .gbpr-inbox-title small {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#gb-profile-layer .gbpr-screen,
+#gb-profile-layer .gbpr-screen > .gbpr-panel {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+}
