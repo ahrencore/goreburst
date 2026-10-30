@@ -220,7 +220,18 @@ function evWeeklyMask(stage){
  ['.XXXXXXX.','XXXXXXXXX','XXXXXXXXX','XXX...XXX','XXXXXXXXX','XXXXXXXXX','.XXXXXXX.','..XXXXX..','..XXXXX..']
  ];return shapes[(stage-1)%shapes.length].map(s=>s.replaceAll(' ','')).map(s=>s);
 }
-function evStartWeeklyStage(){evRefresh();if(!evOpenWeek()){evWeekly();return}if(!canAttempt())return;
+let evWeeklySessionId=null;
+let evWeeklyStarting=false;
+let evWeeklySubmitPromise=Promise.resolve();
+async function evStartWeeklyStage(){
+ evRefresh();if(!evOpenWeek()){evWeekly();return}if(!canAttempt()||evWeeklyStarting)return;
+ evWeeklyStarting=true;
+ try{
+  await evWeeklySubmitPromise;
+  if(typeof window.gbWeeklySessionStart!=='function')throw new Error('Weekly Nightmare session update is missing');
+  evWeeklySessionId=await window.gbWeeklySessionStart(evData.weeklyStage);
+ }catch(error){evWeeklySessionId=null;alert('Weekly Nightmare could not start: '+(error.message||error));evWeeklyStarting=false;return}
+ evWeeklyStarting=false;
  evRoot.hidden=true;evRoot.innerHTML='';eventRun=true;
  const stage=evData.weeklyStage;chosen=Math.min(99,Math.max(21,21+stage*5));
  const base=levelConfig(chosen);let goals;const types=['H','S','G','M','B','W','C'];const pick=types[(stage*3)%types.length];
@@ -254,8 +265,7 @@ function weeklyFinish(win){
  if(mode==='ended'||mode==='failed')return;
  const finishedStage=evData.weeklyStage;
  mode=win?'ended':'failed';busy=false;playSfx(win?'victory':'fail');$('result').hidden=true;
- if(win){evData.weeklyBest=Math.max(evData.weeklyBest,finishedStage);evData.weeklyStage++;evSave();window.gbWeeklySubmit?.(evData.weeklyBest).catch?.(()=>{})}
- else consumeFailedLife();
+ if(win){evData.weeklyBest=Math.max(evData.weeklyBest,finishedStage);evData.weeklyStage++;evSave();const session=evWeeklySessionId;evWeeklySessionId=null;evWeeklySubmitPromise=window.gbWeeklyVerifiedComplete(session,finishedStage);evWeeklySubmitPromise.catch(error=>alert('Stage completed locally, but leaderboard sync failed: '+(error.message||error)))}else{evWeeklySessionId=null;consumeFailedLife()}
  // Event results are deliberately separate from the campaign's victory/failed screens.
  document.getElementById('evWeeklyResult')?.remove();
  const covered=document.createElement('div');covered.className='ev-root ev-weekly-result-view';covered.id='evWeeklyResult';

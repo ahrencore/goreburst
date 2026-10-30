@@ -823,7 +823,19 @@ window.gbClashSubmit=async function(game,points){
 };
 
 // Weekly Nightmare beta reporting: only stage totals; prizes must await trusted validation.
-window.gbWeeklySubmit=async function(stages){if(!sb||!user)return {error:'Online player identity unavailable'};const {error}=await sb.rpc('weekly_nightmare_submit_beta',{p_stages:Number(stages)});if(error)throw error;return {ok:true}};
+// Weekly Nightmare progress is submitted only through a one-time server-issued stage session.
+window.gbWeeklySessionStart=async function(stage){
+ if(!sb||!user)throw new Error('Online player identity unavailable');
+ const {data,error}=await sb.rpc('gb_weekly_session_start',{p_stage:Number(stage)});
+ if(error)throw new Error(error.message);
+ return data;
+};
+window.gbWeeklyVerifiedComplete=async function(session,stage){
+ if(!sb||!user||!session)throw new Error('Weekly session missing');
+ const {error}=await sb.rpc('gb_weekly_session_complete',{p_session:session,p_stage:Number(stage)});
+ if(error)throw new Error(error.message);
+ return {ok:true};
+};
 window.gbWeeklyTop10=async function(){if(!sb)return {rows:[],error:'Offline'};const {data,error}=await sb.rpc('weekly_nightmare_top10');return {rows:data||[],error:error?.message||null}};
 
 
