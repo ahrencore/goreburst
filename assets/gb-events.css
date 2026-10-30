@@ -288,3 +288,21 @@
 .ev-root .ev-sudo-tools-clean .ev-sudo-tool.active{border-color:#ffe6a7!important;background:linear-gradient(155deg,#ab3a91,#5d215d)!important;box-shadow:0 0 14px #f46ed4!important}
 .ev-root .ev-sudo-tools-clean .ev-sudo-tool:disabled{opacity:.42;filter:grayscale(.5)}
 @media(max-width:390px){.ev-root .ev-sudo-compact{padding:14px 12px 16px;margin-top:7px}.ev-root .ev-sudo-compact h2{font-size:19px}.ev-root .ev-sudo-compact .ev-sudo-level{min-height:48px;padding:8px 12px}.ev-root .ev-sudo-tools-clean{gap:4px}.ev-root .ev-sudo-tools-clean .ev-sudo-tool{min-height:43px}.ev-root .ev-sudo-tools-clean .ev-sudo-tool-icon{font-size:18px}}
+
+/* Sudoku completion / retry — compact neon carnival result, no baked-in button images */
+.ev-root .ev-sudo-result{box-sizing:border-box;width:min(100%,480px);margin:10px auto 14px;padding:20px 15px 18px;overflow:hidden;border:2px solid #ed87d9;border-radius:22px;background:radial-gradient(ellipse at 50% 0%,#5b225d 0%,#270f36 45%,#16091f 100%);box-shadow:0 0 19px #ef60d477,inset 0 0 24px #ff80df20;text-align:center}
+.ev-root .ev-sudo-result-kicker{font:700 10px Georgia,serif;letter-spacing:1.5px;color:#ffcbec}
+.ev-root .ev-sudo-result-symbol{font-size:36px;line-height:1.2;color:#ffe4a8;text-shadow:0 0 15px #ff65d5,0 0 26px #ff32bd;margin:7px 0 3px}
+.ev-root .ev-sudo-result h2{font:800 clamp(20px,5vw,26px) Georgia,serif;letter-spacing:.5px;color:#ffe6b0;text-shadow:0 0 11px #f759d0;margin:5px 0 12px}
+.ev-root .ev-sudo-result-detail{display:grid;gap:5px;justify-items:center;color:#f6d6ef;font-size:12px}
+.ev-root .ev-sudo-result-detail strong{font:800 16px Georgia,serif;color:#ffe0a2;text-shadow:0 0 10px #ef53c2}
+.ev-root .ev-sudo-result-detail small{font-size:11px;color:#f3b5e7}
+.ev-root .ev-sudo-result .ev-sudo-end-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:16px 0 15px;padding:0;background:none}
+.ev-root .ev-sudo-result .ev-sudo-end-stats span{display:block;padding:9px 3px;background:#32133e;border:1px solid #965399;border-radius:10px;color:#e9b5df;font-size:9px;font-weight:700;letter-spacing:.35px}
+.ev-root .ev-sudo-result .ev-sudo-end-stats b{display:block;margin-top:4px;color:#ffe0ae;font:800 15px Georgia,serif}
+.ev-root .ev-sudo-result-actions{display:grid;gap:9px}
+.ev-root .ev-sudo-result-actions button{appearance:none;display:block;width:100%;min-height:46px;margin:0;padding:9px 12px;border-radius:999px;font:800 14px Georgia,serif;letter-spacing:.5px;color:#fff0f8;cursor:pointer;touch-action:manipulation}
+.ev-root .ev-sudo-result-actions .ev-sudo-result-primary{border:2px solid #ffb9ea;background:linear-gradient(180deg,#ae4a9a 0%,#722568 48%,#411546 100%);box-shadow:0 0 14px #f451c999,inset 0 1px 8px #ffc3ef66;text-shadow:0 0 7px #ffe0f6}
+.ev-root .ev-sudo-result-actions .ev-sudo-result-secondary{border:1px solid #b66cbd;background:linear-gradient(180deg,#4a235e,#240f34);box-shadow:0 0 9px #b353a555}
+.ev-root .ev-sudo-result-actions button:active{transform:scale(.98)}
+@media(max-width:390px){.ev-root .ev-sudo-result{padding:15px 12px}.ev-root .ev-sudo-result h2{font-size:21px}.ev-root .ev-sudo-result-symbol{font-size:29px}.ev-root .ev-sudo-result-actions button{min-height:43px}}

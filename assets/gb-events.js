@@ -370,10 +370,14 @@ function evSudokuPlace(n){
 function evSudokuEnd(won,pts=0){
   const s=sudoku;if(!s)return;
   const elapsed=Math.floor((Date.now()-s.start)/1000);
-  evDisplay(`${evHeader('CREEPY SUDOKU',evClash)}<section class="ev-sudo-end"><div class="ev-sudo-end-icon">${won?'✦':'☠'}</div><h2>${won?'PUZZLE COMPLETE!':'NIGHTMARE OVER'}</h2><p>${won?`You earned <b>${pts} Clash Points!</b>`:'Three mistakes. Mr. Walker is unimpressed.'}</p><div class="ev-sudo-end-stats"><span>TIME <b>${Math.floor(elapsed/60)}:${String(elapsed%60).padStart(2,'0')}</b></span><span>MISTAKES <b>${s.mistakes}/3</b></span></div><button id="evSudoAgain" class="ev-neon-imgbtn" aria-label="${won?'Play another Sudoku':'Try again'}"><img src="assets/events/${won?'result_continue':'result_retry'}.png" alt="${won?'Continue':'Try again'}"></button><button id="evSudoBack" class="ev-neon-imgbtn" aria-label="Back to arcade"><img src="assets/events/result_back.png" alt="Back to menu"></button></section>`,evClash);
+  const duration=`${Math.floor(elapsed/60)}:${String(elapsed%60).padStart(2,'0')}`;
+  const title=won?'PUZZLE COMPLETE!':'NIGHTMARE OVER';
+  const detail=won?(pts>0?`<strong>+${pts} CLASH POINTS</strong>`:'<strong>PUZZLE SOLVED</strong><small>Online points were not recorded</small>'):'<strong>THREE MISTAKES</strong><small>Mr. Walker is unimpressed.</small>';
+  evDisplay(`${evHeader('CREEPY SUDOKU',evClash)}<section class="ev-sudo-end ev-sudo-result ${won?'ev-sudo-result-win':'ev-sudo-result-lose'}" role="region" aria-label="${title}"><div class="ev-sudo-result-kicker">✦ THE HAUNTED ARCADE ✦</div><div class="ev-sudo-result-symbol" aria-hidden="true">${won?'✦':'☠'}</div><h2>${title}</h2><div class="ev-sudo-result-detail">${detail}</div><div class="ev-sudo-end-stats"><span>DIFFICULTY<b>${s.difficulty.toUpperCase()}</b></span><span>TIME<b>${duration}</b></span><span>MISTAKES<b>${s.mistakes}/3</b></span></div><div class="ev-sudo-result-actions"><button type="button" id="evSudoAgain" class="ev-sudo-result-primary">${won?'PLAY AGAIN':'RETRY'}</button><button type="button" id="evSudoBack" class="ev-sudo-result-secondary">BACK TO ARCADE</button></div></section>`,evClash);
   evRoot.querySelector('#evSudoAgain').onclick=()=>evSudokuStart(s.difficulty);
   evRoot.querySelector('#evSudoBack').onclick=evClash;
 }
+
 function evSudokuCheck(){
   const s=sudoku;if(!s||s.done||!s.values.every((v,i)=>v===s.answer[i]))return;
   s.done=true;clearInterval(sudokuTimer);const pts={easy:50,medium:100,hard:150}[s.difficulty];
