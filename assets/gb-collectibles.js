@@ -1,5 +1,8 @@
-/* Gore Burst Collectibles UI preview. No cloud writes, no economy mutations. */
+/* Gore Burst Collectibles cumulative master v1.0 — albums 01–07 art, all 12 album slots.
+   Never delete earlier album definitions when adding a new album.
+   No cloud writes and no economy mutations. */
 (()=>{'use strict';
+if(document.getElementById('gbCollectView'))return; // guard against duplicate script injection
 const A='assets/', albums=[
 ['Mr. Walker','walker.webp','#c73b86'],['Broken Toys','bear.png','#b36c8b'],['Twisted Carnival','star.png','#e2a456'],['Laughing Nightmares','clownbomb.png','#a649ad'],['Jarred Curiosities','ghost-green.png','#40a98a'],['Midnight Rides','ferris.png','#456fc2'],['Forbidden Tricks','booster-cards.webp','#8b5cc7'],['Freakshow Faces','rabbit.png','#bd5779'],['Cursed Keepsakes','heart.png','#a9366f'],['Ghostly Attractions','ghost-blue.png','#46a6bc'],['The Puppet Theatre','booster-musicbox.webp','#a66fbd'],['The Crooked Menagerie','bear.png','#72a884']
 ];
@@ -15,6 +18,30 @@ const forbiddenCardCandidates=(k)=>{
  const num=String(k+1).padStart(2,'0'),slug=forbiddenSlugs[k],unders=slug.replace(/-/g,'_');
  return [`${num}-${slug}.png`,`${num}_${unders}.png`,`${num}-${unders}.png`,`${num}_${slug}.png`,`${num}.png`,`${num}-${slug.replace(/^the-/,'')}.png`,`forbidden-tricks-${num}-${slug}.png`,`${slug}.png`,`${num}-${slug}.webp`,`${num}_${unders}.webp`].map(f=>A+'collectibles/forbidden-tricks/'+f);
 };
+// Albums 05/06: restore image rendering lost in the Album 07-only update.
+// Support standard filename variants from different exported ZIPs without modifying art.
+const restoredAlbumFolders={4:'jarred-curiosities',5:'midnight-rides'};
+const restoredAlbumSlugs={
+ 4:['pickled-eyeballs','somethings-floating','the-talking-jar','do-not-shake','the-two-headed-specimen','growing-pains','a-jar-full-of-screams','the-collectors-favourite','the-thing-that-shouldnt-exist'],
+ 5:['one-more-round','the-dizzy-horse','up-we-go','the-broken-carousel','the-upside-down-ride','stuck-at-the-top','the-ghost-train','the-endless-loop','the-ferris-wheel-to-nowhere']
+};
+// Optional overrides: set window.GB_COLLECTIBLES_IMAGE_MANIFEST before this file loads.
+// Shape: { 5: ['01.png', ...9], 6: [...], 7: [...] } (filenames within each album folder)
+// Or supply full assets/ paths. Existing exact filenames for 01–04 stay unchanged.
+const externalManifest=window.GB_COLLECTIBLES_IMAGE_MANIFEST||{};
+const albumImageCandidates=(i,k)=>{
+ const supplied=externalManifest[i+1]?.[k];
+ if(typeof supplied==='string' && supplied.trim()){
+  const folder={4:'jarred-curiosities',5:'midnight-rides',6:'forbidden-tricks'}[i];
+  const item=supplied.trim();
+  return [item.startsWith('assets/')?item:A+'collectibles/'+folder+'/'+item];
+ }
+ if(i===6)return forbiddenCardCandidates(k);
+ const folder=restoredAlbumFolders[i],slug=restoredAlbumSlugs[i][k],num=String(k+1).padStart(2,'0'),n=String(k+1);
+ const bases=[`${num}-${slug}`,`${num}_${slug.replace(/-/g,'_')}`,`${num}-${slug.replace(/-/g,'_')}`,`${num}_${slug}`,`${num}`,`${n}-${slug}`,`${n}_${slug.replace(/-/g,'_')}`,`${n}`,`${slug}`,`${folder}-${num}-${slug}`,`${folder}-${num}`,`album-${i+1}-${num}-${slug}`,`album-${i+1}-${num}`,`card-${num}-${slug}`,`card-${num}`];
+ return [...new Set(bases.flatMap(b=>[`${b}.png`,`${b}.webp`,`${b}.jpg`]))].map(f=>A+'collectibles/'+folder+'/'+f);
+};
+const albumPreviewImage=(i,k,alt)=>`<img class="gbc-restored-art" data-restored-album="${i}" data-restored-card="${k}" data-fallback-index="0" src="${albumImageCandidates(i,k)[0]}" alt="${esc(alt)}">`;
 const forbiddenImage=(k,alt)=>`<img class="gbc-forbidden-art" data-forbidden-card="${k}" data-fallback-index="0" src="${forbiddenCardCandidates(k)[0]}" alt="${esc(alt)}">`;
 const otherCards=[
 ['Teddy Needs a Hug','Missing an Eye','Dolly Dearest','Batteries Not Included','The Wrong Stuffing',"Playtime’s Over",'The Dollhouse Family',"Nobody’s Favourite",'The Toymaker’s Last Creation'],
@@ -37,19 +64,23 @@ document.getElementById('app').appendChild(screen);
 const $=id=>document.getElementById(id);let page=-1;const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const view=id=>{document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===id))};
 function lobby(){page=-1;$('gbcBarTitle').textContent='COLLECTIBLES';$('gbcBack').textContent='‹ BACK';$('gbcContent').innerHTML='<h1 class="gbc-headline">THE CURSED COLLECTION</h1><p class="gbc-sub">12 albums · 108 cards · One very strange carnival</p><div class="gbc-total"><strong>COMPLETE THE COLLECTION</strong><small>10,000 Skull Coins · 24 hours lives · 1 special PFP frame</small><div class="gbc-progress"><span style="width:0%"></span></div><small>Preview only · 0 / 108 collected</small></div><div class="gbc-albums">'+albums.map((a,i)=>`<button class="gbc-album ${i===0?'featured':''}" type="button" data-album="${i}" aria-label="Open ${esc(a[0])}"><span class="gbc-album-pic" style="--gbc-light:${a[2]}"><img src="${A+esc(a[1])}" alt=""></span><span class="gbc-album-name">${esc(a[0])}</span><span class="gbc-count">0 / 9</span><span class="gbc-tiny">VIEW ALBUM</span></button>`).join('')+'</div><p class="gbc-note">All albums are open for preview. No cards or rewards have been awarded.</p>';$('gbcContent').scrollTop=0;}
-function album(i){page=i;const a=albums[i];$('gbcBarTitle').textContent='ALBUM';$('gbcBack').textContent='‹ ALBUMS';const arr=i===0?names:otherCards[i-1];const rr=rewards[i];$('gbcContent').innerHTML=`<div class="gbc-person"><img src="${A+(i===0?'walker.webp':a[1])}" alt=""><div><h2>${esc(a[0])}</h2><p>${i===0?'The charming ringmaster who knows considerably more than he should.':i===1?"The toys have been waiting for someone to play with them. Unfortunately, they're not very nice.":i===2?'Come one, come all. Leaving is entirely optional.':i===3?'Nine reasons why you should never trust a clown.':i===6?"Magic isn't supposed to work like this.":'Collect nine cards to complete this album.'}</p></div></div><div class="gbc-rewards"><div class="gbc-reward"><img src="${A}coin-skull-new.png" alt=""><b>${rr[0]}</b>SKULL COINS</div><div class="gbc-reward"><img src="${A+rr[1]}" alt=""><b>${esc(rewardDetails[i][0])}</b></div><div class="gbc-reward"><img src="${A+rr[2]}" alt=""><b>${esc(rewardDetails[i][1])}</b></div></div><div class="gbc-cards">${arr.map((name,k)=>`<button class="gbc-card" type="button" data-card="${k}" aria-label="View card ${esc(name)}">${i===6?forbiddenImage(k,name):i<=3?`<img src="${A}collectibles/${i===0?'mr-walker/':i===1?'broken-toys/':i===2?'twisted-carnival/':'laughing-nightmares/'}${i===0?files[k]:i===1?brokenFiles[k]:i===2?twistedFiles[k]:laughingFiles[k]}" alt="${esc(name)}">`:'<span class="gbc-placeholder">✧</span>'}<span class="gbc-card-stars">${'★'.repeat(rarities[k])}</span><span class="gbc-card-label">${esc(name)}</span></button>`).join('')}</div><p class="gbc-note">${i<=3||i===6?'All nine approved card artworks are visible for preview.':'Artwork coming later. Card slots and titles are ready.'} Tap a card to view details. Trading is not active yet.</p>`;$('gbcContent').scrollTop=0;}
-function card(k){if(page<0)return;const name=page===0?names[k]:otherCards[page-1][k];const path=page===0?A+'collectibles/mr-walker/'+files[k]:page===1?A+'collectibles/broken-toys/'+brokenFiles[k]:page===2?A+'collectibles/twisted-carnival/'+twistedFiles[k]:page===3?A+'collectibles/laughing-nightmares/'+laughingFiles[k]:page===6?forbiddenCardCandidates(k)[0]:null;$('gbcModal').innerHTML=`<div class="gbc-card-pane" role="dialog" aria-modal="true" aria-label="Card detail">${path?(page===6?forbiddenImage(k,name):`<img src="${path}" alt="${esc(name)}">`):'<div class="gbc-placeholder">✧</div>'}<h3>${esc(name)}</h3><div class="gbc-card-stars">${'★'.repeat(rarities[k])}</div><p>Album: ${esc(albums[page][0])}<br>Card preview · Not yet owned<br>Friend trading will be added later.</p><div class="gbc-modal-actions"><button class="gbc-btn" type="button" id="gbcCloseCard">CLOSE</button><button class="gbc-btn" type="button" disabled title="Trading is not active yet">TRADE · SOON</button></div></div>`;$('gbcModal').hidden=false;}
+function album(i){page=i;const a=albums[i];$('gbcBarTitle').textContent='ALBUM';$('gbcBack').textContent='‹ ALBUMS';const arr=i===0?names:otherCards[i-1];const rr=rewards[i];$('gbcContent').innerHTML=`<div class="gbc-person"><img src="${A+(i===0?'walker.webp':a[1])}" alt=""><div><h2>${esc(a[0])}</h2><p>${i===0?'The charming ringmaster who knows considerably more than he should.':i===1?"The toys have been waiting for someone to play with them. Unfortunately, they're not very nice.":i===2?'Come one, come all. Leaving is entirely optional.':i===3?'Nine reasons why you should never trust a clown.':i===5?"Please keep your hands and feet inside the ride. You'll need them.":i===6?"Magic isn't supposed to work like this.":i===7?'Every face has a story. Some have several faces.':'Collect nine cards to complete this album.'}</p></div></div><div class="gbc-rewards"><div class="gbc-reward"><img src="${A}coin-skull-new.png" alt=""><b>${rr[0]}</b>SKULL COINS</div><div class="gbc-reward"><img src="${A+rr[1]}" alt=""><b>${esc(rewardDetails[i][0])}</b></div><div class="gbc-reward"><img src="${A+rr[2]}" alt=""><b>${esc(rewardDetails[i][1])}</b></div></div><div class="gbc-cards">${arr.map((name,k)=>`<button class="gbc-card" type="button" data-card="${k}" aria-label="View card ${esc(name)}">${(i===4||i===5)?albumPreviewImage(i,k,name):i===6?forbiddenImage(k,name):i<=3?`<img src="${A}collectibles/${i===0?'mr-walker/':i===1?'broken-toys/':i===2?'twisted-carnival/':'laughing-nightmares/'}${i===0?files[k]:i===1?brokenFiles[k]:i===2?twistedFiles[k]:laughingFiles[k]}" alt="${esc(name)}">`:'<span class="gbc-placeholder">✧</span>'}<span class="gbc-card-stars">${'★'.repeat(rarities[k])}</span><span class="gbc-card-label">${esc(name)}</span></button>`).join('')}</div><p class="gbc-note">${i<=6?'Card artwork configured for preview. Missing images require matching file names.':'Artwork coming later. Card slots and titles are ready.'} Tap a card to view details. Trading is not active yet.</p>`;$('gbcContent').scrollTop=0;}
+function card(k){if(page<0)return;const name=page===0?names[k]:otherCards[page-1][k];const path=page===0?A+'collectibles/mr-walker/'+files[k]:page===1?A+'collectibles/broken-toys/'+brokenFiles[k]:page===2?A+'collectibles/twisted-carnival/'+twistedFiles[k]:page===3?A+'collectibles/laughing-nightmares/'+laughingFiles[k]:(page===4||page===5||page===6)?albumImageCandidates(page,k)[0]:null;$('gbcModal').innerHTML=`<div class="gbc-card-pane" role="dialog" aria-modal="true" aria-label="Card detail">${path?((page===4||page===5)?albumPreviewImage(page,k,name):page===6?forbiddenImage(k,name):`<img src="${path}" alt="${esc(name)}">`):'<div class="gbc-placeholder">✧</div>'}<h3>${esc(name)}</h3><div class="gbc-card-stars">${'★'.repeat(rarities[k])}</div><p>Album: ${esc(albums[page][0])}<br>Card preview · Not yet owned<br>Friend trading will be added later.</p><div class="gbc-modal-actions"><button class="gbc-btn" type="button" id="gbcCloseCard">CLOSE</button><button class="gbc-btn" type="button" disabled title="Trading is not active yet">TRADE · SOON</button></div></div>`;$('gbcModal').hidden=false;}
 // Try alternate export filenames when an album 07 image is not found.
 // If no candidate exists, show a visible placeholder instead of a broken image.
 screen.addEventListener('error',e=>{
- const img=e.target;if(!(img instanceof HTMLImageElement)||!img.hasAttribute('data-forbidden-card'))return;
- const k=Number(img.dataset.forbiddenCard),candidates=forbiddenCardCandidates(k),next=Number(img.dataset.fallbackIndex||0)+1;
+ const img=e.target;if(!(img instanceof HTMLImageElement))return;
+ const restored=img.hasAttribute('data-restored-album');
+ if(!restored&&!img.hasAttribute('data-forbidden-card'))return;
+ const i=restored?Number(img.dataset.restoredAlbum):6;
+ const k=Number(restored?img.dataset.restoredCard:img.dataset.forbiddenCard),candidates=albumImageCandidates(i,k),next=Number(img.dataset.fallbackIndex||0)+1;
  if(next<candidates.length){img.dataset.fallbackIndex=String(next);img.src=candidates[next];return;}
- const placeholder=document.createElement('span');placeholder.className='gbc-placeholder';placeholder.textContent='✧';placeholder.title='PNG not found: check assets/collectibles/forbidden-tricks/';img.replaceWith(placeholder);
+ const placeholder=document.createElement('span');placeholder.className='gbc-placeholder';placeholder.textContent='ART NOT FOUND';placeholder.title='PNG not found in assets/collectibles/'+(restored?restoredAlbumFolders[i]:'forbidden-tricks')+'/ — check asset filenames';img.replaceWith(placeholder);
 },true);
 $('gbcContent').addEventListener('click',e=>{const a=e.target.closest('[data-album]');if(a){album(+a.dataset.album);return}const c=e.target.closest('[data-card]');if(c)card(+c.dataset.card)});
 $('gbcBack').addEventListener('click',()=>page<0?view('menu'):lobby());$('gbcHome').addEventListener('click',()=>view('menu'));
 $('gbcModal').addEventListener('click',e=>{if(e.target.id==='gbcModal'||e.target.id==='gbcCloseCard')$('gbcModal').hidden=true});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&screen.classList.contains('active')){if(!$('gbcModal').hidden)$('gbcModal').hidden=true;else if(page>=0)lobby();else view('menu')}});
+window.GoreBurstCollectiblesDiagnostics={version:'cumulative-01-07-v1',albumNames:albums.map(a=>a[0]),getImageCandidates:(albumNumber,cardNumber)=>albumNumber>=5&&albumNumber<=7?albumImageCandidates(albumNumber-1,cardNumber-1):[],activeArtworkAlbums:[1,2,3,4,5,6,7]};
 const tab=$('collectibles');if(tab)tab.onclick=()=>{lobby();view('gbCollectView')};
 })();
