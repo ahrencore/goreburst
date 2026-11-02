@@ -1,0 +1,24 @@
+/* Gore Burst gift-code popup. Redeeming is exclusively handled by Supabase RPC. */
+(()=>{'use strict';
+const openBtn=document.getElementById('gbGiftOpen');if(!openBtn)return;
+const dialog=document.createElement('div');dialog.id='gbGiftModal';dialog.setAttribute('role','dialog');dialog.setAttribute('aria-modal','true');dialog.setAttribute('aria-label','Redeem gift code');dialog.hidden=true;
+dialog.innerHTML='<section class="gb-gift-card"><button class="gb-gift-x" id="gbGiftX" type="button" aria-label="Close">×</button><h2>🎁 GIFT CODE</h2><p>A little something from Mr. Walker.</p><form id="gbGiftForm"><input id="gbGiftInput" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="32" placeholder="ENTER GIFT CODE" aria-label="Gift code" required><button type="submit" id="gbGiftRedeem">REDEEM</button></form><div id="gbGiftMessage" role="status" aria-live="polite"></div><img id="gbGiftRewardImg" alt="Unlocked frame" hidden><button type="button" id="gbGiftDone">CLOSE</button></section>';
+(document.getElementById('app')||document.body).append(dialog);
+const input=dialog.querySelector('#gbGiftInput'),msg=dialog.querySelector('#gbGiftMessage'),img=dialog.querySelector('#gbGiftRewardImg'),submit=dialog.querySelector('#gbGiftRedeem');
+const close=()=>{dialog.hidden=true;};
+const open=()=>{document.getElementById('gbSettings')?.classList.remove('open');dialog.hidden=false;msg.textContent='';img.hidden=true;input.value='';input.focus();};
+openBtn.addEventListener('click',open);
+dialog.querySelector('#gbGiftX').addEventListener('click',close);dialog.querySelector('#gbGiftDone').addEventListener('click',close);
+dialog.addEventListener('click',e=>{if(e.target===dialog)close()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!dialog.hidden)close()});
+dialog.querySelector('form').addEventListener('submit',async e=>{e.preventDefault();const code=input.value.trim().toUpperCase().replace(/\s+/g,'');if(!/^[A-Z0-9-]{4,32}$/.test(code)){msg.textContent='Please enter a valid code.';return;}
+submit.disabled=true;msg.textContent='Checking your code…';img.hidden=true;
+try{
+ const client=window.gbGiftSupabaseClient || await (async()=>{const m=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');return m.createClient('https://harqhhpobaepfkfeitmw.supabase.co','sb_publishable_K9F36jgWZaMWywln6Wwaiw_4zJ7523C',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}})})();
+ const {data:{user},error:authError}=await client.auth.getUser();if(authError||!user||user.is_anonymous){msg.textContent='Log in to your account to claim gift codes.';return;}
+ const {data,error}=await client.rpc('gb_redeem_frame_code',{p_code:code});if(error){msg.textContent=error.message||'Could not redeem code.';return;}
+ const result=Array.isArray(data)?data[0]:data;if(!result?.success){msg.textContent=result?.message||'Code could not be redeemed.';return;}
+ msg.textContent='GIFT CLAIMED! Your new frame is in Edit Profile → Frames.';img.src='assets/profile-frames/'+result.frame_id+'.png';img.hidden=false;window.gbGiftOwnershipRefresh?.();
+}catch(err){msg.textContent='Connection error. Please try again.';console.warn(err)}finally{submit.disabled=false}
+});
+})();

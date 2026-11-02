@@ -549,7 +549,7 @@ html,body{overscroll-behavior:none;height:100%;height:100dvh}
   <div class="gb-win-actions"><button id="replay"><span>↻ REPLAY</span></button><button id="home"><span>⌂ HOME</span></button></div>
  </div>
 </div></section><div id="gbEventsView" class="ev-root" hidden></div></div>
-<div id="gbSettings" role="dialog" aria-modal="true" aria-labelledby="gbSettingsTitle"><div class="gb-settings-card"><h2 id="gbSettingsTitle">✦ SETTINGS ✦</h2><label>Music <input id="gbMusic" type="checkbox" checked></label><label>Sound Effects <input id="gbSound" type="checkbox" checked></label><label class="gb-volume">Music volume <input type="range" id="gbMusicVolume" min="0" max="100" step="1" value="65"></label><label class="gb-volume">Effects volume <input type="range" id="gbSoundVolume" min="0" max="100" step="1" value="75"></label><label>Vibration <input id="gbHaptics" type="checkbox" checked></label><label>Reduced Motion <input id="gbMotion" type="checkbox"></label><button id="gbSettingsClose">DONE</button></div></div>
+<div id="gbSettings" role="dialog" aria-modal="true" aria-labelledby="gbSettingsTitle"><div class="gb-settings-card"><h2 id="gbSettingsTitle">✦ SETTINGS ✦</h2><label>Music <input id="gbMusic" type="checkbox" checked></label><label>Sound Effects <input id="gbSound" type="checkbox" checked></label><label class="gb-volume">Music volume <input type="range" id="gbMusicVolume" min="0" max="100" step="1" value="65"></label><label class="gb-volume">Effects volume <input type="range" id="gbSoundVolume" min="0" max="100" step="1" value="75"></label><label>Vibration <input id="gbHaptics" type="checkbox" checked></label><label>Reduced Motion <input id="gbMotion" type="checkbox"></label><button id="gbGiftOpen" type="button">🎁 GIFT CODE</button><button id="gbSettingsClose">DONE</button></div></div>
 <script>
 'use strict';
 const $=id=>document.getElementById(id), asset=t=>'assets/'+({H:'heart.png',S:'star.png',G:'skull.png',M:'moon.png',B:'bear.png',W:'rabbit.png',C:'candy.png',RV:'rocket-v.png',RH:'rocket-h.png',CB:'clownbomb.png',FW:'ferris.png',GH:'ghost-white.png'}[t]||'heart.webp');
@@ -1174,7 +1174,7 @@ document.getElementById('gamepause').onclick=openGbSettings;
 document.getElementById('gbSettingsClose').onclick=closeGbSettings;
 document.getElementById('gbSettings').addEventListener('click',e=>{if(e.target.id==='gbSettings')closeGbSettings()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeGbSettings()});
-</script><script src="assets/gb-events.js"></script><script type="module" src="assets/gb-profile.js?v=auto-stars-sync-2"></script><script defer src="assets/gb-collectibles.js"></script><style id="gb-events-badge-final-position">
+</script><link rel="stylesheet" href="assets/gb-giftcodes.css"><script defer src="assets/gb-giftcodes.js"></script><script src="assets/gb-events.js"></script><script type="module" src="assets/gb-profile.js?v=auto-stars-sync-2"></script><script defer src="assets/gb-collectibles.js"></script><style id="gb-events-badge-final-position">
 /* Fixed badge: a child of the actual EVENTS tap area, not a pseudo-element. */
 #menu .bottom-tabs #events.ev-tab-has-reward::after{content:none!important;display:none!important}
 #menu .bottom-tabs #events{position:absolute!important;overflow:hidden!important}
