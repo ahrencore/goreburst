@@ -343,3 +343,14 @@
  box-shadow:none!important;background:transparent!important;border:0!important;
  border-radius:0!important;z-index:2!important;filter:drop-shadow(0 0 2px #e763c5)!important;
 }
+
+/* Frame glow policy: glow only in own profile and edit-profile preview.
+   Main HUD, friends and public profiles are intentionally static. */
+#gbpf-hud-frame{filter:none!important;animation:none!important;box-shadow:none!important;}
+#gb-profile-layer .gbpf-public-wrap > img.gbpf-overlay,
+#gb-profile-layer .gbpf-social-avatar > img.gbpf-social-frame,
+#gb-profile-layer .gbpr-social-card img.gbpf-social-frame,
+#gb-profile-layer .gbpr-public-card img.gbpf-overlay {
+  filter:none!important;animation:none!important;box-shadow:none!important;
+}
+/* Own profile / editor retain their existing glow. */

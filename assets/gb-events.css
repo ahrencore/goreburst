@@ -324,3 +324,12 @@
 .ev-root .ev-ghost-row .gbpf-rank-avatar,.ev-root .ev-clash-row .gbpf-rank-avatar{display:block;position:relative;flex:0 0 42px!important;width:42px!important;height:42px!important;min-width:42px!important;overflow:visible!important}
 .ev-root .gbpf-rank-avatar img{display:block;max-width:none}
 @media(max-width:480px){.ev-root .ev-ghost-row .gbpf-rank-avatar,.ev-root .ev-clash-row .gbpf-rank-avatar{flex-basis:38px!important;width:38px!important;height:38px!important;min-width:38px!important}}
+
+/* Leaderboard-only frame glow suppression: preserve card/panel neon. */
+.gbpf-rank-avatar > img.gbpf-rank-overlay,
+.ev-root .gbpf-rank-avatar > img.gbpf-rank-overlay,
+.ev-root .ev-nightmare-rank-row .gbpf-rank-avatar > img.gbpf-rank-overlay,
+.ev-root .ev-clash-row .gbpf-rank-avatar > img.gbpf-rank-overlay,
+.ev-root .ev-ghost-row .gbpf-rank-avatar > img.gbpf-rank-overlay {
+  filter:none!important;animation:none!important;box-shadow:none!important;opacity:1!important;
+}
