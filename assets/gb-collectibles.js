@@ -55,12 +55,16 @@ const candidates=(i,k)=>{
 };
 const art=(i,k,name)=>`<img data-gbc-album="${i}" data-gbc-card="${k}" data-gbc-try="0" src="${candidates(i,k)[0]}" alt="${esc(name)}">`;
 const blurbs={
- 4:'The things in these jars were never meant to be collected.',
+ 0:'The ringmaster who knows considerably more than he should.',
+ 1:"The toys have been waiting for someone to play with them. Unfortunately, they're not very nice.",
+ 2:'Come one, come all. Leaving is entirely "optional".',
+ 3:'Nine reasons why you should never trust a clown.',
+ 4:'Everything has been preserved. Some things are still moving.',
  5:"Please keep your hands and feet inside the ride. You'll need them.",
  6:"Magic isn't supposed to work like this.",
  7:'Every face has a story. Some have several faces.',
  8:'Some souvenirs really should have stayed in the gift shop.',
- 9:'The attractions have excellent reviews. Nobody knows who wrote them.',
+ 9:'Hm, I wonder who wrote all these excellent reviews?',
  10:"The strings move, but nobody's holding them.",
  11:'Creatures that evolution would rather not discuss.'
 };
@@ -74,10 +78,7 @@ function lobby(){page=-1;$('gbcBarTitle').textContent='COLLECTIBLES';$('gbcBack'
 function album(i){
  page=i;const a=albums[i], arr=albumNames(i),rr=rewards[i];
  $('gbcBarTitle').textContent='ALBUM';$('gbcBack').textContent='‹ ALBUMS';
- const description=blurbs[i]||(i===0?'The charming ringmaster who knows considerably more than he should.':
- i===1?"The toys have been waiting for someone to play with them. Unfortunately, they're not very nice.":
- i===2?'Come one, come all. Leaving is entirely optional.':
- i===3?'Nine reasons why you should never trust a clown.':'Collect nine cards to complete this album.');
+ const description=blurbs[i];
  $('gbcContent').innerHTML=`<div class="gbc-person"><img src="${A+(i===0?'walker.webp':a[1])}" alt=""><div><h2>${esc(a[0])}</h2><p>${esc(description)}</p></div></div><div class="gbc-rewards"><div class="gbc-reward"><img src="${A}coin-skull-new.png" alt=""><b>${rr[0]}</b>SKULL COINS</div><div class="gbc-reward"><img src="${A+rr[1]}" alt=""><b>${esc(rewardDetails[i][0])}</b></div><div class="gbc-reward"><img src="${A+rr[2]}" alt=""><b>${esc(rewardDetails[i][1])}</b></div></div><div class="gbc-cards">${arr.map((name,k)=>`<button class="gbc-card" type="button" data-card="${k}" aria-label="View card ${esc(name)}">${art(i,k,name)}<span class="gbc-card-stars">${'★'.repeat(rarities[k])}</span><span class="gbc-card-label">${esc(name)}</span></button>`).join('')}</div><p class="gbc-note">Card artwork appears as soon as its correctly named PNG is uploaded. Tap a card to view details. Trading is not active yet.</p>`;
  $('gbcContent').scrollTop=0;
 }
