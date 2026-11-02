@@ -354,3 +354,13 @@
   filter:none!important;animation:none!important;box-shadow:none!important;
 }
 /* Own profile / editor retain their existing glow. */
+
+/* Targeted main-menu override: previous #menu .top.art-hud > #gbpf-hud-frame
+   has higher specificity than #gbpf-hud-frame; both used !important. */
+#menu .top.art-hud > img#gbpf-hud-frame,
+#menu .top.art-hud > #gbpf-hud-frame {
+  filter: none !important;
+  animation: none !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
