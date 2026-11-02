@@ -306,3 +306,11 @@
 .ev-root .ev-sudo-result-actions .ev-sudo-result-secondary{border:1px solid #b66cbd;background:linear-gradient(180deg,#4a235e,#240f34);box-shadow:0 0 9px #b353a555}
 .ev-root .ev-sudo-result-actions button:active{transform:scale(.98)}
 @media(max-width:390px){.ev-root .ev-sudo-result{padding:15px 12px}.ev-root .ev-sudo-result h2{font-size:21px}.ev-root .ev-sudo-result-symbol{font-size:29px}.ev-root .ev-sudo-result-actions button{min-height:43px}}
+
+/* Profile-frame overlays in ranked rows: compact and responsive. */
+.gbpf-rank-avatar{display:inline-block;position:relative;flex:0 0 46px;width:46px;height:46px;vertical-align:middle;isolation:isolate}
+.gbpf-rank-avatar>img:not(.gbpf-rank-overlay){position:absolute;left:15%;top:15%;width:70%!important;height:70%!important;object-fit:cover;border-radius:50%;border:0!important;box-shadow:none!important}
+.gbpf-rank-avatar>.gbpf-rank-overlay{position:absolute;inset:0;width:100%!important;height:100%!important;object-fit:contain;border:0!important;border-radius:0!important;pointer-events:none;filter:drop-shadow(0 0 2px #e76acf);animation:gbpfRankGlow 4s ease-in-out infinite}
+.ev-nightmare-rank-row .gbpf-rank-avatar{flex-basis:38px;width:38px;height:38px}
+@keyframes gbpfRankGlow{0%,100%{opacity:.92;filter:drop-shadow(0 0 1px #d25ed3)}50%{opacity:1;filter:drop-shadow(0 0 4px #e76acf)}}
+@media(prefers-reduced-motion:reduce){.gbpf-rank-avatar>.gbpf-rank-overlay{animation:none}}

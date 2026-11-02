@@ -113,10 +113,12 @@ async function evFetchGhostParade(){
     if(!rows.isConnected)return;
     if(response.error){rows.innerHTML=`<div class="ev-ghost-message">${evGhostEscape(response.error)}</div>`;return}
     if(!response.rows?.length){rows.innerHTML='<div class="ev-ghost-message">No stars recorded yet.</div>';return}
-    rows.innerHTML=response.rows.slice(0,10).map(r=>{
+    const frameRows=await window.gbLeaderboardAddFrames?.(response.rows.slice(0,10))||response.rows.slice(0,10);
+    if(!rows.isConnected)return;
+    rows.innerHTML=frameRows.map(r=>{
       const rank=Number(r.rank_position)||0;
       const rankClass=rank===1?' is-top1':rank===2?' is-top2':rank===3?' is-top3':'';
-      return `<div class="ev-ghost-row${rankClass}"><div class="ev-ghost-rankwrap"><span class="ev-ghost-rank">#${rank}</span><img class="ev-ghost-avatar" src="${evGhostEscape(window.gbGhostAvatarUrl?.(r)||'assets/avatars/01_Mr_Walker.png')}" alt="" loading="lazy"><span class="ev-ghost-name">${evGhostEscape(r.display_name||'Carnival Guest')}</span></div><strong class="ev-ghost-score">${Number(r.total_stars||0).toLocaleString()} ★</strong></div>`;
+      return `<div class="ev-ghost-row${rankClass}"><div class="ev-ghost-rankwrap"><span class="ev-ghost-rank">#${rank}</span>${window.gbLeaderboardAvatarHtml?.(r,'ev-ghost-avatar',evGhostEscape)||'<img class="ev-ghost-avatar" src="assets/avatars/01_Mr_Walker.png" alt="">'}<span class="ev-ghost-name">${evGhostEscape(r.display_name||'Carnival Guest')}</span></div><strong class="ev-ghost-score">${Number(r.total_stars||0).toLocaleString()} ★</strong></div>`;
     }).join('');
   }catch(e){if(rows.isConnected)rows.innerHTML=`<div class="ev-ghost-message">Could not load leaderboard: ${evGhostEscape(e?.message||'Network error')}</div>`}
 }
@@ -152,10 +154,12 @@ async function evFetchClash(){
     if(result.error){status.textContent=result.error;return}
     status.textContent='';
     if(!result.rows?.length){rows.innerHTML='<div class="ev-clash-message">No online scores this round yet.</div>';return}
-    rows.innerHTML=result.rows.slice(0,10).map(r=>{
+    const frameRows=await window.gbLeaderboardAddFrames?.(result.rows.slice(0,10))||result.rows.slice(0,10);
+    if(!rows.isConnected)return;
+    rows.innerHTML=frameRows.map(r=>{
       const rank=Number(r.rank_position)||0;
       const rankClass=rank===1?' is-top1':rank===2?' is-top2':rank===3?' is-top3':'';
-      return `<div class="ev-clash-row${rankClass}"><div class="ev-clash-rankwrap"><span class="ev-clash-rank">#${rank}</span><img class="ev-clash-avatar" src="${evGhostEscape(window.gbGhostAvatarUrl?.(r)||'assets/avatars/01_Mr_Walker.png')}" alt="" loading="lazy"><span class="ev-clash-name">${evGhostEscape(r.display_name||'Carnival Guest')}</span></div><strong class="ev-clash-score">${Number(r.points||0).toLocaleString()} pts</strong></div>`;
+      return `<div class="ev-clash-row${rankClass}"><div class="ev-clash-rankwrap"><span class="ev-clash-rank">#${rank}</span>${window.gbLeaderboardAvatarHtml?.(r,'ev-clash-avatar',evGhostEscape)||'<img class="ev-clash-avatar" src="assets/avatars/01_Mr_Walker.png" alt="">'}<span class="ev-clash-name">${evGhostEscape(r.display_name||'Carnival Guest')}</span></div><strong class="ev-clash-score">${Number(r.points||0).toLocaleString()} pts</strong></div>`;
     }).join('');
   }catch(error){if(status.isConnected)status.textContent='Could not load rankings: '+(error.message||'Network error')}
 }
@@ -206,8 +210,8 @@ function evWeeklyRewards(){
 async function evLoadWeeklyRankings(){const host=evRoot.querySelector('#evNightmareRankings');if(!host)return;
  if(typeof window.gbWeeklyTop10!=='function'){host.textContent='Rankings unavailable';return}
  try{const result=await window.gbWeeklyTop10();if(!host.isConnected)return;if(result.error){host.textContent='Rankings unavailable';return}
- const rows=(result.rows||[]).slice(0,10);if(!rows.length){host.textContent='No scores yet';return}
- host.replaceChildren();for(const r of rows){const line=document.createElement('div');line.className='ev-nightmare-rank-row';const rank=document.createElement('b');rank.textContent='#'+r.rank_position;const img=document.createElement('img');img.alt='';img.src=window.gbGhostAvatarUrl?.(r)||'assets/avatars/01.png';const name=document.createElement('span');name.textContent=r.display_name||'Carnival Guest';const stage=document.createElement('strong');stage.textContent=Number(r.stages_cleared||0)+' stages';line.append(rank,img,name,stage);host.append(line)}
+ const rows=await window.gbLeaderboardAddFrames?.((result.rows||[]).slice(0,10))||(result.rows||[]).slice(0,10);if(!host.isConnected)return;if(!rows.length){host.textContent='No scores yet';return}
+ host.replaceChildren();for(const r of rows){const line=document.createElement('div');line.className='ev-nightmare-rank-row';const rank=document.createElement('b');rank.textContent='#'+r.rank_position;const avatar=document.createElement('span');avatar.className='gbpf-rank-avatar';const img=document.createElement('img');img.alt='';img.src=window.gbGhostAvatarUrl?.(r)||'assets/avatars/01_Mr_Walker.png';avatar.append(img);const frameId=String(r.equipped_frame||'');if(/^[1-5]$/.test(frameId)||frameId==='hungry_gate'){const overlay=document.createElement('img');overlay.className='gbpf-rank-overlay';overlay.alt='';overlay.src='assets/profile-frames/'+(frameId==='hungry_gate'?'hungry_gate.png':'frame_0'+frameId+'.png');avatar.append(overlay)}const name=document.createElement('span');name.textContent=r.display_name||'Carnival Guest';const stage=document.createElement('strong');stage.textContent=Number(r.stages_cleared||0)+' stages';line.append(rank,avatar,name,stage);host.append(line)}
  }catch(e){if(host.isConnected)host.textContent='Rankings unavailable';}}
 function evWeeklyMask(stage){
  // Repeatable family of distinct, connected board silhouettes, minimum six columns/rows of play.

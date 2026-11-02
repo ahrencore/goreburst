@@ -839,6 +839,28 @@ window.gbGhostParadeFetch=async function(){
   return {rows:sorted,backup:null};
 };
 
+// Display-only leaderboard frame enrichment. Never writes a score or a profile.
+// RPC rows may have different account-id keys; guest rows have no registered frame.
+window.gbLeaderboardAddFrames=async function(rows){
+  if(!Array.isArray(rows)||!rows.length)return rows||[];
+  const keyFor=r=>String(r.user_id||r.player_id||r.profile_id||r.id||'');
+  const valid=s=>/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(s);
+  const ids=[...new Set(rows.map(keyFor).filter(valid))];
+  let frames=new Map();
+  if(sb&&ids.length){
+    try{
+      const {data,error}=await sb.from('profiles').select('id,equipped_frame').in('id',ids);
+      if(!error)frames=new Map((data||[]).map(r=>[String(r.id),gbpfNormalize(r.equipped_frame)]));
+    }catch(_){/* Missing public read policy must never hide leaderboard results. */}
+  }
+  return rows.map(r=>({...r,equipped_frame:frames.get(keyFor(r))|| (user&&keyFor(r)===user.id?gbpfCurrent():'none')}));
+};
+window.gbLeaderboardAvatarHtml=function(r,avatarClass,escapeFn){
+  const escape=typeof escapeFn==='function'?escapeFn:(v=>String(v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'));
+  const src=window.gbGhostAvatarUrl?.(r)||fallbackAvatar;
+  const frame=gbpfFile(gbpfNormalize(r?.equipped_frame));
+  return '<span class="gbpf-rank-avatar"><img class="'+avatarClass+'" src="'+escape(src)+'" alt="" loading="lazy">'+(frame?'<img class="gbpf-rank-overlay" src="'+escape(frame)+'" alt="" loading="lazy">':'')+'</span>';
+};
 window.gbGhostAvatarUrl=function(record){
   if(record?.avatar_path){
     const safePath=String(record.avatar_path).split('/').map(encodeURIComponent).join('/');
