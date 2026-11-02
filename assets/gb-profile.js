@@ -160,6 +160,19 @@ window.gbWalletContinueSpend = async (requestId) => {
   return value;
 };
 
+// Read-only cloud balance, never credits or spends coins.
+window.gbWalletGetCloudBalance = async () => {
+  if (!sb) throw Error('Cloud wallet not connected.');
+  const {data: auth, error: authError} = await sb.auth.getUser();
+  if (authError || !auth?.user || auth.user.is_anonymous) throw Error('Sign in to see your cloud balance.');
+  const {data, error}=await sb.from('player_inventory').select('skull_coins').eq('player_id',auth.user.id).maybeSingle();
+  if(error) throw Error(error.message);
+  if(!data) throw Error('No cloud inventory for this account.');
+  const amount=Number(data.skull_coins);
+  if(!Number.isSafeInteger(amount)||amount<0) throw Error('Invalid cloud balance.');
+  return amount;
+};
+
 // Server-authoritative Wheel of Misfortune: the draw, cost and coin prize share one transaction.
 window.gbWheelCloudSpin = async (requestId) => {
   if (!sb || !requestId) throw Error('Cloud wallet is unavailable.');
