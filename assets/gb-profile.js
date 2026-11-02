@@ -222,11 +222,14 @@ async function gbprOpenPublicProfile(targetId){
  const {data,error}=await sb.rpc('gb_friend_public_profile',{p_friend:targetId});
  if(prCurrent!=='public')return;
  if(error||!data?.length){host.textContent=error?.message||'Profile unavailable.';return}
- const r=data[0];
+ const r={...data[0]};
+ const [matchedFrame]=await gbpfPublicFrames([{user_id:targetId}]);
+ if(matchedFrame)r.equipped_frame=matchedFrame.equipped_frame;
+ if(prCurrent!=='public')return;
  host.innerHTML=`<span class="gbpf-public-wrap"><img class="gbpr-public-avatar" src="${gbprSocialAvatar(r)}" alt="Player avatar">${gbpfFile(gbpfNormalize(r.equipped_frame))?'<img class="gbpf-overlay" src="'+gbpfFile(gbpfNormalize(r.equipped_frame))+'" alt="">':''}</span><h3>${safe(r.display_name||'Carnival Guest')}</h3><p class="gbpr-public-handle">@${safe(r.username||'unknown')}</p><div class="gbpr-public-stats"><div><small>LEVEL</small><strong>${Math.max(1,Math.min(100000,Number(r.player_level)||1))}</strong></div><div><small>STARS</small><strong>${Math.max(0,Math.min(300000,Number(r.total_stars)||0))} ★</strong></div></div>`;
 }
 prPublicScreen.querySelector('#gbpr-public-back').onclick=()=>prNavigate('friends');
-const gbprFriendCard=(r,actions)=>`<div class="gbpr-social-card"><img src="${gbprSocialAvatar(r)}" alt=""><span><b>${safe(r.display_name||'Carnival Guest')}</b><small>@${safe(r.username||'unknown')}</small></span><div class="gbpr-social-card-actions">${actions}</div></div>`;
+const gbprFriendCard=(r,actions)=>`<div class="gbpr-social-card"><span class="gbpf-social-avatar"><img src="${gbprSocialAvatar(r)}" alt="">${gbpfFile(gbpfNormalize(r.equipped_frame))?`<img class="gbpf-social-frame" src="${gbpfFile(gbpfNormalize(r.equipped_frame))}" alt="">`:``}</span><span><b>${safe(r.display_name||'Carnival Guest')}</b><small>@${safe(r.username||'unknown')}</small></span><div class="gbpr-social-card-actions">${actions}</div></div>`;
 // Welcome gift: one-time, per-account local inventory application.
 // The SQL RPC owns the claim; this receipt prevents replay on the same game save.
 window.gbWelcomeApplyGift=function(accountId,mailId,grant,claimedAt){
@@ -413,6 +416,9 @@ async function gbprLoadFriends(){
  const {data,error}=await sb.rpc('gb_friend_list');if(!host.isConnected)return;
  if(error){host.innerHTML=gbprSocialMessage('Friends unavailable. Complete the social SQL setup first.');return}
  if(!data?.length){host.innerHTML=gbprSocialMessage('No friends or pending requests yet.');return}
+ const frameRecords=await gbpfPublicFrames(data.map(r=>({user_id:r.other_id||r.user_id||r.id})));
+ const frameMap=new Map(frameRecords.map(r=>[String(r.id),r.equipped_frame]));
+ data.forEach(r=>{r.equipped_frame=frameMap.get(String(r.other_id||r.user_id||r.id))||r.equipped_frame});
  host.innerHTML=data.map(r=>gbprFriendCard(r,r.kind==='incoming'?`<button data-gbpr-action="accept" data-id="${r.link_id}">ACCEPT</button><button data-gbpr-action="decline" data-id="${r.link_id}">DECLINE</button>`:r.kind==='outgoing'?`<button data-gbpr-action="remove" data-id="${r.link_id}">CANCEL</button>`:`<button data-gbpr-view="${r.other_id}">VIEW PROFILE</button><button data-gbpr-action="remove" data-id="${r.link_id}">REMOVE</button>`)).join('');
  host.querySelectorAll('[data-gbpr-view]').forEach(b=>b.onclick=()=>gbprOpenPublicProfile(b.dataset.gbprView));
  host.querySelectorAll('[data-gbpr-action]').forEach(b=>b.onclick=async()=>{b.disabled=true;const {error}=await sb.rpc('gb_friend_action',{p_link:b.dataset.id,p_action:b.dataset.gbprAction});if(error)alert(error.message);await gbprLoadFriends();await gbprRefreshRequestDot()});
@@ -850,32 +856,39 @@ window.gbGhostParadeFetch=async function(){
 
 // Display-only leaderboard frame enrichment. Never writes a score or a profile.
 // RPC rows may have different account-id keys; guest rows have no registered frame.
+// Read-only public frame lookup. Matching uses account IDs first, then unique usernames,
+// then unique avatar storage paths; nonunique display names are never guessed.
+async function gbpfPublicFrames(rows){
+ if(!sb||!Array.isArray(rows)||!rows.length)return [];
+ const idOf=r=>String(r.user_id||r.player_id||r.profile_id||r.account_id||r.id||'');
+ const valid=s=>/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(s);
+ const uniq=arr=>[...new Set(arr.filter(Boolean))];
+ const ids=uniq(rows.map(idOf).filter(valid));
+ const usernames=uniq(rows.map(r=>String(r.username||'').replace(/^@/,'').trim().toLowerCase()));
+ const paths=uniq(rows.map(r=>String(r.avatar_path||'').trim()));
+ const names=uniq(rows.map(r=>String(r.display_name||'').trim()));
+ try{
+  const {data,error}=await sb.rpc('gb_public_frame_lookup',{p_ids:ids,p_usernames:usernames,p_avatar_paths:paths,p_display_names:names});
+  if(!error&&Array.isArray(data))return data;
+  // This can be a version mismatch before the optional SQL is installed.
+ }catch(_){}
+ return [];
+}
 window.gbLeaderboardAddFrames=async function(rows){
-  if(!Array.isArray(rows)||!rows.length)return rows||[];
-  const keyFor=r=>String(r.user_id||r.player_id||r.profile_id||r.id||'');
-  const valid=s=>/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(s);
-  const ids=[...new Set(rows.map(keyFor).filter(valid))];
-  let frames=new Map();
-  if(sb&&ids.length){
-    try{
-      const {data,error}=await sb.from('profiles').select('id,equipped_frame').in('id',ids);
-      if(!error)frames=new Map((data||[]).map(r=>[String(r.id),gbpfNormalize(r.equipped_frame)]));
-    }catch(_){/* Missing public read policy must never hide leaderboard results. */}
-  }
-  return rows.map(r=>{
-   const id=keyFor(r);
-   let chosen=frames.get(id)||gbpfNormalize(r.equipped_frame);
-   if(chosen==='none'&&user){
-     const sameId=id&&id===user.id;
-     const sameHandle=Boolean(profile?.username&&r.username&&String(r.username).toLowerCase()===String(profile.username).toLowerCase());
-     // Some leaderboard RPCs omit account IDs. Only use display-name fallback
-     // for the current player when that name appears exactly once in this ranking.
-     const nm=String(r.display_name||'').trim().toLowerCase();
-     const mine=String(profile?.display_name||'').trim().toLowerCase();
-     const uniqueName=Boolean(nm&&mine&&nm===mine&&rows.filter(x=>String(x.display_name||'').trim().toLowerCase()===nm).length===1);
-     if(sameId||sameHandle||uniqueName)chosen=gbpfCurrent();
-   }
-   return {...r,equipped_frame:chosen};
+ if(!Array.isArray(rows)||!rows.length)return rows||[];
+ const candidates=await gbpfPublicFrames(rows);
+ const idOf=r=>String(r.user_id||r.player_id||r.profile_id||r.account_id||r.id||'');
+ const findUnique=(key,val)=>{
+  if(!val)return null;
+  const matches=candidates.filter(p=>String(p[key]||'').trim().toLowerCase()===String(val).trim().toLowerCase());
+  return matches.length===1?matches[0]:null;
+ };
+ return rows.map(r=>{
+  const id=idOf(r);
+  const matched=findUnique('id',id)||findUnique('username',String(r.username||'').replace(/^@/,''))||findUnique('avatar_path',r.avatar_path)||findUnique('display_name',r.display_name);
+  let selected=gbpfNormalize(matched?.equipped_frame??r.equipped_frame);
+  if(selected==='none'&&user&&id===String(user.id))selected=gbpfCurrent();
+  return {...r,equipped_frame:selected};
  });
 };
 window.gbLeaderboardAvatarHtml=function(r,avatarClass,escapeFn){
