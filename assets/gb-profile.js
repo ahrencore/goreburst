@@ -730,9 +730,15 @@ $p('gbpr-cloud-restore').onclick=async()=>{
     downloadBackup(current,'before-restore');
     const safeKey='gb-cloud-pre-restore:'+uid+':'+Date.now();
     localStorage.setItem(safeKey,JSON.stringify(current));
-    // Do not overwrite other profile preferences, cached account, or unrelated browser data.
-    localStorage.setItem('gb-playable-v4',JSON.stringify(candidate));
-    rememberCloudBaseline(uid,candidate,latest.save_revision);cloudEnableForAccount();cloudStatus('Restored! Reloading the game…',true);
+    // Never let an old cloud backup replace the device's coin field during wallet migration.
+    // Coin balance authority is public.player_inventory, not a cloud backup snapshot.
+    // Other restored progress and reward receipts retain their normal safeguards.
+    const protectedCoinValue=Number(current.coins);
+    if(!Number.isSafeInteger(protectedCoinValue)||protectedCoinValue<0)
+      throw Error('Current device coin value is invalid. Restore cancelled.');
+    const restored={...candidate,coins:protectedCoinValue};
+    localStorage.setItem('gb-playable-v4',JSON.stringify(restored));
+    rememberCloudBaseline(uid,latest.snapshot,latest.save_revision);cloudEnableForAccount();cloudStatus('Restored game progress without replacing device coins. Reloading…',true);
     location.reload();
   }catch(e){cloudStatus('Restore stopped safely: '+(e.message||'Unknown error'))}
 };
