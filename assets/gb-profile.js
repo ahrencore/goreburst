@@ -75,7 +75,7 @@ prEditScreen.insertBefore(prCustomizeTabs,prAvatar);
 const prFramePanel=document.createElement('div');prFramePanel.className='gbpr-panel gbpr-hide';prFramePanel.id='gbpf-panel';
 prFramePanel.innerHTML='<div class="gbpr-tag">PROFILE FRAMES</div><p class="gbpr-muted">Five free frames for everyone. The final frame unlocks when all 108 collectible cards are genuinely owned.</p><div class="gbpf-preview"><img id="gbpf-preview-avatar" alt="Your avatar"><img id="gbpf-preview-border" alt="" hidden></div><div id="gbpf-options" class="gbpf-options"></div><p id="gbpf-status" class="gbpr-error" aria-live="polite"></p>';
 prEditScreen.append(prFramePanel);
-prCustomizeTabs.addEventListener('click',e=>{const b=e.target.closest('[data-gbpf-tab]');if(!b)return;const isFrames=b.dataset.gbpfTab==='frames';prAvatar.classList.toggle('gbpr-hide',isFrames);prFramePanel.classList.toggle('gbpr-hide',!isFrames);prCustomizeTabs.querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===b));if(isFrames)window.gbpfRefresh?.()});
+prCustomizeTabs.addEventListener('click',e=>{const b=e.target.closest('[data-gbpf-tab]');if(!b)return;const isFrames=b.dataset.gbpfTab==='frames';prAvatar.classList.toggle('gbpr-hide',isFrames);prFramePanel.classList.toggle('gbpr-hide',!isFrames);prCustomizeTabs.querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===b));if(isFrames){window.gbpfRefresh?.();void window.gbGiftOwnershipRefresh?.()}});
 
 const prAccountScreen=prScreen('account','ACCOUNT');prAccountScreen.append(prLogin,prSaveInfo,prCloud);
 const prAccountSigned=document.createElement('div');prAccountSigned.className='gbpr-panel';prAccountSigned.innerHTML='<div class="gbpr-tag">ACCOUNT STATUS</div><p id="gbpr-simple-status" class="gbpr-muted"></p>';
@@ -119,7 +119,7 @@ const GBPF_PATH='assets/profile-frames/';
 const gbpfFile=id=>id==='hungry_gate'?GBPF_PATH+'hungry_gate.png':/^[1-5]$/.test(String(id))?GBPF_PATH+'frame_0'+id+'.png':/^gift_(0[1-9]|10)$/.test(String(id))?GBPF_PATH+id+'.png':'';
 const gbpfNormalize=id=>id==='hungry_gate'?'hungry_gate':/^[1-5]$/.test(String(id))?String(id):/^gift_(0[1-9]|10)$/.test(String(id))?String(id):'none';
 let gbGiftOwned=new Set();
-window.gbGiftOwnershipRefresh=async()=>{if(!sb||!user||user.is_anonymous){gbGiftOwned=new Set();gbpfPaint();return;}const {data,error}=await sb.rpc('gb_owned_gift_frames');if(error){console.warn('Gift frames lookup:',error.message);return;}gbGiftOwned=new Set((data||[]).map(x=>x.frame_id));gbpfPaint();};
+window.gbGiftOwnershipRefresh=async()=>{if(!sb||!user||user.is_anonymous){gbGiftOwned=new Set();gbpfPaint();return;}const {data,error}=await sb.rpc('gb_owned_gift_frames');if(error){console.warn('Gift frames lookup:',error.message);const status=$p('gbpf-status');if(status)status.textContent='Could not refresh claimed frames: '+error.message;return;}const status=$p('gbpf-status');if(status&&status.textContent.startsWith('Could not refresh claimed frames:'))status.textContent='';gbGiftOwned=new Set((data||[]).map(x=>x.frame_id));gbpfPaint();};
 const gbpfLocalKey=()=>user?.id?'gbpf-equipped-'+user.id:'gbpf-equipped-guest';
 const gbpfLocal=()=>{try{return gbpfNormalize(localStorage.getItem(gbpfLocalKey())||'none')}catch{return 'none'}};
 const gbpfCurrent=()=>gbpfNormalize(profile?.equipped_frame??gbpfLocal());

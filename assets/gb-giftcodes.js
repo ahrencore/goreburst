@@ -18,7 +18,7 @@ try{
  const {data:{user},error:authError}=await client.auth.getUser();if(authError||!user||user.is_anonymous){msg.textContent='Log in to your account to claim gift codes.';return;}
  const {data,error}=await client.rpc('gb_redeem_frame_code',{p_code:code});if(error){msg.textContent=error.message||'Could not redeem code.';return;}
  const result=Array.isArray(data)?data[0]:data;if(!result?.success){msg.textContent=result?.message||'Code could not be redeemed.';return;}
- msg.textContent='GIFT CLAIMED! Your new frame is in Edit Profile → Frames.';img.src='assets/profile-frames/'+result.frame_id+'.png';img.hidden=false;window.gbGiftOwnershipRefresh?.();
+ msg.textContent='GIFT CLAIMED! Your new frame is in Edit Profile → Frames.';img.src='assets/profile-frames/'+result.frame_id+'.png';img.hidden=false;await window.gbGiftOwnershipRefresh?.();
 }catch(err){msg.textContent='Connection error. Please try again.';console.warn(err)}finally{submit.disabled=false}
 });
 })();
