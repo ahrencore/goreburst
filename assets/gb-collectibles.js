@@ -59,7 +59,10 @@ const blurbs={
  5:"Please keep your hands and feet inside the ride. You'll need them.",
  6:"Magic isn't supposed to work like this.",
  7:'Every face has a story. Some have several faces.',
- 8:'Some souvenirs really should have stayed in the gift shop.'
+ 8:'Some souvenirs really should have stayed in the gift shop.',
+ 9:'The attractions have excellent reviews. Nobody knows who wrote them.',
+ 10:"The strings move, but nobody's holding them.",
+ 11:'Creatures that evolution would rather not discuss.'
 };
 
 const screen=document.createElement('section');screen.id='gbCollectView';screen.className='view';screen.setAttribute('aria-label','Collectibles');
