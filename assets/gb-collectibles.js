@@ -80,13 +80,13 @@ const SUPABASE_URL='https://harqhhpobaepfkfeitmw.supabase.co';
 const SUPABASE_KEY='sb_publishable_K9F36jgWZaMWywln6Wwaiw_4zJ7523C';
 const $=id=>document.getElementById(id);let page=-1;
 // Read-only ownership integration. Only trusted server jobs may mutate inventory.
-let owned=new Map(), inventoryReady=false, inventoryError='', packs={carnival:0,freakshow:0,nightmare:0}, packBusy=false, packDb=null, packUser=null;
+let owned=new Map(), inventoryReady=false, inventoryError='', packs={carnival:0,freakshow:0,nightmare:0}, packBusy=false, packDb=null, packUser=null, cloudCoins=null, buyBusy=false;
 const cardKey=(a,k)=>String(a+1).padStart(2,'0')+'_'+String(k+1).padStart(2,'0');
 const qty=(a,k)=>owned.get(cardKey(a,k))||0;
 const setCount=a=>albumNames(a).filter((_,k)=>qty(a,k)>0).length;
 const ownTotal=()=>albums.reduce((t,_,i)=>t+setCount(i),0);
 async function loadOwnership(){
- inventoryReady=false;inventoryError='';owned=new Map();packs={carnival:0,freakshow:0,nightmare:0};packDb=null;packUser=null;
+ inventoryReady=false;inventoryError='';owned=new Map();packs={carnival:0,freakshow:0,nightmare:0};packDb=null;packUser=null;cloudCoins=null;
  try{
   if(typeof SUPABASE_URL==='undefined'||typeof SUPABASE_KEY==='undefined')throw Error('Cloud connection unavailable');
   const {createClient}=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
@@ -97,6 +97,9 @@ async function loadOwnership(){
   if(error)throw error;
   for(const row of data||[])if(/^\d{2}_\d{2}$/.test(row.card_id))owned.set(row.card_id,Math.max(0,Number(row.quantity)||0));
   packDb=db;packUser=auth.user.id;
+  const {data:wallet,error:walletErr}=await db.from('player_inventory').select('skull_coins').eq('player_id',auth.user.id).maybeSingle();
+  if(walletErr)throw walletErr;
+  cloudCoins=wallet&&Number.isSafeInteger(Number(wallet.skull_coins))?Number(wallet.skull_coins):null;
   const {data:balance,error:balanceErr}=await db.from('gb_card_pack_balances').select('pack_type,quantity').eq('user_id',auth.user.id);
   if(balanceErr)throw balanceErr;
   for(const b of balance||[])if(Object.hasOwn(packs,b.pack_type))packs[b.pack_type]=Math.max(0,Number(b.quantity)||0);
@@ -111,7 +114,28 @@ const view=id=>{document.querySelectorAll('.view').forEach(v=>v.classList.toggle
 
 const packTypes=[['carnival',3,3],['freakshow',4,4],['nightmare',5,5]];
 const packWrapper=(type,stars)=>`<span class="gbc-pack-art" aria-hidden="true"><span class="gbc-pack-motif">${'★'.repeat(stars)}</span></span>`;
-const packView=()=>`<section class="gbc-pack-zone"><h2>CARD PACKS</h2><div class="gbc-packs">${packTypes.map(([key,count,max])=>`<div class="gbc-pack gbc-pack-${key}"><button class="gbc-pack-pick" type="button" data-open-pack="${key}" aria-label="Open ${key} pack, ${count} cards, up to ${max} stars" ${(!inventoryReady||!packs[key]||packBusy)?'disabled':''}>${packWrapper(key,max)}</button><span class="gbc-pack-owned">×${inventoryReady?packs[key]:'—'}</span><button type="button" data-open-pack="${key}" ${(!inventoryReady||!packs[key]||packBusy)?'disabled':''}>OPEN</button></div>`).join('')}</div></section>`;
+const packPrices={carnival:600,freakshow:900,nightmare:1200};
+const packView=()=>`<section class="gbc-pack-zone"><h2>CARD PACKS</h2><p class="gbc-note">Supabase Skull Coins: ${cloudCoins===null?'—':cloudCoins.toLocaleString()}</p><div class="gbc-packs">${packTypes.map(([key,count,max])=>`<div class="gbc-pack gbc-pack-${key}"><button class="gbc-pack-pick" type="button" data-open-pack="${key}" aria-label="Open ${key} pack, ${count} cards, up to ${max} stars" ${(!inventoryReady||!packs[key]||packBusy||buyBusy)?'disabled':''}>${packWrapper(key,max)}</button><span class="gbc-pack-owned">×${inventoryReady?packs[key]:'—'}</span><button type="button" data-open-pack="${key}" ${(!inventoryReady||!packs[key]||packBusy||buyBusy)?'disabled':''}>OPEN</button><button type="button" data-buy-pack="${key}" ${(!inventoryReady||!packDb||buyBusy||cloudCoins===null||cloudCoins<packPrices[key])?'disabled':''}>BUY · ${packPrices[key].toLocaleString()} COINS</button></div>`).join('')}</div></section>`;
+// Reuse the same id for a retry if the network drops after the server commits.
+const pendingPurchases={};
+async function buyPack(type){
+ if(buyBusy||packBusy||!inventoryReady||!packDb||!packUser||!Object.hasOwn(packPrices,type))return;
+ if(cloudCoins===null||cloudCoins<packPrices[type]){alert('Not enough Supabase Skull Coins.');return;}
+ if(!window.confirm(`Buy one ${type} pack for ${packPrices[type]} Skull Coins?`))return;
+ buyBusy=true;lobby();
+ try{
+  const purchaseId=pendingPurchases[type]||(pendingPurchases[type]=crypto.randomUUID());
+  const {data,error}=await packDb.rpc('gb_buy_card_pack',{p_pack_type:type,p_purchase_id:purchaseId});
+  if(error)throw error;
+  const result=Array.isArray(data)?data[0]:data;
+  if(!result||!Number.isFinite(Number(result.balance_after)))throw Error('Purchase response could not be verified. Check your pack balance before retrying.');
+  delete pendingPurchases[type];
+  await loadOwnership();lobby();
+  alert('Pack purchased! Tap OPEN to reveal your cards.');
+ }catch(e){alert('Purchase not confirmed: '+(e?.message||'Unknown error')+'\nCheck your balance and pack count before retrying.');}
+ finally{buyBusy=false;if(screen.classList.contains('active'))lobby();}
+}
+
 let revealedCards=[],revealStep=0;
 function renderPackReveal(){
  const modal=$('gbcModal');if(modal.hidden)return;
@@ -169,7 +193,7 @@ screen.addEventListener('error',e=>{
  missing.title='Artwork not uploaded or filename mismatch: '+folders[i]+' card '+String(k+1).padStart(2,'0');
  img.replaceWith(missing);
 },true);
-$('gbcContent').addEventListener('click',e=>{const packBtn=e.target.closest('[data-open-pack]');if(packBtn){void openPack(packBtn.dataset.openPack);return;}if(e.target.closest('#gbcClaimSet')){window.alert(inventoryReady&&setCount(page)===9?'Album reward claiming will be activated with the secure rewards system.':'Complete this set first!');return;}const a=e.target.closest('[data-album]');if(a){album(+a.dataset.album);return}const c=e.target.closest('[data-card]');if(c)card(+c.dataset.card)});
+$('gbcContent').addEventListener('click',e=>{const buyBtn=e.target.closest('[data-buy-pack]');if(buyBtn){void buyPack(buyBtn.dataset.buyPack);return;}const packBtn=e.target.closest('[data-open-pack]');if(packBtn){void openPack(packBtn.dataset.openPack);return;}if(e.target.closest('#gbcClaimSet')){window.alert(inventoryReady&&setCount(page)===9?'Album reward claiming will be activated with the secure rewards system.':'Complete this set first!');return;}const a=e.target.closest('[data-album]');if(a){album(+a.dataset.album);return}const c=e.target.closest('[data-card]');if(c)card(+c.dataset.card)});
 $('gbcBack').addEventListener('click',()=>page<0?view('menu'):lobby());$('gbcHome').addEventListener('click',()=>view('menu'));
 $('gbcModal').addEventListener('click',e=>{if(e.target.closest('#gbcFlipNext')){revealStep=Math.min(revealedCards.length,revealStep+1);renderPackReveal();return;}if(e.target.closest('#gbcRevealAll')){revealStep=revealedCards.length;renderPackReveal();return;}if(e.target.id==='gbcCloseCard'){revealedCards=[];$('gbcModal').hidden=true;lobby();return;}if(e.target.id==='gbcModal'&&revealStep>=revealedCards.length){$('gbcModal').hidden=true;lobby();}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&screen.classList.contains('active')){if(!$('gbcModal').hidden){if(!revealedCards.length||revealStep>=revealedCards.length){$('gbcModal').hidden=true;revealedCards=[];lobby();}}else if(page>=0)lobby();else view('menu')}});
