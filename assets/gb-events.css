@@ -314,3 +314,13 @@
 .ev-nightmare-rank-row .gbpf-rank-avatar{flex-basis:38px;width:38px;height:38px}
 @keyframes gbpfRankGlow{0%,100%{opacity:.92;filter:drop-shadow(0 0 1px #d25ed3)}50%{opacity:1;filter:drop-shadow(0 0 4px #e76acf)}}
 @media(prefers-reduced-motion:reduce){.gbpf-rank-avatar>.gbpf-rank-overlay{animation:none}}
+
+/* Fix Weekly Nightmare: generic row span flex/ellipsis must never deform avatar. */
+.ev-root .ev-nightmare-rank-row .gbpf-rank-avatar{position:relative!important;display:block!important;flex:0 0 42px!important;width:42px!important;height:42px!important;min-width:42px!important;min-height:42px!important;max-width:42px!important;max-height:42px!important;overflow:visible!important;white-space:normal!important;line-height:normal!important}
+.ev-root .ev-nightmare-rank-row .gbpf-rank-avatar>img:not(.gbpf-rank-overlay){position:absolute!important;left:14%!important;top:14%!important;width:72%!important;height:72%!important;object-fit:cover!important;aspect-ratio:1!important;border-radius:50%!important;border:0!important}
+.ev-root .ev-nightmare-rank-row .gbpf-rank-avatar>.gbpf-rank-overlay{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;object-fit:contain!important;aspect-ratio:1!important;border:0!important;border-radius:0!important}
+.ev-root .ev-nightmare-rank-row>span:not(.gbpf-rank-avatar){flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Consistent avatar geometry in all three event leaderboards. */
+.ev-root .ev-ghost-row .gbpf-rank-avatar,.ev-root .ev-clash-row .gbpf-rank-avatar{display:block;position:relative;flex:0 0 42px!important;width:42px!important;height:42px!important;min-width:42px!important;overflow:visible!important}
+.ev-root .gbpf-rank-avatar img{display:block;max-width:none}
+@media(max-width:480px){.ev-root .ev-ghost-row .gbpf-rank-avatar,.ev-root .ev-clash-row .gbpf-rank-avatar{flex-basis:38px!important;width:38px!important;height:38px!important;min-width:38px!important}}

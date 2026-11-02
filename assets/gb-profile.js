@@ -122,7 +122,16 @@ const gbpfLocalKey=()=>user?.id?'gbpf-equipped-'+user.id:'gbpf-equipped-guest';
 const gbpfLocal=()=>{try{return gbpfNormalize(localStorage.getItem(gbpfLocalKey())||'none')}catch{return 'none'}};
 const gbpfCurrent=()=>gbpfNormalize(profile?.equipped_frame??gbpfLocal());
 const gbpfSetLocal=id=>{try{localStorage.setItem(gbpfLocalKey(),id)}catch{}};
-function gbpfDecorate(el,id){if(!el)return;const container=el.parentElement;if(!container)return;container.querySelectorAll(':scope > .gbpf-overlay').forEach(x=>x.remove());const src=gbpfFile(id);if(!src)return;const frame=document.createElement('img');frame.src=src;frame.className='gbpf-overlay';frame.alt='';frame.setAttribute('aria-hidden','true');container.classList.add('gbpf-has-frame');el.classList.add('gbpf-avatar-img');el.insertAdjacentElement('afterend',frame)}
+function gbpfDecorate(el,id){
+ if(!el)return;
+ let wrap=el.closest('.gbpf-hero-avatar-wrap');
+ if(!wrap){wrap=document.createElement('span');wrap.className='gbpf-hero-avatar-wrap';el.parentNode.insertBefore(wrap,el);wrap.appendChild(el)}
+ wrap.querySelectorAll('.gbpf-overlay').forEach(x=>x.remove());
+ el.classList.add('gbpf-avatar-img');
+ const src=gbpfFile(id);
+ if(!src)return;
+ const frame=document.createElement('img');frame.src=src;frame.className='gbpf-overlay';frame.alt='';frame.setAttribute('aria-hidden','true');wrap.appendChild(frame);
+}
 function gbpfPaint(){const selected=gbpfCurrent();const hero=$p('gbpr-current-avatar');gbpfDecorate(hero,selected);const avatar=$p('gbpf-preview-avatar');if(avatar)avatar.src=avatarUrl();const border=$p('gbpf-preview-border');if(border){border.src=gbpfFile(selected)||'';border.hidden=!gbpfFile(selected)};
  const hud=document.getElementById('gbMenuAvatar');if(hud){const old=document.getElementById('gbpf-hud-frame');if(old)old.remove();if(gbpfFile(selected)){const overlay=document.createElement('img');overlay.id='gbpf-hud-frame';overlay.src=gbpfFile(selected);overlay.alt='';overlay.setAttribute('aria-hidden','true');hud.insertAdjacentElement('afterend',overlay)}}
  const choices=$p('gbpf-options');if(choices){choices.innerHTML=['none','1','2','3','4','5','hungry_gate'].map(id=>{const locked=id==='hungry_gate';const chosen=id===selected;const inner=gbpfFile(id)?'<img src="'+gbpfFile(id)+'" alt="">':'<span class="gbpf-empty">○</span>';return '<button type="button" data-gbpf-frame="'+id+'" class="gbpf-choice '+(chosen?'selected ':'')+(locked?'locked':'')+'" aria-label="'+(locked?'Collection reward, locked':id==='none'?'No frame':'Free profile frame '+id)+'" aria-pressed="'+chosen+'">'+inner+(locked?'<span class="gbpf-lock">🔒</span>':'')+(chosen?'<span class="gbpf-tick">✓</span>':'')+'</button>'}).join('')}
@@ -853,7 +862,21 @@ window.gbLeaderboardAddFrames=async function(rows){
       if(!error)frames=new Map((data||[]).map(r=>[String(r.id),gbpfNormalize(r.equipped_frame)]));
     }catch(_){/* Missing public read policy must never hide leaderboard results. */}
   }
-  return rows.map(r=>({...r,equipped_frame:frames.get(keyFor(r))|| (user&&keyFor(r)===user.id?gbpfCurrent():'none')}));
+  return rows.map(r=>{
+   const id=keyFor(r);
+   let chosen=frames.get(id)||gbpfNormalize(r.equipped_frame);
+   if(chosen==='none'&&user){
+     const sameId=id&&id===user.id;
+     const sameHandle=Boolean(profile?.username&&r.username&&String(r.username).toLowerCase()===String(profile.username).toLowerCase());
+     // Some leaderboard RPCs omit account IDs. Only use display-name fallback
+     // for the current player when that name appears exactly once in this ranking.
+     const nm=String(r.display_name||'').trim().toLowerCase();
+     const mine=String(profile?.display_name||'').trim().toLowerCase();
+     const uniqueName=Boolean(nm&&mine&&nm===mine&&rows.filter(x=>String(x.display_name||'').trim().toLowerCase()===nm).length===1);
+     if(sameId||sameHandle||uniqueName)chosen=gbpfCurrent();
+   }
+   return {...r,equipped_frame:chosen};
+ });
 };
 window.gbLeaderboardAvatarHtml=function(r,avatarClass,escapeFn){
   const escape=typeof escapeFn==='function'?escapeFn:(v=>String(v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'));

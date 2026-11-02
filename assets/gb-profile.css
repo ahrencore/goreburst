@@ -251,3 +251,9 @@
 .gbpf-public-wrap .gbpf-overlay{position:absolute;width:118px;height:118px;inset:0;pointer-events:none}
 @keyframes gbpfGlow{0%,100%{filter:drop-shadow(0 0 3px #c52cb2)}50%{filter:drop-shadow(0 0 9px #ee54db)}}
 @media(prefers-reduced-motion:reduce){#gb-profile-layer .gbpr-hero .gbpf-overlay{animation:none}}
+
+/* Fix: keep the profile PFP and overlay in ONE positioned avatar box. */
+#gb-profile-layer .gbpr-hero .gbpf-hero-avatar-wrap{position:relative;display:block;flex:0 0 104px!important;width:104px;height:104px;min-width:104px;overflow:visible}
+#gb-profile-layer .gbpr-hero .gbpf-hero-avatar-wrap .gbpf-avatar-img{position:absolute!important;left:16%!important;top:16%!important;width:68%!important;height:68%!important;max-width:none!important;object-fit:cover!important;border-radius:50%!important;margin:0!important;display:block}
+#gb-profile-layer .gbpr-hero .gbpf-hero-avatar-wrap .gbpf-overlay{position:absolute!important;inset:0!important;left:0!important;top:0!important;width:100%!important;height:100%!important;max-width:none!important;object-fit:contain!important;border:0!important;border-radius:0!important;pointer-events:none;z-index:2}
+#gb-profile-layer .gbpr-hero .gbpf-hero-avatar-wrap:not(:has(.gbpf-overlay)) .gbpf-avatar-img{left:8%!important;top:8%!important;width:84%!important;height:84%!important}
