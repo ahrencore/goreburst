@@ -91,7 +91,39 @@ function evPlayWheelSpinW2(){
 }
 let evWheelAngle=0,evSpinning=false;
 function evWheelCost(){return evData.spins===0?0:300}
-function evWheel(){evRefresh();const base='assets/events/';const layer=(name,cls)=>`<img class="${cls}" src="${base}${name}.png" alt="">`;evDisplay(`${evHeader('WHEEL OF MISFORTUNE')}<div class="ev-panel ev-wheel-panel"><div class="ev-wheel-wallet">Skull Coins: <b id="evWheelCoins">${save.coins}</b> · Spins today: <b id="evSpinCount">${evData.spins}</b></div><div class="ev-wheel-wrap ev-wheel-glow">${layer('02_rotating_disc','ev-disc')}${layer('01_stationary_frame','ev-rim')}${layer('04_center_medallion','ev-center')}${layer('03_fixed_pointer','ev-pointer')}</div><div class="ev-btn-row"><button class="ev-btn ev-wheel-spin-btn" id="evSpinBtn">${evWheelCost()===0?'FREE SPIN':'SPIN · '+evWheelCost()+' COINS'}</button></div><div id="evWheelResult" class="ev-gift"></div></div>`);const disc=evRoot.querySelector('.ev-disc');disc.style.transform=`rotate(${evWheelAngle}deg)`;evRoot.querySelector('#evSpinBtn').onclick=async()=>{if(evSpinning)return;const cost=evWheelCost();if(save.coins<cost){evRoot.querySelector('#evWheelResult').textContent='Not enough Skull Coins!';return}if(cost&&!confirm(`Spin for ${cost} Skull Coins?`))return;save.coins-=cost;evData.spins++;evSave();persist();evUpdateRewardDots();evSpinning=true;const btn=evRoot.querySelector('#evSpinBtn');btn.disabled=true;const idx=Math.floor(Math.random()*evWheelPrizes.length),prize=evWheelPrizes[idx];const angleEnd=(360-idx*30)%360;evWheelAngle+=1800+((angleEnd-(evWheelAngle%360)+360)%360);disc.style.transform=`rotate(${evWheelAngle}deg)`;evPlayWheelSpinW2();await new Promise(r=>setTimeout(r,4050));if(prize.negative==='life'){regenLives();if(save.lives>0){if(save.lives===5)save.lifeTick=Date.now();save.lives--;persist()}}else if(prize.negative==='coins'){save.coins=Math.max(0,save.coins-100);persist()}else if(!prize.negative){const reward=prize.reward||{[BOOSTERS[Math.floor(Math.random()*BOOSTERS.length)].id]:1};evAward(reward)}const notice=prize.negative==='loser'?'LOSER! Better luck next spin.':prize.label;evSpinning=false;evRoot.querySelector('#evWheelResult').textContent=notice;evRoot.querySelector('#evWheelCoins').textContent=save.coins;evRoot.querySelector('#evSpinCount').textContent=evData.spins;btn.textContent='SPIN · '+evWheelCost()+' COINS';btn.disabled=false;playSfx(prize.negative?'fail':'victory')};}
+function evWheel(){
+ evRefresh();const base='assets/events/';const layer=(name,cls)=>`<img class="${cls}" src="${base}${name}.png" alt="">`;
+ evDisplay(`${evHeader('WHEEL OF MISFORTUNE')}<div class="ev-panel ev-wheel-panel"><div class="ev-wheel-wallet">Skull Coins: <b id="evWheelCoins">${save.coins}</b> · Spins today: <b id="evSpinCount">${evData.spins}</b></div><div class="ev-wheel-wrap ev-wheel-glow">${layer('02_rotating_disc','ev-disc')}${layer('01_stationary_frame','ev-rim')}${layer('04_center_medallion','ev-center')}${layer('03_fixed_pointer','ev-pointer')}</div><div class="ev-btn-row"><button class="ev-btn ev-wheel-spin-btn" id="evSpinBtn">${evWheelCost()===0?'FREE SPIN':'SPIN · 300 COINS'}</button></div><div id="evWheelResult" class="ev-gift"></div></div>`);
+ const disc=evRoot.querySelector('.ev-disc');disc.style.transform=`rotate(${evWheelAngle}deg)`;
+ const btn=evRoot.querySelector('#evSpinBtn'),msg=evRoot.querySelector('#evWheelResult');
+ // Keep this request ID across recoverable network failures, preventing a repeat charge.
+ let pendingId=null;
+ btn.onclick=async()=>{
+  if(evSpinning)return;
+  if(typeof window.gbWheelCloudSpin!=='function'){msg.textContent='Cloud wallet is unavailable. Please sign in and reload.';return;}
+  if(evWheelCost() && !confirm('Spin for 300 Skull Coins?'))return;
+  evSpinning=true;btn.disabled=true;msg.textContent='Confirming spin…';
+  pendingId=pendingId||(globalThis.crypto?.randomUUID?.());
+  if(!pendingId){msg.textContent='Secure spin unavailable. Please reload.';evSpinning=false;btn.disabled=false;return;}
+  let receipt;
+  try{receipt=await window.gbWheelCloudSpin(pendingId)}catch(error){msg.textContent=String(error?.message||error);evSpinning=false;btn.disabled=false;return;}
+  pendingId=null;
+  const idx=receipt.prize_index,prize=evWheelPrizes[idx];
+  save.coins=receipt.balance_after;evData.spins=receipt.spins_today;evData.spinDay=evDay();evSave();persist();evUpdateRewardDots();
+  const angleEnd=(360-idx*30)%360;
+  evWheelAngle+=1800+((angleEnd-(evWheelAngle%360)+360)%360);
+  disc.style.transform=`rotate(${evWheelAngle}deg)`;evPlayWheelSpinW2();
+  await new Promise(r=>setTimeout(r,4050));
+  // Coins are resolved by Supabase. Only non-coin prizes are applied locally here.
+  if(prize.negative==='life'){regenLives();if(save.lives>0){if(save.lives===5)save.lifeTick=Date.now();save.lives--;persist();}}
+  else if(!prize.negative && !prize.reward?.coins){const reward=prize.reward||{[BOOSTERS[Math.floor(Math.random()*BOOSTERS.length)].id]:1};evAward(reward);}
+  msg.textContent=prize.negative==='loser'?'LOSER! Better luck next spin.':prize.label;
+  evRoot.querySelector('#evWheelCoins').textContent=save.coins;
+  evRoot.querySelector('#evSpinCount').textContent=evData.spins;
+  btn.textContent='SPIN · 300 COINS';btn.disabled=false;evSpinning=false;
+  playSfx(prize.negative?'fail':'victory');
+ };
+}
 function evGhost(){
   evRefresh();
   const own=Object.values(save.best||{}).reduce((sum,v)=>sum+Math.min(3,Math.max(0,Number(v)||0)),0);

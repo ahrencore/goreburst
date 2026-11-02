@@ -160,6 +160,19 @@ window.gbWalletContinueSpend = async (requestId) => {
   return value;
 };
 
+// Server-authoritative Wheel of Misfortune: the draw, cost and coin prize share one transaction.
+window.gbWheelCloudSpin = async (requestId) => {
+  if (!sb || !requestId) throw Error('Cloud wallet is unavailable.');
+  const {data:auth,error:authError}=await sb.auth.getUser();
+  if(authError || !auth?.user || auth.user.is_anonymous) throw Error('Sign in to spin the wheel.');
+  const {data,error}=await sb.rpc('gb_wheel_spin',{p_request_id:requestId});
+  if(error)throw Error(error.message);
+  const result=Array.isArray(data)?data[0]:data;
+  const idx=Number(result?.prize_index),amount=Number(result?.balance_after),spins=Number(result?.spins_today);
+  if(!Number.isInteger(idx)||idx<0||idx>=12||!Number.isSafeInteger(amount)||amount<0||!Number.isInteger(spins)||spins<1)throw Error('Invalid server wheel receipt.');
+  return {prize_index:idx,balance_after:amount,spins_today:spins};
+};
+
 // Frame IDs intentionally have no player-facing names. Never trust client claims for paid/unlocked frames.
 const GBPF_PATH='assets/profile-frames/';
 const gbpfFile=id=>id==='hungry_gate'?GBPF_PATH+'hungry_gate.png':/^[1-5]$/.test(String(id))?GBPF_PATH+'frame_0'+id+'.png':/^gift_(0[1-9]|1[0-9])$/.test(String(id))?GBPF_PATH+id+'.png':'';
