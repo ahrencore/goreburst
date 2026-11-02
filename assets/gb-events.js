@@ -90,7 +90,7 @@ function evPlayWheelSpinW2(){
   } catch(e) {}
 }
 let evWheelAngle=0,evSpinning=false;
-function evWheelCost(){return evData.spins===0?0:Math.min(1000,evData.spins*200)}
+function evWheelCost(){return evData.spins===0?0:300}
 function evWheel(){evRefresh();const base='assets/events/';const layer=(name,cls)=>`<img class="${cls}" src="${base}${name}.png" alt="">`;evDisplay(`${evHeader('WHEEL OF MISFORTUNE')}<div class="ev-panel ev-wheel-panel"><div class="ev-wheel-wallet">Skull Coins: <b id="evWheelCoins">${save.coins}</b> · Spins today: <b id="evSpinCount">${evData.spins}</b></div><div class="ev-wheel-wrap ev-wheel-glow">${layer('02_rotating_disc','ev-disc')}${layer('01_stationary_frame','ev-rim')}${layer('04_center_medallion','ev-center')}${layer('03_fixed_pointer','ev-pointer')}</div><div class="ev-btn-row"><button class="ev-btn ev-wheel-spin-btn" id="evSpinBtn">${evWheelCost()===0?'FREE SPIN':'SPIN · '+evWheelCost()+' COINS'}</button></div><div id="evWheelResult" class="ev-gift"></div></div>`);const disc=evRoot.querySelector('.ev-disc');disc.style.transform=`rotate(${evWheelAngle}deg)`;evRoot.querySelector('#evSpinBtn').onclick=async()=>{if(evSpinning)return;const cost=evWheelCost();if(save.coins<cost){evRoot.querySelector('#evWheelResult').textContent='Not enough Skull Coins!';return}if(cost&&!confirm(`Spin for ${cost} Skull Coins?`))return;save.coins-=cost;evData.spins++;evSave();persist();evUpdateRewardDots();evSpinning=true;const btn=evRoot.querySelector('#evSpinBtn');btn.disabled=true;const idx=Math.floor(Math.random()*evWheelPrizes.length),prize=evWheelPrizes[idx];const angleEnd=(360-idx*30)%360;evWheelAngle+=1800+((angleEnd-(evWheelAngle%360)+360)%360);disc.style.transform=`rotate(${evWheelAngle}deg)`;evPlayWheelSpinW2();await new Promise(r=>setTimeout(r,4050));if(prize.negative==='life'){regenLives();if(save.lives>0){if(save.lives===5)save.lifeTick=Date.now();save.lives--;persist()}}else if(prize.negative==='coins'){save.coins=Math.max(0,save.coins-100);persist()}else if(!prize.negative){const reward=prize.reward||{[BOOSTERS[Math.floor(Math.random()*BOOSTERS.length)].id]:1};evAward(reward)}const notice=prize.negative==='loser'?'LOSER! Better luck next spin.':prize.label;evSpinning=false;evRoot.querySelector('#evWheelResult').textContent=notice;evRoot.querySelector('#evWheelCoins').textContent=save.coins;evRoot.querySelector('#evSpinCount').textContent=evData.spins;btn.textContent='SPIN · '+evWheelCost()+' COINS';btn.disabled=false;playSfx(prize.negative?'fail':'victory')};}
 function evGhost(){
   evRefresh();
@@ -154,7 +154,7 @@ async function evFetchClash(){
     if(result.error){status.textContent=result.error;return}
     status.textContent='';
     if(!result.rows?.length){rows.innerHTML='<div class="ev-clash-message">No online scores this round yet.</div>';return}
-    const frameRows=await window.gbLeaderboardAddFrames?.(result.rows.slice(0,10))||result.rows.slice(0,10);
+    const frameRows=await window.gbLeaderboardAddFrames?.(result.rows.slice(0,15))||result.rows.slice(0,15);
     if(!rows.isConnected)return;
     rows.innerHTML=frameRows.map(r=>{
       const rank=Number(r.rank_position)||0;
@@ -175,7 +175,7 @@ function evWeekly(){
  <div class="ev-nightmare-status"><span>${evOpenWeek()?'LIVE NOW':'CLOSED'}</span><span class="ev-countdown" id="evWeeklyDetailCountdown">${evCountdownText(evWeeklyBoundary())}</span></div>
  <div class="ev-nightmare-stage">STAGE: ${evData.weeklyStage}</div>
  <button class="ev-nightmare-enter" id="evWeeklyGo" ${!evOpenWeek()?'disabled':''}>${evOpenWeek()?'ENTER NIGHTMARE':'REOPENS MONDAY'}</button>
- </section><section class="ev-nightmare-ranks"><h2>WEEKLY TOP 10</h2><div id="evNightmareRankings" class="ev-nightmare-rank-list">Loading rankings…</div><button class="ev-nightmare-rewards" id="evWeeklyRewards">VIEW REWARDS</button></section>`);
+ </section><section class="ev-nightmare-ranks"><h2>WEEKLY TOP 15</h2><div id="evNightmareRankings" class="ev-nightmare-rank-list">Loading rankings…</div><button class="ev-nightmare-rewards" id="evWeeklyRewards">VIEW REWARDS</button></section>`);
  evRoot.querySelector('#evWeeklyGo').onclick=evStartWeeklyStage;
  evRoot.querySelector('#evWeeklyRewards').onclick=evWeeklyRewards;
  evBindCountdown('evWeeklyDetailCountdown',evWeeklyBoundary);
@@ -210,7 +210,7 @@ function evWeeklyRewards(){
 async function evLoadWeeklyRankings(){const host=evRoot.querySelector('#evNightmareRankings');if(!host)return;
  if(typeof window.gbWeeklyTop10!=='function'){host.textContent='Rankings unavailable';return}
  try{const result=await window.gbWeeklyTop10();if(!host.isConnected)return;if(result.error){host.textContent='Rankings unavailable';return}
- const rows=await window.gbLeaderboardAddFrames?.((result.rows||[]).slice(0,10))||(result.rows||[]).slice(0,10);if(!host.isConnected)return;if(!rows.length){host.textContent='No scores yet';return}
+ const rows=await window.gbLeaderboardAddFrames?.((result.rows||[]).slice(0,15))||(result.rows||[]).slice(0,15);if(!host.isConnected)return;if(!rows.length){host.textContent='No scores yet';return}
  host.replaceChildren();for(const r of rows){const line=document.createElement('div');line.className='ev-nightmare-rank-row';const rank=document.createElement('b');rank.textContent='#'+r.rank_position;const avatarHolder=document.createElement('span');avatarHolder.innerHTML=window.gbLeaderboardAvatarHtml?.(r,'ev-nightmare-avatar',evGhostEscape)||'<span class="gbpf-rank-avatar"><img class="ev-nightmare-avatar" src="assets/avatars/01_Mr_Walker.png" alt=""></span>';const avatar=avatarHolder.firstElementChild;const name=document.createElement('span');name.textContent=r.display_name||'Carnival Guest';const stage=document.createElement('strong');stage.textContent=Number(r.stages_cleared||0)+' stages';line.append(rank,avatar,name,stage);host.append(line)}
  }catch(e){if(host.isConnected)host.textContent='Rankings unavailable';}}
 function evWeeklyMask(stage){
@@ -224,6 +224,8 @@ function evWeeklyMask(stage){
  ['.XXXXXXX.','XXXXXXXXX','XXXXXXXXX','XXX...XXX','XXXXXXXXX','XXXXXXXXX','.XXXXXXX.','..XXXXX..','..XXXXX..']
  ];return shapes[(stage-1)%shapes.length].map(s=>s.replaceAll(' ','')).map(s=>s);
 }
+let evWeeklyContinueUsed=false;
+let evWeeklyFailurePending=false;
 let evWeeklySessionId=null;
 let evWeeklyStarting=false;
 let evWeeklySubmitPromise=Promise.resolve();
@@ -237,6 +239,7 @@ async function evStartWeeklyStage(){
  }catch(error){evWeeklySessionId=null;alert('Weekly Nightmare could not start: '+(error.message||error));evWeeklyStarting=false;return}
  evWeeklyStarting=false;
  evRoot.hidden=true;evRoot.innerHTML='';eventRun=true;
+ evWeeklyContinueUsed=false;evWeeklyFailurePending=false;
  const stage=evData.weeklyStage;chosen=Math.min(99,Math.max(21,21+stage*5));
  const base=levelConfig(chosen);let goals;const types=['H','S','G','M','B','W','C'];const pick=types[(stage*3)%types.length];
  const amount=Math.min(44,20+Math.floor(stage*1.7));
@@ -252,6 +255,7 @@ async function evStartWeeklyStage(){
  if(goals.FI)chosen=Math.max(51,chosen);
  if(goals.JL)chosen=Math.max(36,chosen);
  if(goals.CC)chosen=Math.max(21,chosen);
+ goals=Object.fromEntries(Object.entries(goals).map(([kind,count])=>[kind,Math.max(1,Math.round(count*.95))]));
  conf={...base,mask:evWeeklyMask(stage),moves:Math.max(29,39-Math.floor(stage/4)),tutorial:null,goals};
  boosterTarget=null;boosterFirst=null;pinnedSpecialCells.clear();seed=((Date.now()>>>0)^(stage*9181))>>>0;
  moves=conf.moves;starPoints=0;comboChain=0;collected=Object.fromEntries(Object.keys(conf.goals).map(t=>[t,0]));score=0;phase=0;ghostRemoved=0;ghostSpawnQueue=[];mode='free';busy=false;grid=[];blockers=[];source=null;turnFireCleared=false;
@@ -265,25 +269,55 @@ async function evStartWeeklyStage(){
  collected=Object.fromEntries(Object.keys(conf.goals).map(t=>[t,0]));
  $('result').hidden=true;$('gbFail').hidden=true;document.querySelector('#result .gb-win-shell').hidden=false;save.pendingFailure=false;persist();show('game');$('boosters').style.display='none';$('walker').hidden=true;render();say('WEEKLY NIGHTMARE · STAGE '+stage);
 }
+function evWeeklyFinalizeFailure(){
+ if(!evWeeklyFailurePending)return;
+ evWeeklyFailurePending=false;evWeeklySessionId=null;
+ save.pendingFailure=false;persist();consumeFailedLife();
+}
 function weeklyFinish(win){
  if(mode==='ended'||mode==='failed')return;
  const finishedStage=evData.weeklyStage;
  mode=win?'ended':'failed';busy=false;playSfx(win?'victory':'fail');$('result').hidden=true;
- if(win){evData.weeklyBest=Math.max(evData.weeklyBest,finishedStage);evData.weeklyStage++;evSave();const session=evWeeklySessionId;evWeeklySessionId=null;evWeeklySubmitPromise=window.gbWeeklyVerifiedComplete(session,finishedStage);evWeeklySubmitPromise.catch(error=>alert('Stage completed locally, but leaderboard sync failed: '+(error.message||error)))}else{evWeeklySessionId=null;consumeFailedLife()}
- // Event results are deliberately separate from the campaign's victory/failed screens.
+ if(win){
+  evWeeklyFailurePending=false;
+  evData.weeklyBest=Math.max(evData.weeklyBest,finishedStage);evData.weeklyStage++;evSave();
+  const session=evWeeklySessionId;evWeeklySessionId=null;
+  evWeeklySubmitPromise=window.gbWeeklyVerifiedComplete(session,finishedStage);
+  evWeeklySubmitPromise.catch(error=>alert('Stage completed locally, but leaderboard sync failed: '+(error.message||error)));
+ }else{
+  evWeeklyFailurePending=true;
+  // If the player closes this failed attempt without continuing, charge one life on return.
+  save.pendingFailure=true;persist();
+ }
  document.getElementById('evWeeklyResult')?.remove();
  const covered=document.createElement('div');covered.className='ev-root ev-weekly-result-view';covered.id='evWeeklyResult';
+ const canContinue=!win&&!evWeeklyContinueUsed&&save.coins>=350;
  covered.innerHTML=`<section class="ev-weekly-result-card ${win?'is-victory':'is-defeat'}" role="dialog" aria-modal="true" aria-label="Weekly Nightmare ${win?'stage cleared':'stage failed'}">
  <div class="ev-weekly-result-spark" aria-hidden="true">✦ ✧ ✦</div>
  <div class="ev-weekly-result-eyebrow">MR. WALKER'S WEEKLY NIGHTMARE</div>
  <h2>${win?'NIGHTMARE SURVIVED!':'THE NIGHTMARE CONTINUES'}</h2>
  <p class="ev-weekly-result-stage">STAGE ${finishedStage} ${win?'CLEARED':'FAILED'}</p>
- ${win?'':`<p class="ev-weekly-result-lives">♥ ${save.lives}/5 LIVES LEFT</p>`}
- <div class="ev-weekly-result-actions"><button type="button" class="ev-weekly-result-primary" id="evEventRetry" ${(!win&&save.lives<=0)||!evOpenWeek()?'disabled':''}>${win?'NEXT STAGE':'RETRY STAGE'}</button><button type="button" class="ev-weekly-result-secondary" id="evEventHome">EVENT</button></div>
+ ${win?'':`<p class="ev-weekly-result-lives">♥ ${save.lives}/5 LIVES · ${evWeeklyContinueUsed?'CONTINUE USED':'ONE CONTINUE AVAILABLE'}</p>`}
+ <div class="ev-weekly-result-actions">
+ ${win?'':`<button type="button" class="ev-weekly-result-primary" id="evEventPlusMoves" ${canContinue?'':'disabled'}>+5 MOVES · 350 COINS</button>`}
+ <button type="button" class="ev-weekly-result-primary" id="evEventRetry" ${(!win&&save.lives<=1)||!evOpenWeek()?'disabled':''}>${win?'NEXT STAGE':'RETRY STAGE'}</button>
+ <button type="button" class="ev-weekly-result-secondary" id="evEventHome">EVENT</button></div>
  </section>`;
  document.getElementById('app').appendChild(covered);
- covered.querySelector('#evEventRetry').onclick=()=>{covered.remove();eventRun=false;evStartWeeklyStage()};
- covered.querySelector('#evEventHome').onclick=()=>{covered.remove();eventRun=false;$('boosters').style.display='';menu();evWeekly()};
+ covered.querySelector('#evEventPlusMoves')?.addEventListener('click',()=>{
+   if(!evWeeklyFailurePending||evWeeklyContinueUsed||save.coins<350)return;
+   save.coins-=350;evWeeklyContinueUsed=true;evWeeklyFailurePending=false;
+   save.pendingFailure=false;persist();
+   moves=5;mode='free';busy=false;covered.remove();$('walker').hidden=true;render();say('+5 MOVES!');
+ });
+ covered.querySelector('#evEventRetry').onclick=()=>{
+   if(!win)evWeeklyFinalizeFailure();
+   covered.remove();eventRun=false;if(!canAttempt()){menu();evWeekly();return}evStartWeeklyStage();
+ };
+ covered.querySelector('#evEventHome').onclick=()=>{
+   if(!win)evWeeklyFinalizeFailure();
+   covered.remove();eventRun=false;$('boosters').style.display='';menu();evWeekly();
+ };
 }
 const evOldBack=$('gameback').onclick;$('gameback').onclick=function(e){if(eventRun){if(mode==='ended'||mode==='failed')return;if(!confirm('Leave Weekly Nightmare stage? This attempt costs one life.'))return;consumeFailedLife();eventRun=false;$('boosters').style.display='';menu();evWeekly();return}evOldBack.call(this,e)};
 // Intercept all ordinary result actions only for the event; standard screens stay unchanged.
