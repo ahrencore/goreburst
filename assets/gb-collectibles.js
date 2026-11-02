@@ -74,6 +74,10 @@ const blurbs={
 const screen=document.createElement('section');screen.id='gbCollectView';screen.className='view';screen.setAttribute('aria-label','Collectibles');
 screen.innerHTML='<div class="gbc-root"><header class="gbc-bar"><button type="button" class="gbc-btn" id="gbcBack">‹ BACK</button><div class="gbc-bar-title" id="gbcBarTitle">COLLECTIBLES</div><button class="gbc-btn" type="button" id="gbcHome">HOME</button></header><div class="gbc-scroll" id="gbcContent"></div></div><div class="gbc-card-modal" id="gbcModal" hidden></div>';
 document.getElementById('app').appendChild(screen);
+// Public Supabase project configuration, shared with the profile client.
+// These are publishable client credentials; never place service-role keys here.
+const SUPABASE_URL='https://harqhhpobaepfkfeitmw.supabase.co';
+const SUPABASE_KEY='sb_publishable_K9F36jgWZaMWywln6Wwaiw_4zJ7523C';
 const $=id=>document.getElementById(id);let page=-1;
 // Read-only ownership integration. Only trusted server jobs may mutate inventory.
 let owned=new Map(), inventoryReady=false, inventoryError='', packs={carnival:0,freakshow:0,nightmare:0}, packBusy=false, packDb=null, packUser=null;
