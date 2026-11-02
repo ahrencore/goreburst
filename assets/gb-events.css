@@ -333,3 +333,17 @@
 .ev-root .ev-ghost-row .gbpf-rank-avatar > img.gbpf-rank-overlay {
   filter:none!important;animation:none!important;box-shadow:none!important;opacity:1!important;
 }
+
+
+/* Equipped profile-frame overlays in every leaderboard: no extra glow. */
+.ev-root .gbpf-rank-avatar > img.gbpf-rank-overlay,
+.ev-root .ev-nightmare-rank-row .gbpf-rank-avatar > img.gbpf-rank-overlay,
+.ev-root .ev-clash-row .gbpf-rank-avatar > img.gbpf-rank-overlay,
+.ev-root .ev-ghost-row .gbpf-rank-avatar > img.gbpf-rank-overlay,
+.gbpf-rank-avatar > img.gbpf-rank-overlay {
+  filter: none !important;
+  -webkit-filter: none !important;
+  animation: none !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}

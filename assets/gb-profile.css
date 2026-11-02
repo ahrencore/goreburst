@@ -364,3 +364,26 @@
   box-shadow: none !important;
   text-shadow: none !important;
 }
+
+
+/* FINAL FRAME POLICY: equipped frame ART is static everywhere.
+   Do not alter other neon UI borders, panel highlights or buttons. */
+#gbpf-hud-frame,
+#menu #gbpf-hud-frame,
+#menu .top.art-hud > #gbpf-hud-frame,
+#menu .top.art-hud > img#gbpf-hud-frame,
+#gb-profile-layer img.gbpf-overlay,
+#gb-profile-layer .gbpr-hero .gbpf-overlay,
+#gb-profile-layer #gbpf-preview-border,
+#gbpf-preview-border,
+#gb-profile-layer img.gbpf-social-frame,
+#gb-profile-layer .gbpf-public-wrap img.gbpf-overlay,
+.gbpf-rank-avatar img.gbpf-rank-overlay,
+img.gbpf-rank-overlay {
+  filter: none !important;
+  -webkit-filter: none !important;
+  animation: none !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+/* Leave existing avatar photographs and unrelated decorative UI unchanged. */
