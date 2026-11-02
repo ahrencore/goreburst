@@ -175,7 +175,7 @@ function evWeekly(){
  <div class="ev-nightmare-status"><span>${evOpenWeek()?'LIVE NOW':'CLOSED'}</span><span class="ev-countdown" id="evWeeklyDetailCountdown">${evCountdownText(evWeeklyBoundary())}</span></div>
  <div class="ev-nightmare-stage">STAGE: ${evData.weeklyStage}</div>
  <button class="ev-nightmare-enter" id="evWeeklyGo" ${!evOpenWeek()?'disabled':''}>${evOpenWeek()?'ENTER NIGHTMARE':'REOPENS MONDAY'}</button>
- </section><section class="ev-nightmare-ranks"><h2>WEEKLY TOP 15</h2><div id="evNightmareRankings" class="ev-nightmare-rank-list">Loading rankings…</div><button class="ev-nightmare-rewards" id="evWeeklyRewards">VIEW REWARDS</button></section>`);
+ </section><section class="ev-nightmare-ranks"><h2>Weekly Top Players</h2><div id="evNightmareRankings" class="ev-nightmare-rank-list">Loading rankings…</div><button class="ev-nightmare-rewards" id="evWeeklyRewards">VIEW REWARDS</button></section>`);
  evRoot.querySelector('#evWeeklyGo').onclick=evStartWeeklyStage;
  evRoot.querySelector('#evWeeklyRewards').onclick=evWeeklyRewards;
  evBindCountdown('evWeeklyDetailCountdown',evWeeklyBoundary);
