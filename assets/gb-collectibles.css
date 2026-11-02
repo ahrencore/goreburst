@@ -59,3 +59,33 @@
 /* Read-only collectible inventory: silhouettes until owned. */
 #gbCollectView .gbc-card .gbc-unowned{display:grid;place-items:center;width:100%;aspect-ratio:3/4.2;border:1.5px solid #6d4778;border-radius:9px;background:linear-gradient(140deg,#201029,#0d0913);color:#684977;font:700 28px Georgia,serif;box-shadow:inset 0 0 17px #b44b9d29}
 #gbCollectView .gbc-extra{position:absolute;top:4px;right:4px;z-index:2;border-radius:12px;padding:2px 6px;color:#fff4bb;background:#55205f;border:1px solid #ff91ee;font:800 11px system-ui;box-shadow:0 0 7px #ff4dc2}
+
+/* Approved star-only pack wrappers — no logos, names or art on foil. */
+#gbCollectView .gbc-pack-zone{margin:18px 0 6px;text-align:center}
+#gbCollectView .gbc-pack-zone h2{color:#ffe2ae;font:700 18px Georgia,serif;margin:8px 0 12px;letter-spacing:.05em}
+#gbCollectView .gbc-packs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+#gbCollectView .gbc-pack{display:flex;align-items:center;flex-direction:column;gap:6px;min-width:0;padding:8px 4px 10px;border:1px solid #9b58b8;border-radius:12px;background:linear-gradient(#2d1537,#140a20)}
+#gbCollectView .gbc-pack-pick{display:block;width:83%;padding:0!important;background:none!important;border:0!important;box-shadow:none!important;min-height:0!important;cursor:pointer}
+#gbCollectView .gbc-pack-art{display:flex;position:relative;align-items:center;justify-content:center;width:100%;aspect-ratio:3/4.6;overflow:hidden;border-radius:9px 9px 7px 7px;border:2px solid var(--foil);background:radial-gradient(ellipse at 43% 42%,color-mix(in srgb,var(--foil),#000 65%),#090a12 72%),linear-gradient(110deg,#fff4,transparent 32%,#fff2 52%,transparent 64%);box-shadow:0 0 13px var(--glow),inset 0 0 10px var(--foil)}
+#gbCollectView .gbc-pack-art:before,#gbCollectView .gbc-pack-art:after{content:'';position:absolute;left:0;right:0;height:9%;background:repeating-linear-gradient(90deg,transparent 0 3px,#ffffff42 3px 4px,transparent 4px 8px),linear-gradient(var(--foil),#1a0922);box-shadow:0 0 8px var(--foil);z-index:1}
+#gbCollectView .gbc-pack-art:before{top:0}#gbCollectView .gbc-pack-art:after{bottom:0}
+#gbCollectView .gbc-pack-carnival{--foil:#29fa66;--glow:#17d34685}
+#gbCollectView .gbc-pack-freakshow{--foil:#d04cff;--glow:#cc47ff90}
+#gbCollectView .gbc-pack-nightmare{--foil:#ef4d25;--glow:#ff9a2680;border-color:#bb6d47}
+#gbCollectView .gbc-pack-nightmare .gbc-pack-art{border-color:#f6b74d;box-shadow:0 0 14px #f23d36a8,inset 0 0 12px #ffb324}
+#gbCollectView .gbc-pack-motif{position:relative;z-index:2;white-space:nowrap;font-size:clamp(11px,3.2vw,20px);letter-spacing:-2px;color:#ffd16c;text-shadow:0 0 6px #ff8f00,0 0 13px #ffa200;font-weight:900}
+#gbCollectView .gbc-pack-owned{color:#ffe4f2;font:700 12px system-ui}
+#gbCollectView .gbc-pack>button:not(.gbc-pack-pick){width:100%;min-height:29px;border:1px solid #f7a9dc;border-radius:8px;background:linear-gradient(#782a77,#3a1646);color:#ffeaca;font-size:11px;font-weight:900;box-shadow:0 0 8px #e770c080;cursor:pointer}
+#gbCollectView .gbc-pack button:disabled{opacity:.45;cursor:default}
+#gbCollectView .gbc-pack-reveal{width:min(100%,430px)}
+#gbCollectView .gbc-reveal-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:14px 0}
+#gbCollectView .gbc-reveal-card{min-width:0;position:relative;padding:5px;border:1px solid #bc83d4;border-radius:9px;background:#29152f;animation:gbcFlipIn .28s ease-out}
+#gbCollectView .gbc-reveal-card img{width:100%;height:auto;aspect-ratio:3/4.2;object-fit:contain}
+#gbCollectView .gbc-reveal-card strong{display:block;color:#ffdfcf;font-size:10px;line-height:1.2}
+#gbCollectView .gbc-new,#gbCollectView .gbc-duplicate{display:inline-block;margin-top:3px;font:900 11px system-ui;color:#ffda75;text-shadow:0 0 5px #e68647}
+#gbCollectView .gbc-duplicate{color:#f3c5ff}
+#gbCollectView .gbc-face-down{display:flex;min-width:0;aspect-ratio:3/4.2;flex-direction:column;justify-content:center;align-items:center;gap:8px;border:2px solid #e79cff;border-radius:9px;background:radial-gradient(circle,#6a246d,#200e32 70%);box-shadow:0 0 10px #c665e8;cursor:pointer;color:#ffe1b7}
+#gbCollectView .gbc-cardback-star{font-size:42px;color:#fdbb71;text-shadow:0 0 12px #d966f6}
+#gbCollectView .gbc-face-down small{font-size:9px;font-weight:800}
+@keyframes gbcFlipIn{from{opacity:0;transform:rotateY(80deg) scale(.85)}to{opacity:1;transform:rotateY(0) scale(1)}}
+@media(prefers-reduced-motion:reduce){#gbCollectView .gbc-reveal-card{animation:none}}
