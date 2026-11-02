@@ -80,6 +80,28 @@ prCustomizeTabs.addEventListener('click',e=>{const b=e.target.closest('[data-gbp
 const prAccountScreen=prScreen('account','ACCOUNT');prAccountScreen.append(prLogin,prSaveInfo,prCloud);
 const prAccountSigned=document.createElement('div');prAccountSigned.className='gbpr-panel';prAccountSigned.innerHTML='<div class="gbpr-tag">ACCOUNT STATUS</div><p id="gbpr-simple-status" class="gbpr-muted"></p>';
 prAccountScreen.insertBefore(prAccountSigned,prSaveInfo);
+// Read-only wallet audit. This never writes or replaces the device's coin save.
+const prWalletPanel=document.createElement('section');
+prWalletPanel.className='gbpr-panel';
+prWalletPanel.innerHTML='<div class="gbpr-tag">SUPABASE SKULL COINS</div><p id="gbpr-wallet-balance" class="gbpr-muted">Sign in to check your migrated balance.</p><button type="button" class="gbpr-btn secondary" id="gbpr-wallet-refresh">CHECK CLOUD BALANCE</button><p class="gbpr-muted">Read-only check. Your gameplay coin balance still uses the device save until the secure wallet update is installed.</p>';
+prAccountScreen.insertBefore(prWalletPanel,prSaveInfo);
+async function gbprCheckWallet(){
+  const el=$p('gbpr-wallet-balance');
+  if(!sb||!gbprRegistered()){el.textContent='Sign in to check your migrated balance.';return;}
+  const uid=user.id;
+  el.textContent='Checking Supabase…';
+  try{
+    const {data,error}=await sb.from('player_inventory').select('skull_coins').eq('player_id',uid).maybeSingle();
+    if(error)throw error;
+    if(!user||user.id!==uid)return;
+    if(!data){el.textContent='No readable inventory record for this account.';return;}
+    const amount=Number(data.skull_coins);
+    if(!Number.isSafeInteger(amount)||amount<0)throw Error('Invalid wallet balance');
+    el.textContent=amount.toLocaleString()+' Skull Coins in Supabase (read-only)';
+  }catch(err){if(user?.id===uid)el.textContent='Unable to read cloud balance: '+(err.message||'Unknown error');}
+}
+$p('gbpr-wallet-refresh').addEventListener('click',()=>void gbprCheckWallet());
+
 // Reward synchronization is scoped to completed, server-verified award receipts.
 const prRewardSync=document.createElement('section');
 prRewardSync.className='gbpr-panel';
@@ -189,7 +211,7 @@ $p('gbpr-auth-form').onsubmit=async e=>{
  finally{working=false;$p('gbpr-auth-submit').disabled=false}
 };
 $p('gbpr-edit-form').onsubmit=async e=>{e.preventDefault();if(!sb||!gbprRegistered())return;const username=$p('gbpr-new-handle').value.trim().toLowerCase();const display_name=$p('gbpr-new-name').value.trim();if(username&&!/^[a-z0-9_]{3,20}$/.test(username)){setMessage('gbpr-edit-status','Username must be 3–20 letters, numbers or underscores.');return}if(!display_name){setMessage('gbpr-edit-status','Choose a display name.');return}setMessage('gbpr-edit-status','Saving…');const {error}=await sb.from('profiles').update({username:username||null,display_name}).eq('id',user.id);if(error){setMessage('gbpr-edit-status',error.code==='23505'?'This username is already taken.':error.message);return}profile={...profile,username:username||null,display_name};setMessage('gbpr-edit-status','Profile updated!',true);refresh()};
-$p('gbpr-signout').onclick=async()=>{if(!sb)return;const {error}=await sb.auth.signOut();if(error){setMessage('gbpr-edit-status',error.message);return}user=null;profile=null;avatarPreview=null;cloudReset();refresh();void gbprRefreshRequestDot();void gbprRefreshMailDot()};
+$p('gbpr-signout').onclick=async()=>{if(!sb)return;const {error}=await sb.auth.signOut();if(error){setMessage('gbpr-edit-status',error.message);return}user=null;profile=null;avatarPreview=null;$p('gbpr-wallet-balance').textContent='Sign in to check your migrated balance.';cloudReset();refresh();void gbprRefreshRequestDot();void gbprRefreshMailDot()};
 $p('gbpr-upload').onchange=async e=>{const file=e.target.files?.[0];e.target.value='';if(!file)return;if(!user||!sb){setMessage('gbpr-upload-status','Please sign in before uploading a photo.');return}if(!['image/jpeg','image/png','image/webp'].includes(file.type)){setMessage('gbpr-upload-status','Choose a JPG, PNG or WebP image.');return}if(file.size>8*1024*1024){setMessage('gbpr-upload-status','Choose an image smaller than 8 MB.');return}
  setMessage('gbpr-upload-status','Preparing photo…');try{const bmp=await createImageBitmap(file);const canvas=document.createElement('canvas');canvas.width=512;canvas.height=512;const ctx=canvas.getContext('2d');if(!ctx)throw Error('Image processing unavailable');const d=Math.min(bmp.width,bmp.height);ctx.drawImage(bmp,(bmp.width-d)/2,(bmp.height-d)/2,d,d,0,0,512,512);bmp.close?.();const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/webp',.84));if(!blob)throw Error('Could not prepare photo');const path=user.id+'/profile-'+Date.now()+'.webp';setMessage('gbpr-upload-status','Uploading photo…');const upload=await sb.storage.from('avatars').upload(path,blob,{contentType:'image/webp',upsert:false});if(upload.error)throw upload.error;const updated=await sb.from('profiles').update({avatar_path:path}).eq('id',user.id);if(updated.error)throw updated.error;profile={...profile,avatar_path:path};avatarPreview=null;setMessage('gbpr-upload-status','Photo uploaded!',true);refresh()}catch(err){setMessage('gbpr-upload-status',err.message||'Upload failed')}};
 async function connect(){
