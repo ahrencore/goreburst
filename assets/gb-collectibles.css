@@ -44,3 +44,14 @@
 #gbCollectView .gbc-card-pane p{font:12px/1.4 system-ui;color:#d6b3cf;margin:5px 0 10px}
 #gbCollectView .gbc-modal-actions{display:flex;gap:8px;justify-content:center}
 @media(max-height:680px){#gbCollectView .gbc-scroll{padding-top:7px}#gbCollectView .gbc-headline{font-size:21px}#gbCollectView .gbc-person img{height:70px;width:60px}#gbCollectView .gbc-person h2{font-size:22px}}
+
+/* Approved collectibles menu and album header refinements. */
+#gbCollectView .gbc-album-pic{padding:0;overflow:hidden}
+#gbCollectView .gbc-album-pic img{width:100%;height:100%;object-fit:contain;object-position:center;filter:none;display:block}
+#gbCollectView .gbc-person-text{display:block;text-align:center;margin:2px 0 11px}
+#gbCollectView .gbc-person-text>div{width:100%}
+#gbCollectView .gbc-person-text h2{font-size:clamp(22px,6vw,27px);margin:0}
+#gbCollectView .gbc-person-text p{margin:6px auto 0;max-width:340px;font:12px/1.45 Georgia,serif}
+#gbCollectView .gbc-rewards{margin-bottom:8px}
+#gbCollectView .gbc-claim-row{display:flex;justify-content:center;margin:0 0 15px}
+#gbCollectView .gbc-claim{font-size:11px;padding:7px 23px;min-height:32px;border-color:#ffc1e9;color:#ffe2a9;box-shadow:0 0 11px #f15db2a6,inset 0 0 8px #ffc0ef42;background:linear-gradient(180deg,#67316a,#3e164f);letter-spacing:.08em}
