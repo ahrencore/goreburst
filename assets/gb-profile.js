@@ -69,6 +69,14 @@ prScroll.prepend(prHub);
 prHub.querySelector('.gbpr-hub-identity').append(prHero);
 const prScreen=(id,title)=>{const section=document.createElement('section');section.id='gbpr-screen-'+id;section.className='gbpr-screen gbpr-hide';section.innerHTML=`<div class="gbpr-subhead"><button type="button" class="gbpr-btn secondary" data-gbpr-home>‹ BACK</button><h3>${title}</h3></div>`;prScroll.append(section);return section};
 const prEditScreen=prScreen('edit','EDIT PROFILE');prEditScreen.append(prEdit,prAvatar);
+// Avatar and frame choices share Edit Profile. The existing upload form stays unchanged.
+const prCustomizeTabs=document.createElement('div');prCustomizeTabs.className='gbpf-tabs';prCustomizeTabs.innerHTML='<button type="button" class="active" data-gbpf-tab="avatars">AVATARS</button><button type="button" data-gbpf-tab="frames">FRAMES</button>';
+prEditScreen.insertBefore(prCustomizeTabs,prAvatar);
+const prFramePanel=document.createElement('div');prFramePanel.className='gbpr-panel gbpr-hide';prFramePanel.id='gbpf-panel';
+prFramePanel.innerHTML='<div class="gbpr-tag">PROFILE FRAMES</div><p class="gbpr-muted">Five free frames for everyone. The final frame unlocks when all 108 collectible cards are genuinely owned.</p><div class="gbpf-preview"><img id="gbpf-preview-avatar" alt="Your avatar"><img id="gbpf-preview-border" alt="" hidden></div><div id="gbpf-options" class="gbpf-options"></div><p id="gbpf-status" class="gbpr-error" aria-live="polite"></p>';
+prEditScreen.append(prFramePanel);
+prCustomizeTabs.addEventListener('click',e=>{const b=e.target.closest('[data-gbpf-tab]');if(!b)return;const isFrames=b.dataset.gbpfTab==='frames';prAvatar.classList.toggle('gbpr-hide',isFrames);prFramePanel.classList.toggle('gbpr-hide',!isFrames);prCustomizeTabs.querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===b));if(isFrames)window.gbpfRefresh?.()});
+
 const prAccountScreen=prScreen('account','ACCOUNT');prAccountScreen.append(prLogin,prSaveInfo,prCloud);
 const prAccountSigned=document.createElement('div');prAccountSigned.className='gbpr-panel';prAccountSigned.innerHTML='<div class="gbpr-tag">ACCOUNT STATUS</div><p id="gbpr-simple-status" class="gbpr-muted"></p>';
 prAccountScreen.insertBefore(prAccountSigned,prSaveInfo);
@@ -106,6 +114,24 @@ const prUpdateHub=()=>{
 };
 
 let sb=null,user=null,profile=null,signup=false,working=false,avatarPreview=null;
+// Frame IDs intentionally have no player-facing names. Never trust client claims for paid/unlocked frames.
+const GBPF_PATH='assets/profile-frames/';
+const gbpfFile=id=>id==='hungry_gate'?GBPF_PATH+'hungry_gate.png':/^[1-5]$/.test(String(id))?GBPF_PATH+'frame_0'+id+'.png':'';
+const gbpfNormalize=id=>id==='hungry_gate'?'hungry_gate':/^[1-5]$/.test(String(id))?String(id):'none';
+const gbpfLocalKey=()=>user?.id?'gbpf-equipped-'+user.id:'gbpf-equipped-guest';
+const gbpfLocal=()=>{try{return gbpfNormalize(localStorage.getItem(gbpfLocalKey())||'none')}catch{return 'none'}};
+const gbpfCurrent=()=>gbpfNormalize(profile?.equipped_frame??gbpfLocal());
+const gbpfSetLocal=id=>{try{localStorage.setItem(gbpfLocalKey(),id)}catch{}};
+function gbpfDecorate(el,id){if(!el)return;const container=el.parentElement;if(!container)return;container.querySelectorAll(':scope > .gbpf-overlay').forEach(x=>x.remove());const src=gbpfFile(id);if(!src)return;const frame=document.createElement('img');frame.src=src;frame.className='gbpf-overlay';frame.alt='';frame.setAttribute('aria-hidden','true');container.classList.add('gbpf-has-frame');el.classList.add('gbpf-avatar-img');el.insertAdjacentElement('afterend',frame)}
+function gbpfPaint(){const selected=gbpfCurrent();const hero=$p('gbpr-current-avatar');gbpfDecorate(hero,selected);const avatar=$p('gbpf-preview-avatar');if(avatar)avatar.src=avatarUrl();const border=$p('gbpf-preview-border');if(border){border.src=gbpfFile(selected)||'';border.hidden=!gbpfFile(selected)};
+ const hud=document.getElementById('gbMenuAvatar');if(hud){const old=document.getElementById('gbpf-hud-frame');if(old)old.remove();if(gbpfFile(selected)){const overlay=document.createElement('img');overlay.id='gbpf-hud-frame';overlay.src=gbpfFile(selected);overlay.alt='';overlay.setAttribute('aria-hidden','true');hud.insertAdjacentElement('afterend',overlay)}}
+ const choices=$p('gbpf-options');if(choices){choices.innerHTML=['none','1','2','3','4','5','hungry_gate'].map(id=>{const locked=id==='hungry_gate';const chosen=id===selected;const inner=gbpfFile(id)?'<img src="'+gbpfFile(id)+'" alt="">':'<span class="gbpf-empty">○</span>';return '<button type="button" data-gbpf-frame="'+id+'" class="gbpf-choice '+(chosen?'selected ':'')+(locked?'locked':'')+'" aria-label="'+(locked?'Collection reward, locked':id==='none'?'No frame':'Free profile frame '+id)+'" aria-pressed="'+chosen+'">'+inner+(locked?'<span class="gbpf-lock">🔒</span>':'')+(chosen?'<span class="gbpf-tick">✓</span>':'')+'</button>'}).join('')}
+}
+window.gbpfRefresh=gbpfPaint;
+prFramePanel.addEventListener('click',async e=>{const button=e.target.closest('[data-gbpf-frame]');if(!button)return;const id=gbpfNormalize(button.dataset.gbpfFrame);const status=$p('gbpf-status');if(id==='hungry_gate'){status.textContent='Locked: collect all 108 cards to unlock this frame.';return}
+ if(sb&&gbprRegistered()){status.textContent='Saving frame…';const result=await sb.from('profiles').update({equipped_frame:id}).eq('id',user.id);if(result.error){status.textContent='Could not save frame. Run the included Supabase migration first. '+result.error.message;return}profile={...profile,equipped_frame:id}}
+ gbpfSetLocal(id);status.textContent='Frame equipped!';gbpfPaint();});
+
 const gbprIsGuest=()=>Boolean(user?.is_anonymous);
 const gbprRegistered=()=>Boolean(user&&!user.is_anonymous);
 const avatarFile=i=>'assets/avatars/'+String(i+1).padStart(2,'0')+'_'+KEYS[i]+'.png';
@@ -116,14 +142,14 @@ const localLevel=()=>{try{const data=JSON.parse(localStorage.getItem('gb-playabl
 function setMessage(id,txt,success=false){const el=$p(id);el.textContent=txt;el.classList.toggle('gbpr-success',success)}
 function avatarUrl(){if(avatarPreview!==null)return avatarFile(avatarPreview);if(!user){const ix=Number(localStorage.getItem('gb-guest-avatar'));if(Number.isInteger(ix)&&ix>=0&&ix<15)return avatarFile(ix)}if(profile?.avatar_path){return SUPABASE_URL+'/storage/v1/object/public/avatars/'+profile.avatar_path.split('/').map(encodeURIComponent).join('/')}return avatarFile(avatarIndex(profile?.avatar_key))}
 function syncMenuAvatar(){const el=document.getElementById('gbMenuAvatar');if(el){el.src=avatarUrl();el.onerror=()=>{el.onerror=null;el.src=fallbackAvatar}}}
-function refresh(){syncMenuAvatar();const signed=gbprRegistered();$p('gbpr-auth-panel').classList.toggle('gbpr-hide',signed);$p('gbpr-account-panel').classList.toggle('gbpr-hide',!signed);$p('gbpr-display').textContent=profile?.display_name||'Carnival Guest';$p('gbpr-handle').textContent=profile?.username?'@'+profile.username:(signed?'Choose a unique username':'Guest player');$p('gbpr-level').textContent='LEVEL '+localLevel()+' · Local progress';$p('gbpr-current-avatar').src=avatarUrl();$p('gbpr-new-name').value=profile?.display_name||'Carnival Guest';$p('gbpr-new-handle').value=profile?.username||'';$p('gbpr-avatar-help').textContent=signed?'Tap any character to save it. You can also upload your own photo.':'Sign in to save a PFP to your account. Tap to preview characters.';document.querySelectorAll('.gbpr-avatar').forEach((b,i)=>b.classList.toggle('chosen',(avatarPreview!==null?avatarPreview:avatarIndex(profile?.avatar_key))===i));}
+function refresh(){syncMenuAvatar();queueMicrotask(gbpfPaint);const signed=gbprRegistered();$p('gbpr-auth-panel').classList.toggle('gbpr-hide',signed);$p('gbpr-account-panel').classList.toggle('gbpr-hide',!signed);$p('gbpr-display').textContent=profile?.display_name||'Carnival Guest';$p('gbpr-handle').textContent=profile?.username?'@'+profile.username:(signed?'Choose a unique username':'Guest player');$p('gbpr-level').textContent='LEVEL '+localLevel()+' · Local progress';$p('gbpr-current-avatar').src=avatarUrl();$p('gbpr-new-name').value=profile?.display_name||'Carnival Guest';$p('gbpr-new-handle').value=profile?.username||'';$p('gbpr-avatar-help').textContent=signed?'Tap any character to save it. You can also upload your own photo.':'Sign in to save a PFP to your account. Tap to preview characters.';document.querySelectorAll('.gbpr-avatar').forEach((b,i)=>b.classList.toggle('chosen',(avatarPreview!==null?avatarPreview:avatarIndex(profile?.avatar_key))===i));}
 function view(open){layer.classList.toggle('open',open);if(open){avatarPreview=null;refresh();prUpdateHub();void gbprRefreshMailDot();prNavigate('hub');void gbprRefreshRequestDot();$p('gbpr-close').focus()}}
 $p('gbpr-close').onclick=()=>view(false);
 document.getElementById('profile').addEventListener('click',()=>view(true));
 layer.addEventListener('pointerdown',e=>e.stopPropagation());
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&layer.classList.contains('open'))view(false)});
 $p('gbpr-avatar-list').innerHTML=AVATARS.map((name,i)=>`<button type="button" class="gbpr-avatar" data-index="${i}"><img loading="lazy" src="${avatarFile(i)}" alt=""></button>`).join('');
-async function fetchProfile(){if(!sb||!user)return;const {data,error}=await sb.from('profiles').select('id,username,display_name,avatar_key,avatar_path').eq('id',user.id).maybeSingle();if(error){setMessage('gbpr-edit-status',error.message);return}profile=data||null;refresh();void gbprRefreshRequestDot();if(gbprRegistered())window.gbCloudReady?.()}
+async function fetchProfile(){if(!sb||!user)return;const {data,error}=await sb.from('profiles').select('id,username,display_name,avatar_key,avatar_path,equipped_frame').eq('id',user.id).maybeSingle();if(error){setMessage('gbpr-edit-status',error.message);return}profile=data||null;refresh();void gbprRefreshRequestDot();if(gbprRegistered())window.gbCloudReady?.()}
 for(const el of document.querySelectorAll('.gbpr-avatar'))el.onclick=async()=>{const i=Number(el.dataset.index);avatarPreview=i;refresh();if(!gbprRegistered()||!sb){try{localStorage.setItem('gb-guest-avatar',String(i))}catch(e){};return;}setMessage('gbpr-upload-status','Saving avatar…');const {error}=await sb.from('profiles').update({avatar_key:avatarKey(i),avatar_path:null}).eq('id',user.id);if(error){setMessage('gbpr-upload-status',error.message);return}profile={...profile,avatar_key:avatarKey(i),avatar_path:null};avatarPreview=null;setMessage('gbpr-upload-status','Avatar saved!',true);refresh()};
 function setAuthMode(isSignup){signup=isSignup;$p('gbpr-auth-submit').textContent=signup?'CREATE ACCOUNT':'SIGN IN';$p('gbpr-login-tab').classList.toggle('secondary',signup);$p('gbpr-signup-tab').classList.toggle('secondary',!signup);$p('gbpr-password').autocomplete=signup?'new-password':'current-password';setMessage('gbpr-auth-status','')}
 $p('gbpr-login-tab').onclick=()=>setAuthMode(false);$p('gbpr-signup-tab').onclick=()=>setAuthMode(true);
@@ -188,7 +214,7 @@ async function gbprOpenPublicProfile(targetId){
  if(prCurrent!=='public')return;
  if(error||!data?.length){host.textContent=error?.message||'Profile unavailable.';return}
  const r=data[0];
- host.innerHTML=`<img class="gbpr-public-avatar" src="${gbprSocialAvatar(r)}" alt="Player avatar"><h3>${safe(r.display_name||'Carnival Guest')}</h3><p class="gbpr-public-handle">@${safe(r.username||'unknown')}</p><div class="gbpr-public-stats"><div><small>LEVEL</small><strong>${Math.max(1,Math.min(100000,Number(r.player_level)||1))}</strong></div><div><small>STARS</small><strong>${Math.max(0,Math.min(300000,Number(r.total_stars)||0))} ★</strong></div></div>`;
+ host.innerHTML=`<span class="gbpf-public-wrap"><img class="gbpr-public-avatar" src="${gbprSocialAvatar(r)}" alt="Player avatar">${gbpfFile(gbpfNormalize(r.equipped_frame))?'<img class="gbpf-overlay" src="'+gbpfFile(gbpfNormalize(r.equipped_frame))+'" alt="">':''}</span><h3>${safe(r.display_name||'Carnival Guest')}</h3><p class="gbpr-public-handle">@${safe(r.username||'unknown')}</p><div class="gbpr-public-stats"><div><small>LEVEL</small><strong>${Math.max(1,Math.min(100000,Number(r.player_level)||1))}</strong></div><div><small>STARS</small><strong>${Math.max(0,Math.min(300000,Number(r.total_stars)||0))} ★</strong></div></div>`;
 }
 prPublicScreen.querySelector('#gbpr-public-back').onclick=()=>prNavigate('friends');
 const gbprFriendCard=(r,actions)=>`<div class="gbpr-social-card"><img src="${gbprSocialAvatar(r)}" alt=""><span><b>${safe(r.display_name||'Carnival Guest')}</b><small>@${safe(r.username||'unknown')}</small></span><div class="gbpr-social-card-actions">${actions}</div></div>`;

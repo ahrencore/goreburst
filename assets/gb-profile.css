@@ -227,3 +227,27 @@
 #gb-profile-layer .gbpr-open-letter > p {
   overflow-wrap: anywhere !important;
 }
+
+/* Profile frame selection: overlays keep transparent avatar openings and are pointer-safe. */
+#gb-profile-layer .gbpf-tabs{display:flex;gap:8px;margin:0 0 12px}
+#gb-profile-layer .gbpf-tabs button{flex:1;padding:11px;border:1px solid #c86ac6;background:#27102e;color:#f6cae5;border-radius:12px;font-weight:800}
+#gb-profile-layer .gbpf-tabs button.active{background:linear-gradient(#a63e94,#532163);border-color:#ffe3ae;box-shadow:0 0 9px #fc64d1}
+#gb-profile-layer .gbpf-preview{height:130px;width:130px;position:relative;margin:8px auto 17px}
+#gbpf-preview-avatar{width:72%!important;height:72%!important;position:absolute;left:14%;top:14%;object-fit:cover;border-radius:50%}
+#gbpf-preview-border{width:100%!important;height:100%!important;position:absolute;inset:0;object-fit:contain;pointer-events:none;filter:drop-shadow(0 0 6px #e765bd)}
+#gb-profile-layer .gbpf-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+#gb-profile-layer .gbpf-choice{position:relative;display:flex;align-items:center;justify-content:center;aspect-ratio:1;width:100%;background:#1d0a28;border:2px solid #69416d;border-radius:14px;cursor:pointer;padding:5px}
+#gb-profile-layer .gbpf-choice img{height:100%;width:100%;object-fit:contain}
+#gb-profile-layer .gbpf-choice.selected{border-color:#ffd58a;box-shadow:0 0 11px #ec78d4}
+#gb-profile-layer .gbpf-choice.locked img{filter:brightness(.48) grayscale(.5)}
+#gb-profile-layer .gbpf-empty{font-size:44px;color:#c48eb5}
+#gb-profile-layer .gbpf-lock,#gb-profile-layer .gbpf-tick{position:absolute;bottom:3px;right:4px;font-size:13px;background:#2a0c2e;border-radius:9px;padding:2px 5px}
+#gb-profile-layer .gbpr-hero.gbpf-has-frame{position:relative}
+#gb-profile-layer .gbpr-hero .gbpf-overlay{position:absolute;left:8px;top:calc(50% - 51px);width:102px;height:102px;object-fit:contain;pointer-events:none;filter:drop-shadow(0 0 5px #ef5cd1);animation:gbpfGlow 4s ease-in-out infinite}
+#gb-profile-layer .gbpr-hero .gbpf-avatar-img{width:86px;height:86px;object-fit:cover;border-radius:50%;margin:0 0 0 8px}
+#gbpf-hud-frame{position:absolute!important;left:1.95%!important;top:4%!important;width:15.9%!important;height:79%!important;object-fit:contain!important;z-index:3!important;pointer-events:none!important;filter:drop-shadow(0 0 2px #ff64d6)}
+.gbpf-public-wrap{position:relative;display:block;width:118px;height:118px;margin:0 auto}
+.gbpf-public-wrap .gbpr-public-avatar{position:absolute;width:82px!important;height:82px!important;top:18px;left:18px;margin:0!important}
+.gbpf-public-wrap .gbpf-overlay{position:absolute;width:118px;height:118px;inset:0;pointer-events:none}
+@keyframes gbpfGlow{0%,100%{filter:drop-shadow(0 0 3px #c52cb2)}50%{filter:drop-shadow(0 0 9px #ee54db)}}
+@media(prefers-reduced-motion:reduce){#gb-profile-layer .gbpr-hero .gbpf-overlay{animation:none}}
