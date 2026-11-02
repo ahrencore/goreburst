@@ -140,17 +140,23 @@ let sb=null,user=null,profile=null,signup=false,working=false,avatarPreview=null
 // Cloud-validated continue purchases. A successful RPC is the only authority to grant +5 moves.
 window.gbWalletIsSignedIn = () => !!(sb && user && !user.is_anonymous);
 window.gbWalletContinueSpend = async (requestId) => {
-  if (!sb) throw Error('Cloud wallet not connected. Reload the game.');
-  if (!requestId) throw Error('Missing purchase request.');
-  // Recheck the actual Supabase session instead of trusting a cached UI login flag.
+  if (!sb) throw Error('Wallet unavailable: Supabase connection not ready.');
+  if (!requestId) throw Error('Missing transaction ID.');
+  const {data: sessionData, error: sessionError} = await sb.auth.getSession();
+  if (sessionError || !sessionData?.session?.access_token) throw Error('Session expired. Please sign in again.');
   const { data: authData, error: authError } = await sb.auth.getUser();
-  if (authError || !authData?.user || authData.user.is_anonymous)
-    throw Error('Sign in to your registered account before buying +5 Moves.');
-  const { data, error } = await sb.rpc('gb_wallet_continue_spend', { p_request_id: requestId });
-  if (error) throw error;
+  if (authError || !authData?.user || authData.user.is_anonymous) throw Error('A registered account is required for +5 Moves.');
+  // Spend exactly once. A retry must reuse requestId, never generate another ID.
+  const { data, error } = await sb.rpc('gb_wallet_continue_spend', {p_request_id: requestId});
+  if (error) throw Error('Continue payment rejected: '+error.message);
   const receipt = Array.isArray(data) ? data[0] : data;
   const value = Number(receipt?.balance_after);
-  if (!Number.isSafeInteger(value) || value < 0) throw Error('Invalid wallet receipt.');
+  if (!Number.isSafeInteger(value) || value < 0) throw Error('Payment returned an invalid receipt. Check cloud ledger.');
+  // Read back the *same* receipt from server. Never grant moves without a ledger row.
+  const {data: ledger, error: ledgerError} = await sb.from('gb_wallet_continue_ledger')
+    .select('request_id,balance_after').eq('user_id',authData.user.id).eq('request_id',requestId).maybeSingle();
+  if (ledgerError) throw Error('Cannot verify payment receipt: '+ledgerError.message);
+  if (!ledger || Number(ledger.balance_after)!==value) throw Error('Payment could not be verified. Do not retry until cloud balance is checked.');
   return value;
 };
 

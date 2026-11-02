@@ -309,7 +309,9 @@ function weeklyFinish(win){
    if(typeof window.gbWalletContinueSpend!=='function'){alert('Cloud wallet is unavailable. Sign in and reload.');return;}
    const btn=covered.querySelector('#evEventPlusMoves');btn.disabled=true;
    try{
-     save.coins=await window.gbWalletContinueSpend(crypto.randomUUID());
+     window.gbWeeklyContinueRequestId ||= crypto.randomUUID();
+     save.coins=await window.gbWalletContinueSpend(window.gbWeeklyContinueRequestId);
+     window.gbWeeklyContinueRequestId=null;
      evWeeklyContinueUsed=true;evWeeklyFailurePending=false;
      save.pendingFailure=false;persist();
      moves=5;mode='free';busy=false;covered.remove();$('walker').hidden=true;render();say('+5 MOVES!');

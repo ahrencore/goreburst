@@ -1110,13 +1110,15 @@ function finalizeFailedAttempt(){if(failedPending&&!failedAttemptPaid){consumeFa
 $('gbRetry').onclick=()=>{finalizeFailedAttempt();selectedPre.clear();if(!canAttempt())return;start(chosen)};
 $('gbFailHome').onclick=()=>{finalizeFailedAttempt();menu()};
 let gbContinuePaymentBusy=false;
+let gbContinueRequestId=null;
 $('gbPlusMoves').onclick=async()=>{
  if(!failedPending||gbContinuePaymentBusy)return;
  if(typeof window.gbWalletContinueSpend!=='function'){$('gbFailureHint').textContent='Cloud wallet is unavailable. Sign in and reload.';return}
  gbContinuePaymentBusy=true;$('gbPlusMoves').disabled=true;
  try{
-   const requestId=crypto.randomUUID();
-   save.coins=await window.gbWalletContinueSpend(requestId);
+   gbContinueRequestId ||= crypto.randomUUID();
+   save.coins=await window.gbWalletContinueSpend(gbContinueRequestId);
+   gbContinueRequestId=null;
    save.pendingFailure=false;persist();failedPending=false;failedAttemptPaid=false;
    moves=5;mode='free';busy=false;$('result').hidden=true;$('walker').hidden=true;render();say('+5 MOVES!');
  }catch(error){$('gbFailureHint').textContent='Payment failed: '+(error?.message||'Try again');}
@@ -1186,7 +1188,7 @@ document.getElementById('gamepause').onclick=openGbSettings;
 document.getElementById('gbSettingsClose').onclick=closeGbSettings;
 document.getElementById('gbSettings').addEventListener('click',e=>{if(e.target.id==='gbSettings')closeGbSettings()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeGbSettings()});
-</script><link rel="stylesheet" href="assets/gb-giftcodes.css"><script defer src="assets/gb-giftcodes.js"></script><script src="assets/gb-events.js"></script><script type="module" src="assets/gb-profile.js?v=auto-stars-sync-2"></script><script defer src="assets/gb-collectibles.js"></script><style id="gb-events-badge-final-position">
+</script><link rel="stylesheet" href="assets/gb-giftcodes.css"><script defer src="assets/gb-giftcodes.js"></script><script src="assets/gb-events.js"></script><script type="module" src="assets/gb-profile.js?v=wallet-continue-receipt-20261103"></script><script defer src="assets/gb-collectibles.js"></script><style id="gb-events-badge-final-position">
 /* Fixed badge: a child of the actual EVENTS tap area, not a pseudo-element. */
 #menu .bottom-tabs #events.ev-tab-has-reward::after{content:none!important;display:none!important}
 #menu .bottom-tabs #events{position:absolute!important;overflow:hidden!important}
