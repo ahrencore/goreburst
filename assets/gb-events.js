@@ -291,7 +291,7 @@ function weeklyFinish(win){
  }
  document.getElementById('evWeeklyResult')?.remove();
  const covered=document.createElement('div');covered.className='ev-root ev-weekly-result-view';covered.id='evWeeklyResult';
- const canContinue=!win&&!evWeeklyContinueUsed&&save.coins>=350;
+ const canContinue=!win&&!evWeeklyContinueUsed;
  covered.innerHTML=`<section class="ev-weekly-result-card ${win?'is-victory':'is-defeat'}" role="dialog" aria-modal="true" aria-label="Weekly Nightmare ${win?'stage cleared':'stage failed'}">
  <div class="ev-weekly-result-spark" aria-hidden="true">✦ ✧ ✦</div>
  <div class="ev-weekly-result-eyebrow">MR. WALKER'S WEEKLY NIGHTMARE</div>
@@ -304,11 +304,16 @@ function weeklyFinish(win){
  <button type="button" class="ev-weekly-result-secondary" id="evEventHome">EVENT</button></div>
  </section>`;
  document.getElementById('app').appendChild(covered);
- covered.querySelector('#evEventPlusMoves')?.addEventListener('click',()=>{
-   if(!evWeeklyFailurePending||evWeeklyContinueUsed||save.coins<350)return;
-   save.coins-=350;evWeeklyContinueUsed=true;evWeeklyFailurePending=false;
-   save.pendingFailure=false;persist();
-   moves=5;mode='free';busy=false;covered.remove();$('walker').hidden=true;render();say('+5 MOVES!');
+ covered.querySelector('#evEventPlusMoves')?.addEventListener('click',async()=>{
+   if(!evWeeklyFailurePending||evWeeklyContinueUsed)return;
+   if(typeof window.gbWalletContinueSpend!=='function'){alert('Cloud wallet is unavailable. Sign in and reload.');return;}
+   const btn=covered.querySelector('#evEventPlusMoves');btn.disabled=true;
+   try{
+     save.coins=await window.gbWalletContinueSpend(crypto.randomUUID());
+     evWeeklyContinueUsed=true;evWeeklyFailurePending=false;
+     save.pendingFailure=false;persist();
+     moves=5;mode='free';busy=false;covered.remove();$('walker').hidden=true;render();say('+5 MOVES!');
+   }catch(error){alert('Payment failed: '+(error?.message||'Try again'));btn.disabled=false;}
  });
  covered.querySelector('#evEventRetry').onclick=()=>{
    if(!win)evWeeklyFinalizeFailure();

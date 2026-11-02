@@ -136,6 +136,24 @@ const prUpdateHub=()=>{
 };
 
 let sb=null,user=null,profile=null,signup=false,working=false,avatarPreview=null;
+
+// Cloud-validated continue purchases. A successful RPC is the only authority to grant +5 moves.
+window.gbWalletIsSignedIn = () => !!(sb && user && !user.is_anonymous);
+window.gbWalletContinueSpend = async (requestId) => {
+  if (!sb) throw Error('Cloud wallet not connected. Reload the game.');
+  if (!requestId) throw Error('Missing purchase request.');
+  // Recheck the actual Supabase session instead of trusting a cached UI login flag.
+  const { data: authData, error: authError } = await sb.auth.getUser();
+  if (authError || !authData?.user || authData.user.is_anonymous)
+    throw Error('Sign in to your registered account before buying +5 Moves.');
+  const { data, error } = await sb.rpc('gb_wallet_continue_spend', { p_request_id: requestId });
+  if (error) throw error;
+  const receipt = Array.isArray(data) ? data[0] : data;
+  const value = Number(receipt?.balance_after);
+  if (!Number.isSafeInteger(value) || value < 0) throw Error('Invalid wallet receipt.');
+  return value;
+};
+
 // Frame IDs intentionally have no player-facing names. Never trust client claims for paid/unlocked frames.
 const GBPF_PATH='assets/profile-frames/';
 const gbpfFile=id=>id==='hungry_gate'?GBPF_PATH+'hungry_gate.png':/^[1-5]$/.test(String(id))?GBPF_PATH+'frame_0'+id+'.png':/^gift_(0[1-9]|1[0-9])$/.test(String(id))?GBPF_PATH+id+'.png':'';
