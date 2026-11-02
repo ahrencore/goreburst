@@ -55,3 +55,7 @@
 #gbCollectView .gbc-rewards{margin-bottom:8px}
 #gbCollectView .gbc-claim-row{display:flex;justify-content:center;margin:0 0 15px}
 #gbCollectView .gbc-claim{font-size:11px;padding:7px 23px;min-height:32px;border-color:#ffc1e9;color:#ffe2a9;box-shadow:0 0 11px #f15db2a6,inset 0 0 8px #ffc0ef42;background:linear-gradient(180deg,#67316a,#3e164f);letter-spacing:.08em}
+
+/* Read-only collectible inventory: silhouettes until owned. */
+#gbCollectView .gbc-card .gbc-unowned{display:grid;place-items:center;width:100%;aspect-ratio:3/4.2;border:1.5px solid #6d4778;border-radius:9px;background:linear-gradient(140deg,#201029,#0d0913);color:#684977;font:700 28px Georgia,serif;box-shadow:inset 0 0 17px #b44b9d29}
+#gbCollectView .gbc-extra{position:absolute;top:4px;right:4px;z-index:2;border-radius:12px;padding:2px 6px;color:#fff4bb;background:#55205f;border:1px solid #ff91ee;font:800 11px system-ui;box-shadow:0 0 7px #ff4dc2}
