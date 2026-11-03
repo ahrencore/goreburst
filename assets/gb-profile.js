@@ -264,8 +264,8 @@ const gbpfFit=(el,id)=>{
  if(!el)return;
  const fit=gbpfShopHole[id];
  el.classList.toggle('gbpf-paid-fit',Boolean(fit));
- if(fit){el.style.setProperty('--gbpf-hole-size',fit[0]+'%');el.style.setProperty('--gbpf-hole-x',fit[1]+'%');el.style.setProperty('--gbpf-hole-y',fit[2]+'%');}
- else{el.style.removeProperty('--gbpf-hole-size');el.style.removeProperty('--gbpf-hole-x');el.style.removeProperty('--gbpf-hole-y');}
+ if(fit){el.style.setProperty('--gbpf-hole-size',fit[0]+'%');el.style.setProperty('--gbpf-hole-x',fit[1]+'%');el.style.setProperty('--gbpf-hole-y',fit[2]+'%');el.style.setProperty('--gbpf-photo-clip',(fit[0]/1.4).toFixed(3)+'%');}
+ else{el.style.removeProperty('--gbpf-hole-size');el.style.removeProperty('--gbpf-hole-x');el.style.removeProperty('--gbpf-hole-y');el.style.removeProperty('--gbpf-photo-clip');}
 };
 const gbpfCurrent=()=>gbpfNormalize(profile?.equipped_frame??gbpfLocal());
 const gbpfSetLocal=id=>{try{localStorage.setItem(gbpfLocalKey(),id)}catch{}};

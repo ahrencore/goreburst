@@ -46,3 +46,22 @@
 #gbShopView .gbshop-frames .gbshop-art img{filter:none!important}
 #gbShopView .gbshop-avatar-preview .gbshop-frame{filter:none!important;box-shadow:none!important}
 #gbShopView .gbshop-avatar-preview{width:min(100%,300px);height:auto;aspect-ratio:1;}
+
+/* PROFILE PHOTO SCALE: use the same 70% photo as established profile frames.
+   Only its visible circle is cropped to each new frame's transparent hole.
+   Decorations keep the normal-sized photograph underneath rather than shrinking it. */
+#gbShopView .gbshop-avatar-preview .gbshop-avatar {
+ width:70% !important; height:70% !important; max-width:none !important;
+ left:var(--gbshop-photo-x,50%) !important;
+ top:var(--gbshop-photo-y,50%) !important;
+ transform:translate(-50%,-50%) !important;
+ object-fit:cover !important;object-position:center !important;
+ border-radius:50% !important;
+ clip-path:circle(var(--gbshop-photo-clip,35%) at 50% 50%);
+ -webkit-clip-path:circle(var(--gbshop-photo-clip,35%) at 50% 50%);
+ filter:none!important;box-shadow:none!important;
+ z-index:1;
+}
+#gbShopView .gbshop-avatar-preview .gbshop-frame {
+ z-index:2;filter:none!important;box-shadow:none!important;
+}

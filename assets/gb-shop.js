@@ -35,6 +35,7 @@ function openModal(id){const found=Object.values(PRODUCTS).flat().find(p=>p[0]==
    preview.style.setProperty('--gbshop-photo-size',fit[0]+'%');
    preview.style.setProperty('--gbshop-photo-x',fit[1]+'%');
    preview.style.setProperty('--gbshop-photo-y',fit[2]+'%');
+   preview.style.setProperty('--gbshop-photo-clip', (fit[0]/1.4).toFixed(3)+'%');
    $('gbshopAvatarImg').src=$('gbMenuAvatar')?.src||'assets/avatars/01_Mr_Walker.png';
    $('gbshopFrameImg').src=ROOT+src;
  }
