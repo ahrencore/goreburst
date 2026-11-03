@@ -48,7 +48,7 @@ const layer=document.createElement('aside');layer.id='gb-profile-layer';layer.se
 <div class="gbpr-panel"><div class="gbpr-tag">CHOOSE A CARNIVAL AVATAR</div><div id="gbpr-avatar-list" class="gbpr-avatars"></div><p class="gbpr-muted" id="gbpr-avatar-help">Sign in to save your avatar to your online profile. You may preview the characters as a guest.</p><div class="gbpr-actions"><label class="gbpr-btn secondary" for="gbpr-upload">UPLOAD YOUR PHOTO</label><input id="gbpr-upload" type="file" accept="image/jpeg,image/png,image/webp" hidden></div><p class="gbpr-error" id="gbpr-upload-status" aria-live="polite"></p></div>
 <div class="gbpr-panel"><div class="gbpr-tag">SAVE STATUS</div><p class="gbpr-muted gbpr-note">Your progress is saved locally. Signed-in accounts can automatically back up changes after safely choosing which save to use. Official leaderboard scores remain separate.</p></div>
 <div class="gbpr-panel"><div class="gbpr-tag">PRIVATE CLOUD BACKUP</div>
-<p class="gbpr-muted">Safely sync your private gameplay backup. On a new device, review your local and cloud saves before replacing either. This does not register official leaderboard stars or grant coins.</p>
+<p class="gbpr-muted">Safely sync your private gameplay backup. On a fresh browser, signed-in progress restores automatically. If this device already has progress, you can review both saves before replacing either. Official leaderboard stars and coins remain separate.</p>
 <div class="gbpr-actions"><button type="button" class="gbpr-btn secondary" id="gbpr-download-backup">DOWNLOAD LOCAL SAVE</button><button type="button" class="gbpr-btn" id="gbpr-cloud-enable">CHECK CLOUD SAVE</button></div>
 <div id="gbpr-cloud-choices" class="gbpr-hide" style="margin:12px 0;padding:12px;border:1px solid #aa609b;border-radius:12px;background:#281329">
 <p id="gbpr-cloud-comparison" class="gbpr-muted" style="white-space:pre-line"></p>
@@ -659,6 +659,50 @@ function validSnapshot(obj){
   if(JSON.stringify(obj).length>200000)throw Error('Cloud snapshot exceeds the safe size');
   return obj;
 }
+// A new browser/guest shell can be replaced without discarding gameplay progress.
+// Do not auto-restore a device with any earned stars, level advancement, items,
+// claimed receipts, or a save bound to a different account.
+function gbprFreshGameShell(snapshot){
+  if(Number(snapshot?.current||1)!==1)return false;
+  if(Object.keys(snapshot?.best||{}).some(k=>Number(snapshot.best[k])>0))return false;
+  if(Object.keys(snapshot?.bestCoins||{}).some(k=>Number(snapshot.bestCoins[k])>0))return false;
+  if(Object.keys(claimReceipts(snapshot)).length)return false;
+  if(Number(snapshot?.coins||0)!==0)return false;
+  if(Object.values(snapshot?.preSpecials||{}).some(v=>Number(v)>0))return false;
+  if(Object.values(snapshot?.boosterInventory||{}).some(v=>Number(v)>0))return false;
+  return true;
+}
+// Read-only wallet lookup is mandatory before restoring. A stale snapshot coin
+// field must not replace the server-owned Skull Coin balance.
+async function gbprAutoRestoreFresh(uid,local,cloud){
+  if(!cloud || !gbprFreshGameShell(local))return false;
+  const bound=localStorage.getItem(cloudBindingKey);
+  if(bound && bound!==uid)return false;
+  const oldRaw=localStorage.getItem('gb-playable-v4');
+  const snapshot=validSnapshot(cloud.snapshot);
+  if(!retainsClaimReceipts(snapshot,local))return false;
+  const {data:wallet,error:walletError}=await sb.from('player_inventory')
+    .select('skull_coins').eq('player_id',uid).maybeSingle();
+  if(walletError||!wallet)throw Error('Cloud wallet unavailable. Automatic progress restore paused.');
+  const cloudCoins=Number(wallet.skull_coins);
+  if(!Number.isSafeInteger(cloudCoins)||cloudCoins<0)throw Error('Invalid cloud wallet. Automatic restore paused.');
+  // Re-check the revision so a newer cloud save is never replaced by an old one.
+  const latest=await fetchCloudRecord(uid);
+  if(!latest||Number(latest.save_revision)!==Number(cloud.save_revision))throw Error('Cloud progress changed. Tap CHECK CLOUD SAVE.');
+  if(!user||user.id!==uid||localStorage.getItem('gb-playable-v4')!==oldRaw)
+    throw Error('Account or browser save changed. Automatic restore paused.');
+  const latestSnapshot=validSnapshot(latest.snapshot);
+  if(!retainsClaimReceipts(latestSnapshot,local))return false;
+  const key='gb-cloud-before-auto-restore:'+uid+':'+Date.now();
+  localStorage.setItem(key,JSON.stringify(local)); // recoverable safety copy
+  const restored={...latestSnapshot,coins:cloudCoins};
+  localStorage.setItem('gb-playable-v4',JSON.stringify(restored));
+  rememberCloudBaseline(uid,latestSnapshot,latest.save_revision);
+  cloudEnableForAccount();
+  cloudStatus('Your account progress is loading automatically…',true);
+  location.reload(); // main-game state is initialized on page load
+  return true;
+}
 function saveSummary(obj){
   const stars=Object.values(obj.best||{}).reduce((n,v)=>n+Math.max(0,Math.min(3,Number(v)||0)),0);
   return 'Level '+(Number(obj.current)||1)+' · '+stars+' total best-stars · '+(Number(obj.coins)||0)+' Skull Coins';
@@ -720,6 +764,12 @@ async function checkCloudSave(initiated=false){
     cloudKnownRevision=cloud?Number(cloud.save_revision):null;
     cloudCheckedFingerprint=saveFingerprint(local);
     const bound=localStorage.getItem(cloudBindingKey);
+    // Fresh browsers should immediately load existing account progress; never
+    // auto-replace a different account's save or an existing gameplay save.
+    if(cloud && (!bound || bound===uid) && gbprFreshGameShell(local) &&
+       (Number(cloud.snapshot.current||1)>1 || Object.keys(cloud.snapshot.best||{}).length>0)){
+      if(await gbprAutoRestoreFresh(uid,local,cloud))return;
+    }
     if(bound && bound!==uid){
       cloudReset();cloudCandidate=cloud;cloudKnownRevision=cloud?Number(cloud.save_revision):null;
       showCloudChoices(local,cloud,'This browser was last connected to a different account. Choose how to handle its save.');
