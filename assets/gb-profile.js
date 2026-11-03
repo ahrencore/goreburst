@@ -667,9 +667,14 @@ function gbprFreshGameShell(snapshot){
   if(Object.keys(snapshot?.best||{}).some(k=>Number(snapshot.best[k])>0))return false;
   if(Object.keys(snapshot?.bestCoins||{}).some(k=>Number(snapshot.bestCoins[k])>0))return false;
   if(Object.keys(claimReceipts(snapshot)).length)return false;
-  if(Number(snapshot?.coins||0)!==0)return false;
+  // Wallet coins are now server-owned; a newly signed-in Level 1 browser can
+  // already display the real Supabase balance without having any level progress.
+  // Do not mistake those cloud coins for local gameplay advancement.
+  // Preserve every meaningful local item/receipt/progression safeguard below.
   if(Object.values(snapshot?.preSpecials||{}).some(v=>Number(v)>0))return false;
   if(Object.values(snapshot?.boosterInventory||{}).some(v=>Number(v)>0))return false;
+  if(Object.values(snapshot?.boosterGrants||{}).some(Boolean))return false;
+  if(snapshot?.preSpecialsGranted)return false;
   return true;
 }
 // Read-only wallet lookup is mandatory before restoring. A stale snapshot coin
