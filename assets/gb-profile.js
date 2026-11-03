@@ -624,10 +624,14 @@ $p('gbpr-rewards-check').onclick=gbRewardCheck;
 
 function localDominatesCloud(local,cloud){
   // Only used for the SAME ACCOUNT already authorized to auto-backup on this device.
-  // Don't overwrite progress earned on a second device, or a new, unrelated save.
+  // Never reduce the cloud's unlocked level or per-level best-star records.
   if(Number(local.current||1)<Number(cloud.current||1))return false;
   const lb=local.best||{},cb=cloud.best||{};
-  return Object.keys(cb).every(k=>Number(lb[k]||0)>=Number(cb[k]||0));
+  if(!Object.keys(cb).every(k=>Number(lb[k]||0)>=Number(cb[k]||0)))return false;
+  // Keep historical best coin-reward records from disappearing as well.
+  const lbc=local.bestCoins||{},cbc=cloud.bestCoins||{};
+  if(!Object.keys(cbc).every(k=>Number(lbc[k]||0)>=Number(cbc[k]||0)))return false;
+  return retainsClaimReceipts(local,cloud);
 }
 function cloudCursor(uid){try{return JSON.parse(localStorage.getItem(cloudSyncCursorKey+uid)||'null')}catch{return null}}
 function rememberCloudBaseline(uid,snapshot,revision){
@@ -790,7 +794,8 @@ async function checkCloudSave(initiated=false){
       // accepted. Only upload changes when the cloud still matches THAT baseline.
       if(cursor && cursor.fingerprint===saveFingerprint(cloud.snapshot) &&
           Number(cursor.revision)===Number(cloud.save_revision) && bound===uid &&
-          localStorage.getItem(cloudSaveKey+':'+uid)==='true'){
+          localStorage.getItem(cloudSaveKey+':'+uid)==='true' &&
+          localDominatesCloud(local,cloud.snapshot)){
         cloudEnableForAccount();
         cloudStatus('New device progress detected. Automatically syncing to Supabase…',true);
         queueCloudUpload();
@@ -875,7 +880,8 @@ $p('gbpr-cloud-use-local').onclick=async()=>{
     if(!confirm("Use this device's save ("+saveSummary(local)+") as the cloud backup? "+(cloudCandidate?'This REPLACES the existing cloud copy after another check.':'This creates the first cloud backup.')+' It does not add verified leaderboard stars.'))return;
     const latest=await fetchCloudRecord(uid);
     if(!user||user.id!==uid)throw Error('Account changed. Check again.');
-    if(latest && !retainsClaimReceipts(local,latest.snapshot))throw Error('Upload blocked: cloud contains reward claims missing from this device.');
+    if(latest && !localDominatesCloud(local,latest.snapshot))
+      throw Error('Upload blocked: this device is behind the cloud in level, stars, best rewards or claim receipts. Keep the newer cloud save; use CHECK CLOUD SAVE to compare.');
     if(Number(latest?.save_revision??0)!==Number(cloudKnownRevision??0))throw Error('Cloud save changed since review. Check again before uploading.');
     // Do not authorize background writes before explicit first upload succeeds.
     cloudActiveAccount=uid;cloudAuthorized=true;
@@ -901,9 +907,11 @@ async function cloudUpload(force=false){
       cloudStatus('Cloud changed on another device. Auto-backup paused; tap CHECK CLOUD SAVE to resolve.');
       return false;
     }
-    if(existing && !retainsClaimReceipts(snapshot,existing.snapshot)){
+    if(existing && !localDominatesCloud(snapshot,existing.snapshot)){
+      // This check also covers the manual 'REPLACE CLOUD WITH THIS DEVICE' action.
+      // Do not retry a regressed snapshot: it cannot safely replace cloud progress.
       cloudAuthorized=false;
-      cloudStatus('Auto-backup paused: cloud has claimed rewards missing on this device. CHECK CLOUD SAVE before proceeding.');
+      cloudStatus('Cloud upload blocked: this device is behind saved level, stars, best rewards or claim receipts. CHECK CLOUD SAVE to compare without overwriting progress.');
       return false;
     }
     const revision=Number(existing?.save_revision??0)+1;
