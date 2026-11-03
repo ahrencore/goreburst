@@ -12,19 +12,30 @@ const layer=document.createElement('section');layer.id='gbShopView';layer.classN
 $('app').appendChild(layer);
 const tabs=[...layer.querySelectorAll('[data-cat]')];let cat='specials',balance=null,rows=[],busy=false,selected=null,uid='',pendingByItem={};
 const pendingKey=id=>'gbshop-pending-v1:'+uid+':'+id;
-// The universal frame renderer positions photographs from transparent artwork.
-// No manual per-frame dimensions are needed here.
+// Each image has a slightly different transparent opening. Fit the PFP to the
+// actual opening instead of forcing one photo size onto all nine frames.
+const framePhotoFit={
+ frame_babybat:[55.6,49.8,49.9],frame_emobaby:[44.8,48.8,54.6],
+ frame_clowngal:[49.6,49.4,54.3],frame_heartballoon:[50.2,49.4,48.0],
+ frame_foxy:[50.6,49.8,50.5],frame_cuteangel:[49.3,49.3,46.0],
+ frame_purplefluffy:[47.4,48.3,47.0],frame_poseidon:[46.1,47.0,48.2],
+ frame_greek:[42.1,46.5,47.3]
+};
 function getApi(){return window.gbShopApi||null}
 function isFrame(id){return id.startsWith('frame_')}
 function frameOwned(id){return rows.some(x=>x.item_id===id)}
 function tile(product){const [id,price,src,label]=product,owned=isFrame(id)&&frameOwned(id);const lives=id.startsWith('lives_');return `<button type="button" class="gbshop-tile ${owned?'gbshop-owned':''}" data-item="${id}" aria-label="Preview ${label}, ${fmt(price)} Skull Coins"><span class="gbshop-art">${lives?`<span class="gbshop-heart">♥</span><strong class="gbshop-time">${label}</strong>`:`<img src="${ROOT+src}" alt="" loading="lazy">`}</span><span class="gbshop-price"><img src="assets/coin-skull-new.png" alt="">${owned?'OWNED':fmt(price)}</span></button>`}
 function render(){tabs.forEach(x=>x.classList.toggle('active',x.dataset.cat===cat));$('gbshopTiles').className='gbshop-tiles gbshop-'+cat;$('gbshopTiles').innerHTML=PRODUCTS[cat].map(tile).join('');$('gbshopCoins').textContent=balance===null?'—':fmt(balance);$('gbshopInfo').textContent=cat==='frames'?'Tap a frame to preview it on your profile picture.':cat==='lives'?'Unlimited lives for the selected duration.':'Tap an icon to see its details and purchase.'}
-async function refresh(){if(!getApi()){balance=null;rows=[];render();return}try{const result=await getApi().sync();uid=result.uid;balance=result.balance;rows=result.orders||[];for(const section of Object.values(PRODUCTS))for(const [item] of section){const pending=localStorage.getItem(pendingKey(item));if(pending&&rows.some(r=>r.id===pending))localStorage.removeItem(pendingKey(item))}window.dispatchEvent(new Event('gb-wallet-balance-changed'));render()}catch(e){balance=null;render();$('gbshopInfo').textContent='Could not load the shop: '+(e.message||String(e))}}
+async function refresh(){if(!getApi()){balance=null;rows=[];render();return}try{const result=await getApi().sync();uid=result.uid;balance=result.balance;rows=result.orders||[];for(const section of Object.values(PRODUCTS))for(const [item] of section){const pending=localStorage.getItem(pendingKey(item));if(pending&&rows.some(r=>r.id===pending))localStorage.removeItem(pendingKey(item))}window.dispatchEvent(new Event('gb-wallet-balance-changed'));render();return result}catch(e){balance=null;render();$('gbshopInfo').textContent='Could not load the shop: '+(e.message||String(e));return null}}
 async function openShop(){if(window.gbShopBlocked)return;document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x===layer));cat='specials';balance=null;rows=[];render();await refresh()}
 function closeShop(){if(busy)return;layer.classList.remove('active');if(typeof menu==='function')menu();else $('menu').classList.add('active')}
 function openModal(id){const found=Object.values(PRODUCTS).flat().find(p=>p[0]===id);if(!found)return;selected=found;const [_,price,src,label]=found,frame=isFrame(id),lives=id.startsWith('lives_');$('gbshopPreviewTitle').textContent=frame?'YOUR FRAME PREVIEW':'SHOP ITEM';$('gbshopProductText').textContent=frame?'Permanent profile frame':lives?`Unlimited lives for ${label}`:label;$('gbshopModalStatus').textContent='';$('gbshopPreview').hidden=!frame;$('gbshopItemImg').hidden=frame||lives;$('gbshopItemImg').src=src?ROOT+src:'';
  if(frame){
-   // A single shared renderer crops the avatar to this frame's real transparent opening.
+   const preview=$('gbshopPreview');const fit=framePhotoFit[id]||[56,0,0];
+   preview.style.setProperty('--gbshop-photo-size',fit[0]+'%');
+   preview.style.setProperty('--gbshop-photo-x',fit[1]+'%');
+   preview.style.setProperty('--gbshop-photo-y',fit[2]+'%');
+   preview.style.setProperty('--gbshop-photo-clip', (fit[0]/1.4).toFixed(3)+'%');
    $('gbshopAvatarImg').src=$('gbMenuAvatar')?.src||'assets/avatars/01_Mr_Walker.png';
    $('gbshopFrameImg').src=ROOT+src;
  }
@@ -47,11 +58,17 @@ async function purchase(){if(!selected||busy)return;const [id,price,,label]=sele
      ? 'Purchased! Your frame is permanently owned. Updating your Frames list…'
      : 'Purchased! Updating your game inventory…';
   try{
-    await refresh();
-    delete pendingByItem[id];localStorage.removeItem(pendingKey(id));
-    $('gbshopModalStatus').textContent=isFrame(id)
-       ? 'Purchased! Find your frame under Edit Profile → Frames.'
-       : 'Purchased! Your item has been added to your game.';
+    const latest=await refresh();
+    if(latest){
+      delete pendingByItem[id];localStorage.removeItem(pendingKey(id));
+      $('gbshopModalStatus').textContent=isFrame(id)
+         ? 'Purchased! Find your frame under Edit Profile → Frames.'
+         : latest.deliveryPending
+           ? 'Purchase confirmed in Supabase. Your item will be delivered when this account’s game progress finishes loading. Do not buy it again.'
+           : 'Purchased! Your item has been added to your game.';
+    }else{
+      $('gbshopModalStatus').textContent='Purchase confirmed by Supabase. Inventory display is offline; do not buy again.';
+    }
   }catch(syncError){
     $('gbshopModalStatus').textContent='Purchase confirmed. The inventory display needs a refresh; do not buy again.';
   }

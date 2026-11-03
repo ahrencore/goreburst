@@ -214,21 +214,23 @@ window.gbShopApi={
     if(ordersError)throw Error('Shop inventory unavailable: '+ordersError.message+'. Install the included SQL first.');
     gbShopFrameOwned=new Set((orders||[]).map(o=>o.item_id).filter(id=>gbShopFrameIds.includes(id)));
     gbpfPaint();
-    if(canAutoBackup())for(const receipt of orders||[]){if(!receipt.item_id.startsWith('frame_'))window.gbShopApplyOrder?.(receipt,who.id)}
-    else if((orders||[]).some(x=>!x.item_id.startsWith('frame_'))){
-      // Never apply purchases to an unrelated browser save; wallet and frames are still readable.
-      console.warn('Shop consumables will synchronize after signed-in progress is restored.');
-    }
+    // Payment and ownership belong to the signed-in Supabase account. Gameplay
+    // consumables are delivered only into a verified device save for THAT account.
+    // Keeping receipts on the server makes a purchase safe even if local progress
+    // is still being restored; later sync applies each receipt at most once.
+    const consumables=(orders||[]).filter(x=>!String(x.item_id).startsWith('frame_'));
+    const deliveryPending=!canAutoBackup() && consumables.length>0;
+    if(canAutoBackup())for(const receipt of consumables)window.gbShopApplyOrder?.(receipt,who.id);
+    else if(deliveryPending)console.info('Shop purchases saved to account; gameplay delivery waits for verified progress.');
     const balance=await window.gbWalletGetCloudBalance();
-    return {uid:who.id,balance,orders:orders||[]};
+    return {uid:who.id,balance,orders:orders||[],deliveryPending};
   },
   async purchase(itemId,requestId){
     if(!sb)throw Error('Supabase is not connected.');
-    // Permanent frames live entirely on the authenticated Supabase account.
-    // Do not require a local gameplay/cloud-save binding for a frame purchase.
-    // Consumables still require that binding so they cannot enter another account's game save.
-    if(!String(itemId).startsWith('frame_')&&!canAutoBackup())
-      throw Error('Wait for automatic account progress loading before purchasing gameplay items.');
+    // Server-priced purchases are tied to the authenticated account, never to
+    // the browser's local save state. Consumables can be purchased even while
+    // a device is restoring; sync() defers local delivery until account binding
+    // is verified, protecting other accounts' saves.
     const {data:auth,error:ae}=await sb.auth.getUser();
     if(ae||!auth?.user||auth.user.is_anonymous)throw Error('Sign in with a registered account.');
     const {data,error}=await sb.rpc('gb_shop_purchase',{p_item_id:itemId,p_request_id:requestId});
@@ -251,10 +253,22 @@ let gbGiftOwned=new Set();
 window.gbGiftOwnershipRefresh=async()=>{if(!sb||!user||user.is_anonymous){gbGiftOwned=new Set();gbpfPaint();return;}const {data,error}=await sb.rpc('gb_owned_gift_frames');if(error){console.warn('Gift frames lookup:',error.message);const status=$p('gbpf-status');if(status)status.textContent='Could not refresh claimed frames: '+error.message;return;}const status=$p('gbpf-status');if(status&&status.textContent.startsWith('Could not refresh claimed frames:'))status.textContent='';gbGiftOwned=new Set((data||[]).map(x=>x.frame_id));gbpfPaint();};
 const gbpfLocalKey=()=>user?.id?'gbpf-equipped-'+user.id:'gbpf-equipped-guest';
 const gbpfLocal=()=>{try{return gbpfNormalize(localStorage.getItem(gbpfLocalKey())||'none')}catch{return 'none'}};
-// Paid frame photograph fitting is now handled by gb-frame-universal.js.
-// The same transparent-hole renderer is used in Edit Profile, own profile,
-// public profiles, and the Shop. Future shop frame files need no manual sizes.
-const gbpfFit=(el,id)=>{if(!el)return;el.classList.remove('gbpf-paid-fit');};
+// Each paid frame has a different transparent opening. Keep the avatar clipped
+// to that opening rather than assuming 70% fits all designs.
+const gbpfShopHole={
+ frame_babybat:[55.6,49.8,49.9],frame_emobaby:[44.8,48.8,54.6],
+ frame_clowngal:[49.6,49.4,54.3],frame_heartballoon:[50.2,49.4,48.0],
+ frame_foxy:[50.6,49.8,50.5],frame_cuteangel:[49.3,49.3,46.0],
+ frame_purplefluffy:[47.4,48.3,47.0],frame_poseidon:[46.1,47.0,48.2],
+ frame_greek:[42.1,46.5,47.3]
+};
+const gbpfFit=(el,id)=>{
+ if(!el)return;
+ const fit=gbpfShopHole[id];
+ el.classList.toggle('gbpf-paid-fit',Boolean(fit));
+ if(fit){el.style.setProperty('--gbpf-hole-size',fit[0]+'%');el.style.setProperty('--gbpf-hole-x',fit[1]+'%');el.style.setProperty('--gbpf-hole-y',fit[2]+'%');el.style.setProperty('--gbpf-photo-clip',(fit[0]/1.4).toFixed(3)+'%');}
+ else{el.style.removeProperty('--gbpf-hole-size');el.style.removeProperty('--gbpf-hole-x');el.style.removeProperty('--gbpf-hole-y');el.style.removeProperty('--gbpf-photo-clip');}
+};
 const gbpfCurrent=()=>gbpfNormalize(profile?.equipped_frame??gbpfLocal());
 const gbpfSetLocal=id=>{try{localStorage.setItem(gbpfLocalKey(),id)}catch{}};
 function gbpfDecorate(el,id){
@@ -880,7 +894,20 @@ async function checkCloudSave(initiated=false){
     cloudEnableForAccount();
     cloudStatus('Cloud backup matched this device. New stars now sync automatically.',true);
   }catch(e){cloudAuthorized=false;cloudStatus('Cloud comparison failed. Local save remains safe: '+(e.message||'Unknown error'))}
-  finally{cloudChecking=false;if(canAutoBackup())queueCloudUpload()}
+  finally{
+    cloudChecking=false;
+    if(canAutoBackup()){
+      queueCloudUpload();
+      // Once cloud identity has been checked, re-read shop receipts. Delayed
+      // delivery is safe here because sync() independently checks binding.
+      // A pending location.reload() cancels this timer on fresh-device restore.
+      const expectedUid=uid;
+      setTimeout(()=>{
+        if(user?.id===expectedUid && canAutoBackup())
+          void window.gbShopApi?.sync().catch(e=>console.warn('Shop receipt sync:',e?.message||e));
+      },1000);
+    }
+  }
 }
 function showCloudChoices(local,cloud,reason){
   cloudPanel().classList.remove('gbpr-hide');
