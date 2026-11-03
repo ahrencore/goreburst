@@ -1,0 +1,41 @@
+/* Gore Burst shop: preserve the hub and its bottom navigation; independent scroll layer. */
+#gbShopView{z-index:16;background:radial-gradient(ellipse at 50% -20%,#70285f 0%,#2c0c37 42%,#0d0317 100%);color:#ffe7f9}
+#gbShopView .gbshop-shell{position:absolute;inset:0;display:flex;flex-direction:column;padding:10px 9px 12px;gap:10px;overflow:hidden}
+#gbShopView .gbshop-header{display:flex;align-items:center;justify-content:space-between;gap:5px;padding:9px 2px 4px;min-height:59px}
+#gbShopView .gbshop-header h1{margin:0;text-align:center;flex:1;font:900 clamp(20px,5vw,27px) Georgia,serif;letter-spacing:.02em;color:#ffe3b3;text-shadow:0 0 13px #ef5ec6,0 2px 0 #632052;white-space:nowrap}
+#gbShopView .gbshop-back{border:1.5px solid #f38fe9;border-radius:28px;background:#34113f;padding:10px 8px;font:800 11px Georgia,serif;box-shadow:0 0 9px #ff59ce;white-space:nowrap}
+#gbShopView .gbshop-balance{display:inline-flex;align-items:center;justify-content:center;gap:3px;border:1px solid #ff9ad4;border-radius:24px;background:#34102b;padding:5px 6px;color:#ffe6a6;box-shadow:0 0 8px #f65fc77d;font:800 12px Georgia,serif;white-space:nowrap}
+#gbShopView .gbshop-balance img{width:20px;height:20px;object-fit:contain}
+#gbShopView .gbshop-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+#gbShopView .gbshop-tabs button{min-width:0;font:900 clamp(9px,2.4vw,11px) Georgia,serif;letter-spacing:0;border:1.5px solid #ce65cc;border-radius:12px;padding:13px 1px;background:linear-gradient(#551d5d,#210a2c);box-shadow:inset 0 0 10px #ce50b34d;color:#fad8ef}
+#gbShopView .gbshop-tabs button.active{border-color:#ffe29b;background:linear-gradient(#c336a1,#71175e);box-shadow:0 0 15px #ef50d6, inset 0 0 12px #f98ce4a5;color:#fff2bb}
+#gbShopView .gbshop-info{font:12px/1.3 system-ui,sans-serif;text-align:center;color:#d6a7d9;min-height:32px;padding:2px}
+#gbShopView .gbshop-scroll{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:5px 3px 23px;scrollbar-width:thin}
+#gbShopView .gbshop-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px 8px}
+#gbShopView .gbshop-tile{position:relative;min-width:0;min-height:143px;padding:9px 5px 8px;border:1.5px solid #d467bd;border-radius:18px;background:radial-gradient(ellipse at 50% 15%,#61205c,#240d32 68%,#17061d);box-shadow:inset 0 0 13px #de52c836,0 0 8px #ac39c85c;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:6px}
+#gbShopView .gbshop-tile:focus-visible{outline:2px solid #ffe9ae;outline-offset:2px}
+#gbShopView .gbshop-art{display:flex;align-items:center;justify-content:center;position:relative;width:100%;height:105px;min-height:0}
+#gbShopView .gbshop-art img{display:block;max-width:100%;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 0 5px #ef70d97e)}
+#gbShopView .gbshop-price{color:#ffe3ad;display:flex;align-items:center;justify-content:center;gap:3px;width:100%;min-height:28px;border-radius:19px;background:#480c3e;border:1px solid #f08ccb;box-shadow:inset 0 0 8px #d3479e;font:900 clamp(12px,3.5vw,15px) Georgia,serif}
+#gbShopView .gbshop-price img{width:19px;height:19px;object-fit:contain}
+#gbShopView .gbshop-owned{border-color:#e6bb66;box-shadow:0 0 11px #e9ad7a88,inset 0 0 10px #ca8f5660}
+#gbShopView .gbshop-heart{font:900 clamp(45px,14vw,65px) Georgia,serif;color:#ff407d;text-shadow:0 0 15px #ff397f,0 0 26px #ff3d7e}
+#gbShopView .gbshop-time{position:absolute;bottom:0;right:6px;color:#ffe9a9;font:900 17px Georgia,serif;text-shadow:0 0 8px #e942a4}
+#gbShopView .gbshop-boosters{grid-template-columns:repeat(3,minmax(0,1fr))}
+#gbShopView .gbshop-frames .gbshop-art{height:122px}
+#gbShopView .gbshop-modal{position:absolute;z-index:30;inset:0;background:#09030cce;display:grid;place-items:center;padding:14px;backdrop-filter:blur(5px)}
+#gbShopView .gbshop-modal[hidden],#gbShopView [hidden]{display:none!important}
+#gbShopView .gbshop-dialog{width:100%;max-width:360px;max-height:95%;overflow:auto;position:relative;padding:19px 14px 18px;border:2px solid #ffc1ea;border-radius:22px;background:radial-gradient(at top,#51215c,#260c32 68%,#18071e);box-shadow:0 0 25px #e34ada,inset 0 0 14px #9d43e5;display:flex;flex-direction:column;align-items:center;gap:12px}
+#gbShopView .gbshop-close{position:absolute;right:12px;top:8px;width:34px;height:34px;border:1px solid #fa8eda;border-radius:50%;background:#5a2350;font-size:25px;z-index:2}
+#gbShopView .gbshop-preview-title{font:900 18px Georgia,serif;color:#ffe4ae;text-shadow:0 0 10px #f681df;margin-top:3px}
+#gbShopView .gbshop-avatar-preview{position:relative;width:min(100%,270px);aspect-ratio:1/1;flex-shrink:0}
+#gbShopView .gbshop-avatar-preview img{position:absolute;display:block}
+#gbShopView .gbshop-avatar-preview .gbshop-avatar{inset:24%;width:52%;height:52%;border-radius:50%;object-fit:cover}
+#gbShopView .gbshop-avatar-preview .gbshop-frame{inset:0;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 0 10px #e761c8)}
+#gbShopView .gbshop-item-preview{width:150px;height:150px;object-fit:contain}
+#gbShopView .gbshop-product-desc{font:14px system-ui,sans-serif;color:#f4cee9;text-align:center}
+#gbShopView .gbshop-buy{border:2px solid #ffd0ed;border-radius:28px;min-height:52px;width:95%;background:linear-gradient(#f871c8,#b92383,#7f115c);color:#fff3c5;text-shadow:0 0 7px #e05db0;font:900 19px Georgia,serif;box-shadow:0 0 15px #f758cb}
+#gbShopView .gbshop-buy:disabled{opacity:.55}
+#gbShopView .gbshop-status{min-height:20px;text-align:center;font:12px/1.35 system-ui,sans-serif;color:#ffcfeb}
+@media(max-width:390px){#gbShopView .gbshop-tile{min-height:130px;padding:7px 3px}#gbShopView .gbshop-art{height:92px}#gbShopView .gbshop-frames .gbshop-art{height:105px}}
+@media(prefers-reduced-motion:reduce){#gbShopView *{animation:none!important}}
