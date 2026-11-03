@@ -361,3 +361,48 @@
 }
 .ev-root .ev-clash-cards .ev-clash-compact .ev-clash-art-sudoku {background-image:url('promo-sudoku-option-b.png')!important;}
 .ev-root .ev-clash-cards .ev-clash-compact .ev-clash-art-tetris {background-image:url('promo-tetris-option-b.png')!important;}
+
+
+/* 2026-11-03 - Carnival Clash neon text tiles. Explicit sizes for older iPhone Safari.
+   No external promo images or aspect-ratio dependence; final override wins previous art declarations. */
+.ev-root .ev-clash-cards .ev-clash-compact.ev-clash-text-card {
+  -webkit-appearance:none!important;appearance:none!important;
+  display:-webkit-flex!important;display:flex!important;
+  -webkit-flex-direction:column!important;flex-direction:column!important;
+  -webkit-align-items:center!important;align-items:center!important;
+  -webkit-justify-content:center!important;justify-content:center!important;
+  width:100%!important;height:120px!important;min-height:120px!important;
+  padding:12px 4px!important;box-sizing:border-box!important;
+  line-height:1.15!important;text-align:center!important;
+  background:radial-gradient(ellipse at 50% 30%,#632757 0%,#32163f 48%,#160b2b 95%)!important;
+  border:2px solid #ff77de!important;border-radius:15px!important;
+  box-shadow:0 0 13px #ff49bd90,0 0 23px #895bfa5a,inset 0 0 20px #d85be73b!important;
+  overflow:hidden!important;position:relative!important;cursor:pointer!important;
+}
+.ev-root .ev-clash-cards .ev-clash-compact.ev-clash-text-tetris {
+  background:radial-gradient(ellipse at 50% 30%,#174c6d 0%,#222051 50%,#150c2a 95%)!important;
+  border-color:#64defd!important;
+  box-shadow:0 0 13px #30caff8f,0 0 23px #855bfd56,inset 0 0 20px #3cb1ef35!important;
+}
+.ev-root .ev-clash-text-card .ev-arcade-neon-label {
+  display:block!important;max-width:100%;font-family:Georgia,'Times New Roman',serif!important;
+  font-size:clamp(21px,6vw,34px)!important;font-weight:900!important;letter-spacing:1.4px!important;
+  line-height:1.12!important;color:#fff3fa!important;
+  text-shadow:0 0 3px #fff,0 0 9px #ff62d6,0 0 19px #fa28cc,0 0 30px #a145ff!important;
+  white-space:nowrap!important;-webkit-text-stroke:0.3px #ffd9f7;
+}
+.ev-root .ev-clash-text-tetris .ev-arcade-neon-label {
+  color:#ebfbff!important;text-shadow:0 0 3px white,0 0 9px #39dcff,0 0 19px #1994ff,0 0 30px #9355ff!important;
+  -webkit-text-stroke:0.3px #e7f8ff;
+}
+.ev-root .ev-clash-text-card .ev-arcade-neon-caption {
+  display:block!important;margin-top:10px!important;color:#ffceeb!important;
+  font:700 8px/1.3 -apple-system,BlinkMacSystemFont,Arial,sans-serif!important;
+  letter-spacing:1px!important;text-shadow:0 0 8px #fa55cb!important;white-space:nowrap!important;
+}
+.ev-root .ev-clash-text-tetris .ev-arcade-neon-caption {color:#a9f5ff!important;text-shadow:0 0 8px #23d3ff!important;}
+@media(max-width:375px){
+  .ev-root .ev-clash-cards .ev-clash-compact.ev-clash-text-card {height:104px!important;min-height:104px!important;padding:9px 3px!important;}
+  .ev-root .ev-clash-text-card .ev-arcade-neon-label {font-size:21px!important;letter-spacing:.7px!important;}
+  .ev-root .ev-clash-text-card .ev-arcade-neon-caption {font-size:7px!important;letter-spacing:.4px!important;}
+}
