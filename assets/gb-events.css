@@ -347,3 +347,17 @@
   box-shadow: none !important;
   text-shadow: none !important;
 }
+
+/* 2026-11-03: explicit arcade tile height for Safari without reliable aspect-ratio.
+   Keeps the same 2:1 mini-game artwork on narrow iPhones. */
+.ev-root .ev-clash-cards {display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;}
+.ev-root .ev-clash-cards .ev-clash-compact {display:block!important;position:relative!important;min-width:0!important;min-height:0!important;padding:0!important;overflow:hidden!important;}
+.ev-root .ev-clash-cards .ev-clash-compact .ev-clash-art {
+  display:block!important;position:relative!important;width:100%!important;
+  height:21vw!important;min-height:65px!important;max-height:118px!important;
+  aspect-ratio:auto!important;background-size:100% 100%!important;
+  background-position:center center!important;background-repeat:no-repeat!important;
+  background-color:#190b24!important;
+}
+.ev-root .ev-clash-cards .ev-clash-compact .ev-clash-art-sudoku {background-image:url('promo-sudoku-option-b.png')!important;}
+.ev-root .ev-clash-cards .ev-clash-compact .ev-clash-art-tetris {background-image:url('promo-tetris-option-b.png')!important;}
