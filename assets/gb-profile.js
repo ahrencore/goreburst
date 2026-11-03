@@ -224,7 +224,11 @@ window.gbShopApi={
   },
   async purchase(itemId,requestId){
     if(!sb)throw Error('Supabase is not connected.');
-    if(!canAutoBackup())throw Error('Wait for automatic account progress loading before purchasing.');
+    // Permanent frames live entirely on the authenticated Supabase account.
+    // Do not require a local gameplay/cloud-save binding for a frame purchase.
+    // Consumables still require that binding so they cannot enter another account's game save.
+    if(!String(itemId).startsWith('frame_')&&!canAutoBackup())
+      throw Error('Wait for automatic account progress loading before purchasing gameplay items.');
     const {data:auth,error:ae}=await sb.auth.getUser();
     if(ae||!auth?.user||auth.user.is_anonymous)throw Error('Sign in with a registered account.');
     const {data,error}=await sb.rpc('gb_shop_purchase',{p_item_id:itemId,p_request_id:requestId});

@@ -30,8 +30,8 @@
 #gbShopView .gbshop-preview-title{font:900 18px Georgia,serif;color:#ffe4ae;text-shadow:0 0 10px #f681df;margin-top:3px}
 #gbShopView .gbshop-avatar-preview{position:relative;width:min(100%,270px);aspect-ratio:1/1;flex-shrink:0}
 #gbShopView .gbshop-avatar-preview img{position:absolute;display:block}
-#gbShopView .gbshop-avatar-preview .gbshop-avatar{inset:24%;width:52%;height:52%;border-radius:50%;object-fit:cover}
-#gbShopView .gbshop-avatar-preview .gbshop-frame{inset:0;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 0 10px #e761c8)}
+#gbShopView .gbshop-avatar-preview .gbshop-avatar{inset:auto;left:calc(50% + var(--gbshop-photo-x,0%));top:calc(50% + var(--gbshop-photo-y,0%));transform:translate(-50%,-50%);width:var(--gbshop-photo-size,56%);height:var(--gbshop-photo-size,56%);border-radius:50%;object-fit:cover;object-position:center;box-shadow:none;filter:none}
+#gbShopView .gbshop-avatar-preview .gbshop-frame{inset:0;width:100%;height:100%;object-fit:contain;filter:none}
 #gbShopView .gbshop-item-preview{width:150px;height:150px;object-fit:contain}
 #gbShopView .gbshop-product-desc{font:14px system-ui,sans-serif;color:#f4cee9;text-align:center}
 #gbShopView .gbshop-buy{border:2px solid #ffd0ed;border-radius:28px;min-height:52px;width:95%;background:linear-gradient(#f871c8,#b92383,#7f115c);color:#fff3c5;text-shadow:0 0 7px #e05db0;font:900 19px Georgia,serif;box-shadow:0 0 15px #f758cb}
@@ -39,3 +39,10 @@
 #gbShopView .gbshop-status{min-height:20px;text-align:center;font:12px/1.35 system-ui,sans-serif;color:#ffcfeb}
 @media(max-width:390px){#gbShopView .gbshop-tile{min-height:130px;padding:7px 3px}#gbShopView .gbshop-art{height:92px}#gbShopView .gbshop-frames .gbshop-art{height:105px}}
 @media(prefers-reduced-motion:reduce){#gbShopView *{animation:none!important}}
+
+/* Frames are detailed artwork: no glow around their edges in the Shop or try-on. */
+#gbShopView .gbshop-frames .gbshop-tile,
+#gbShopView .gbshop-frames .gbshop-tile.gbshop-owned{box-shadow:none}
+#gbShopView .gbshop-frames .gbshop-art img{filter:none!important}
+#gbShopView .gbshop-avatar-preview .gbshop-frame{filter:none!important;box-shadow:none!important}
+#gbShopView .gbshop-avatar-preview{width:min(100%,300px);height:auto;aspect-ratio:1;}

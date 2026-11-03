@@ -12,6 +12,15 @@ const layer=document.createElement('section');layer.id='gbShopView';layer.classN
 $('app').appendChild(layer);
 const tabs=[...layer.querySelectorAll('[data-cat]')];let cat='specials',balance=null,rows=[],busy=false,selected=null,uid='',pendingByItem={};
 const pendingKey=id=>'gbshop-pending-v1:'+uid+':'+id;
+// Each image has a slightly different transparent opening. Fit the PFP to the
+// actual opening instead of forcing one photo size onto all nine frames.
+const framePhotoFit={
+ frame_babybat:[64,0,0],frame_emobaby:[55,0,0],
+ frame_clowngal:[59,0,-3],frame_heartballoon:[57,0,0],
+ frame_foxy:[65,0,0],frame_cuteangel:[55,0,1],
+ frame_purplefluffy:[59,0,0],frame_poseidon:[55,0,1],
+ frame_greek:[53,0,0]
+};
 function getApi(){return window.gbShopApi||null}
 function isFrame(id){return id.startsWith('frame_')}
 function frameOwned(id){return rows.some(x=>x.item_id===id)}
@@ -21,7 +30,14 @@ async function refresh(){if(!getApi()){balance=null;rows=[];render();return}try{
 async function openShop(){if(window.gbShopBlocked)return;document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x===layer));cat='specials';balance=null;rows=[];render();await refresh()}
 function closeShop(){if(busy)return;layer.classList.remove('active');if(typeof menu==='function')menu();else $('menu').classList.add('active')}
 function openModal(id){const found=Object.values(PRODUCTS).flat().find(p=>p[0]===id);if(!found)return;selected=found;const [_,price,src,label]=found,frame=isFrame(id),lives=id.startsWith('lives_');$('gbshopPreviewTitle').textContent=frame?'YOUR FRAME PREVIEW':'SHOP ITEM';$('gbshopProductText').textContent=frame?'Permanent profile frame':lives?`Unlimited lives for ${label}`:label;$('gbshopModalStatus').textContent='';$('gbshopPreview').hidden=!frame;$('gbshopItemImg').hidden=frame||lives;$('gbshopItemImg').src=src?ROOT+src:'';
- if(frame){$('gbshopAvatarImg').src=$('gbMenuAvatar')?.src||'assets/avatars/01_Mr_Walker.png';$('gbshopFrameImg').src=ROOT+src;}
+ if(frame){
+   const preview=$('gbshopPreview');const fit=framePhotoFit[id]||[56,0,0];
+   preview.style.setProperty('--gbshop-photo-size',fit[0]+'%');
+   preview.style.setProperty('--gbshop-photo-x',fit[1]+'%');
+   preview.style.setProperty('--gbshop-photo-y',fit[2]+'%');
+   $('gbshopAvatarImg').src=$('gbMenuAvatar')?.src||'assets/avatars/01_Mr_Walker.png';
+   $('gbshopFrameImg').src=ROOT+src;
+ }
  if(lives){$('gbshopItemImg').hidden=true;$('gbshopProductText').textContent='♥ '+label+' unlimited lives';}
  const owned=frame&&frameOwned(id);$('gbshopBuy').disabled=owned||balance===null||balance<price;$('gbshopBuy').textContent=owned?'ALREADY OWNED':balance!==null&&balance<price?'NOT ENOUGH COINS':'BUY · '+fmt(price)+' COINS';$('gbshopModal').hidden=false;}
 async function purchase(){if(!selected||busy)return;const [id,price,,label]=selected;if(isFrame(id)&&frameOwned(id))return;if(balance===null||balance<price){$('gbshopModalStatus').textContent='Not enough Skull Coins.';return}
@@ -31,11 +47,24 @@ async function purchase(){if(!selected||busy)return;const [id,price,,label]=sele
   if(!getApi())throw Error('Account connection is not ready. Sign in first.');
   // The same request ID is reused after a connection failure; never generate a second charge on retry.
   const request=pendingByItem[id]||localStorage.getItem(pendingKey(id))||crypto.randomUUID();pendingByItem[id]=request;localStorage.setItem(pendingKey(id),request);
-  const receipt=await getApi().purchase(id,request);delete pendingByItem[id];localStorage.removeItem(pendingKey(id));
-  await refresh();
-  if(isFrame(id))$('gbshopModalStatus').textContent='Purchased! Find your frame under Edit Profile → Frames.';
-  else $('gbshopModalStatus').textContent='Purchased! Your item has been added to your game.';
+  const receipt=await getApi().purchase(id,request);
+  // The RPC receipt is the payment authority. Do not ask the user to buy again
+  // just because the follow-up inventory read was temporarily unavailable.
+  balance=Number(receipt.balance_after);
+  $('gbshopCoins').textContent=fmt(balance);
   $('gbshopBuy').textContent='PURCHASED';$('gbshopBuy').disabled=true;
+  $('gbshopModalStatus').textContent=isFrame(id)
+     ? 'Purchased! Your frame is permanently owned. Updating your Frames list…'
+     : 'Purchased! Updating your game inventory…';
+  try{
+    await refresh();
+    delete pendingByItem[id];localStorage.removeItem(pendingKey(id));
+    $('gbshopModalStatus').textContent=isFrame(id)
+       ? 'Purchased! Find your frame under Edit Profile → Frames.'
+       : 'Purchased! Your item has been added to your game.';
+  }catch(syncError){
+    $('gbshopModalStatus').textContent='Purchase confirmed. The inventory display needs a refresh; do not buy again.';
+  }
  }catch(e){$('gbshopModalStatus').textContent='Purchase could not be confirmed: '+(e.message||String(e))+'. Check your balance and purchase history before retrying.';}
  finally{busy=false;}
 }
