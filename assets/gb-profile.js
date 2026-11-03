@@ -753,6 +753,16 @@ async function checkCloudSave(initiated=false){
     const local=readLocalGameSave(), cloud=await fetchCloudRecord(uid);
     if(!user||user.id!==uid)return;
     if(cloud)validSnapshot(cloud.snapshot);
+    // A truly empty browser must restore the signed-in account's COMPLETE cloud
+    // snapshot before the claim-receipt guard. That guard protects meaningful
+    // existing saves; it must not prevent a blank device from acquiring receipts
+    // and level progress already present on its own cloud account.
+    const initialBound=localStorage.getItem(cloudBindingKey);
+    if(cloud && (!initialBound || initialBound===uid) && gbprFreshGameShell(local) &&
+       (Number(cloud.snapshot.current||1)>1 || Object.keys(cloud.snapshot.best||{}).length>0 ||
+        Object.keys(claimReceipts(cloud.snapshot)).length>0)){
+      if(await gbprAutoRestoreFresh(uid,local,cloud))return;
+    }
     // If another device already saved a claimed reward, pause rather than
     // overwriting it with this device's older local snapshot.
     if(cloud && !retainsClaimReceipts(local,cloud.snapshot)){
@@ -769,12 +779,6 @@ async function checkCloudSave(initiated=false){
     cloudKnownRevision=cloud?Number(cloud.save_revision):null;
     cloudCheckedFingerprint=saveFingerprint(local);
     const bound=localStorage.getItem(cloudBindingKey);
-    // Fresh browsers should immediately load existing account progress; never
-    // auto-replace a different account's save or an existing gameplay save.
-    if(cloud && (!bound || bound===uid) && gbprFreshGameShell(local) &&
-       (Number(cloud.snapshot.current||1)>1 || Object.keys(cloud.snapshot.best||{}).length>0)){
-      if(await gbprAutoRestoreFresh(uid,local,cloud))return;
-    }
     if(bound && bound!==uid){
       cloudReset();cloudCandidate=cloud;cloudKnownRevision=cloud?Number(cloud.save_revision):null;
       showCloudChoices(local,cloud,'This browser was last connected to a different account. Choose how to handle its save.');
