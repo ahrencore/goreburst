@@ -16,6 +16,11 @@ const sheet=document.createElement('style');sheet.textContent=`
 #gb-profile-layer .gbtrade-tabs button{min-height:38px;border-radius:999px;background:#30163d;color:#e9c2fa;border:1px solid #9756a9;font-weight:800}
 #gb-profile-layer .gbtrade-tabs button.active{border-color:#ff9cea;background:#6d2c76;color:white;box-shadow:0 0 8px #ec5bc875}
 #gb-profile-layer .gbtrade-dot[hidden]{display:none!important}
+/* One original HUD PFP dot for friends, normal mail, OR trades. No extra dot element. */
+#menu .top.art-hud > #gbpr-pfp-request-dot.gbtrade-unclaimed[hidden]{display:block!important}
+/* Reuse the existing Mailbox top-right pseudo-dot, never append a second dot. */
+#gb-profile-layer #gbpr-hub.gbtrade-unclaimed .gbpr-hub-links button[data-gbpr-nav="mail"]{position:relative}
+#gb-profile-layer #gbpr-hub.gbtrade-unclaimed .gbpr-hub-links button[data-gbpr-nav="mail"]::after{content:"";position:absolute;top:9px;right:12px;width:10px;height:10px;border-radius:50%;border:0;background:#ff193b;box-shadow:0 0 8px 2px #ff294e;pointer-events:none}
 #gb-profile-layer .gbtrade-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#ff3a64;box-shadow:0 0 7px #ff3a64;margin:0 2px 1px 6px}
 #gb-profile-layer .gbtrade-entry{display:flex;align-items:center;gap:10px;border:1px solid #a75cca;border-radius:14px;background:#271336;padding:10px;margin:9px 0}
 #gb-profile-layer .gbtrade-entry img{width:56px;height:82px;object-fit:contain;flex-shrink:0}
@@ -87,14 +92,14 @@ function initMail(){
  const list=$('#gbpr-mail-list'), mailScreen=$('#gbpr-screen-mail');
  if(!list||!mailScreen||$('#gbtrade-tab-trades'))return false;
  const panel=list.parentElement;
- const tabs=document.createElement('div');tabs.className='gbtrade-tabs';tabs.innerHTML='<button type="button" id="gbtrade-tab-inbox" class="active">INBOX</button><button type="button" id="gbtrade-tab-trades">TRADES <span id="gbtrade-new-badge" class="gbtrade-dot" hidden></span></button>';
+ const tabs=document.createElement('div');tabs.className='gbtrade-tabs';tabs.innerHTML='<button type="button" id="gbtrade-tab-inbox" class="active">INBOX <span id="gbtrade-inbox-badge" class="gbtrade-dot" hidden></span></button><button type="button" id="gbtrade-tab-trades">TRADES <span id="gbtrade-new-badge" class="gbtrade-dot" hidden></span></button>';
  panel.insertBefore(tabs,list);
  const trades=document.createElement('div');trades.id='gbtrade-mail-list';trades.hidden=true;trades.innerHTML='Loading trades…';list.after(trades);
  const daily=document.createElement('p');daily.id='gbtrade-daily';daily.textContent='Trade Limit 0/5';trades.before(daily);daily.hidden=true;
  $('#gbtrade-tab-inbox').onclick=()=>setTab('inbox');
  $('#gbtrade-tab-trades').onclick=()=>setTab('trades');
  // Refresh button refreshes both tabs, preserving existing inbox behavior.
- $('#gbpr-mail-refresh')?.addEventListener('click',()=>{void updateTradeDot();if(activeTab==='trades')void loadTrades();});
+ $('#gbpr-mail-refresh')?.addEventListener('click',()=>{setTimeout(()=>void updateTradeDot(),300);if(activeTab==='trades')void loadTrades();});
  return true;
 }
 function setTab(tab){activeTab=tab;
@@ -133,17 +138,46 @@ async function loadTrades(){
   void updateTradeDot();
  }catch(e){host.textContent='Trades unavailable: '+(e.message||'Unknown error');}
 }
+// Refresh both inbox badges and the existing (single) Mailbox/PFP notices.
+// No extra dot elements are added to the Mailbox or main menu.
+let noticeSeq=0;
+function applyNotices(tradePending, inboxPending){
+ const trades=$('#gbtrade-new-badge'), inbox=$('#gbtrade-inbox-badge');
+ if(trades)trades.hidden=!tradePending;
+ if(inbox)inbox.hidden=!inboxPending;
+ const hub=$('#gbpr-hub');
+ if(hub)hub.classList.toggle('gbtrade-unclaimed',tradePending);
+ const pfp=$('#gbpr-pfp-request-dot');
+ if(pfp)pfp.classList.toggle('gbtrade-unclaimed',tradePending);
+ // The normal inbox/friend indicators remain owned by gb-profile.js.
+ // The PFP CSS above keeps the existing dot visible for an unclaimed trade.
+ document.querySelectorAll('#gbpr-hub .gbtrade-hub-dot').forEach(dot=>dot.remove());
+}
 async function updateTradeDot(){
  if(!$('#gbtrade-tab-trades'))return;
- try{const [client,u]=await signed();if(knownUid!==u.id){knownUid=u.id;}
-  const {data,error}=await client.rpc('gb_trade_inbox');if(error)throw error;
-  const count=(data||[]).filter(t=>!t.claimed_at).length;
-  const badge=$('#gbtrade-new-badge');if(badge)badge.hidden=!count;
-  // The existing Mailbox navigation notification dot is authoritative.
-  // Trading must not append a second dot to the Mailbox button or alter the PFP notification.
-  document.querySelectorAll('#gbpr-hub .gbtrade-hub-dot').forEach(dot=>dot.remove());
- }catch(_){/* offline: preserve existing display */}
+ const seq=++noticeSeq;
+ try{
+  const [client,u]=await signed();
+  if(seq!==noticeSeq)return;
+  if(knownUid!==u.id){knownUid=u.id;applyNotices(false,false);}
+  const [trades,inbox]=await Promise.all([
+   client.rpc('gb_trade_inbox'),
+   client.from('gb_inbox').select('category,claimed_at,read_at').eq('recipient',u.id).limit(100)
+  ]);
+  if(seq!==noticeSeq)return;
+  if(trades.error)throw trades.error;
+  const tradePending=(trades.data||[]).some(t=>!t.claimed_at);
+  // A failed inbox fetch should not erase a previously displayed inbox badge.
+  const inboxBadge=$('#gbtrade-inbox-badge');
+  const inboxPending=inbox.error
+   ? Boolean(inboxBadge&&!inboxBadge.hidden)
+   : (inbox.data||[]).some(m=>(m.category==='event_reward'&&!m.claimed_at)||!m.read_at);
+  applyNotices(tradePending,inboxPending);
+ }catch(_){
+  // Don't erase indicators after a transient connection error.
+ }
 }
+
 const setup=()=>{if(initMail()){void updateTradeDot();return true;}return false;};
 if(!setup()){
  let tries=0;const timer=setInterval(()=>{tries++;if(setup()||tries>80)clearInterval(timer);},250);
@@ -152,5 +186,6 @@ const oldMailButton=()=>$('#gbpr-hub [data-gbpr-nav="mail"]');
 document.addEventListener('click',e=>{if(e.target.closest('[data-gbpr-nav="mail"]')){setTab('inbox');setTimeout(updateTradeDot,100);}});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)void updateTradeDot();});
 window.addEventListener('focus',()=>void updateTradeDot());
+document.addEventListener('click',e=>{if(e.target.closest('#gbpr-screen-mail [data-mail-open], #gbpr-screen-mail [data-mail-claim], #gbpr-screen-mail [data-inbox-claim]')){setTimeout(()=>void updateTradeDot(),500);setTimeout(()=>void updateTradeDot(),1800);}});
 setInterval(()=>{if(!document.hidden)void updateTradeDot();},30000);
 })();
