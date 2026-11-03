@@ -108,6 +108,8 @@ async function loadOwnership(){
  if(screen.classList.contains('active'))page<0?lobby():album(page);
 }
 const ownedArt=(i,k,name)=>qty(i,k)>0?art(i,k,name):'<span class="gbc-unowned" aria-hidden="true">?</span>';
+window.gbTradeReloadCollection=loadOwnership;
+window.gbTradeCardMeta=(id)=>{const match=/^(0[1-9]|1[0-2])_0[1-9]$/.exec(String(id));if(!match)return null;const [a,k]=id.split('_').map(Number);if(!albumNames(a-1)?.[k-1])return null;return {title:albumNames(a-1)[k-1],artUrl:candidates(a-1,k-1)[0]};};
 const extraBadge=(i,k)=>qty(i,k)>1?`<span class="gbc-extra">×${qty(i,k)-1}</span>`:'';
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const view=id=>{document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===id))};
@@ -176,8 +178,13 @@ function card(k){
  if(page<0)return;
  const name=albumNames(page)[k];
  if(!inventoryReady||qty(page,k)<1)return;
- $('gbcModal').innerHTML=`<div class="gbc-card-pane" role="dialog" aria-modal="true" aria-label="Card detail">${art(page,k,name)}<h3>${esc(name)}</h3><div class="gbc-card-stars">${'★'.repeat(rarities[k])}</div><p>Album: ${esc(albums[page][0])}<br>Owned: ${qty(page,k)} · Extras: ${Math.max(0,qty(page,k)-1)}<br>Friend trading coming later.</p><div class="gbc-modal-actions"><button class="gbc-btn" type="button" id="gbcCloseCard">CLOSE</button><button class="gbc-btn" type="button" disabled title="Trading is not active yet">TRADE · SOON</button></div></div>`;
+ $('gbcModal').innerHTML=`<div class="gbc-card-pane" role="dialog" aria-modal="true" aria-label="Card detail">${art(page,k,name)}<h3>${esc(name)}</h3><div class="gbc-card-stars">${'★'.repeat(rarities[k])}</div><p>Album: ${esc(albums[page][0])}<br>Owned: ${qty(page,k)} · Extras: ${Math.max(0,qty(page,k)-1)}<br>Send an extra copy to an accepted friend.</p><div class="gbc-modal-actions"><button class="gbc-btn" type="button" id="gbcCloseCard">CLOSE</button><button class="gbc-btn" type="button" id="gbcTradeCard" ${qty(page,k)<2?'disabled title="You must keep your first copy"':''}>TRADE</button></div></div>`;
  $('gbcModal').hidden=false;
+ const tradeButton=$('gbcTradeCard');
+ if(tradeButton)tradeButton.onclick=()=>{
+  if(typeof window.gbTradeOpenCard!=='function'){alert('Trading is still loading. Try again in a moment.');return;}
+  window.gbTradeOpenCard({card_id:cardKey(page,k),title:name,artUrl:candidates(page,k)[0]});
+ };
 }
 // Image fallbacks work on both the album grid and the full-size popup.
 // Missing assets display a named placeholder; they never hide the album.
@@ -197,5 +204,6 @@ $('gbcContent').addEventListener('click',e=>{const buyBtn=e.target.closest('[dat
 $('gbcBack').addEventListener('click',()=>page<0?view('menu'):lobby());$('gbcHome').addEventListener('click',()=>view('menu'));
 $('gbcModal').addEventListener('click',e=>{if(e.target.closest('#gbcFlipNext')){revealStep=Math.min(revealedCards.length,revealStep+1);renderPackReveal();return;}if(e.target.closest('#gbcRevealAll')){revealStep=revealedCards.length;renderPackReveal();return;}if(e.target.id==='gbcCloseCard'){revealedCards=[];$('gbcModal').hidden=true;lobby();return;}if(e.target.id==='gbcModal'&&revealStep>=revealedCards.length){$('gbcModal').hidden=true;lobby();}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&screen.classList.contains('active')){if(!$('gbcModal').hidden){if(!revealedCards.length||revealStep>=revealedCards.length){$('gbcModal').hidden=true;revealedCards=[];lobby();}}else if(page>=0)lobby();else view('menu')}});
+const tradeScript=document.createElement('script');tradeScript.src='assets/gb-trading.js?v=mail-trades-20261104a';tradeScript.defer=true;document.head.appendChild(tradeScript);
 const tab=$('collectibles');if(tab)tab.onclick=()=>{lobby();view('gbCollectView');void loadOwnership()};
 })();
