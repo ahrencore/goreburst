@@ -139,9 +139,9 @@ async function updateTradeDot(){
   const {data,error}=await client.rpc('gb_trade_inbox');if(error)throw error;
   const count=(data||[]).filter(t=>!t.claimed_at).length;
   const badge=$('#gbtrade-new-badge');if(badge)badge.hidden=!count;
-  const hub=$('#gbpr-hub [data-gbpr-nav="mail"]');
-  if(hub){let dot=hub.querySelector('.gbtrade-hub-dot');if(!dot){dot=document.createElement('i');dot.className='gbtrade-dot gbtrade-hub-dot';dot.setAttribute('aria-hidden','true');hub.appendChild(dot);}dot.hidden=!count;}
-  const pfp=$('#gbpr-pfp-request-dot');if(pfp&&count>0)pfp.hidden=false;
+  // The existing Mailbox navigation notification dot is authoritative.
+  // Trading must not append a second dot to the Mailbox button or alter the PFP notification.
+  document.querySelectorAll('#gbpr-hub .gbtrade-hub-dot').forEach(dot=>dot.remove());
  }catch(_){/* offline: preserve existing display */}
 }
 const setup=()=>{if(initMail()){void updateTradeDot();return true;}return false;};

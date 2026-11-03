@@ -204,6 +204,6 @@ $('gbcContent').addEventListener('click',e=>{const buyBtn=e.target.closest('[dat
 $('gbcBack').addEventListener('click',()=>page<0?view('menu'):lobby());$('gbcHome').addEventListener('click',()=>view('menu'));
 $('gbcModal').addEventListener('click',e=>{if(e.target.closest('#gbcFlipNext')){revealStep=Math.min(revealedCards.length,revealStep+1);renderPackReveal();return;}if(e.target.closest('#gbcRevealAll')){revealStep=revealedCards.length;renderPackReveal();return;}if(e.target.id==='gbcCloseCard'){revealedCards=[];$('gbcModal').hidden=true;lobby();return;}if(e.target.id==='gbcModal'&&revealStep>=revealedCards.length){$('gbcModal').hidden=true;lobby();}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&screen.classList.contains('active')){if(!$('gbcModal').hidden){if(!revealedCards.length||revealStep>=revealedCards.length){$('gbcModal').hidden=true;revealedCards=[];lobby();}}else if(page>=0)lobby();else view('menu')}});
-const tradeScript=document.createElement('script');tradeScript.src='assets/gb-trading.js?v=mail-trades-20261104a';tradeScript.defer=true;document.head.appendChild(tradeScript);
+const tradeScript=document.createElement('script');tradeScript.src='assets/gb-trading.js?v=mail-trades-one-dot-20261104b';tradeScript.defer=true;document.head.appendChild(tradeScript);
 const tab=$('collectibles');if(tab)tab.onclick=()=>{lobby();view('gbCollectView');void loadOwnership()};
 })();
