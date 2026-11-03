@@ -1,0 +1,9 @@
+/* Universal transparent-opening avatar renderer. Applies only to paid Shop frames. */
+#gbShopView #gbshopPreview,
+#gb-profile-layer .gbpf-preview,
+#gb-profile-layer .gbpf-hero-avatar-wrap,
+#gb-profile-layer .gbpf-public-wrap { position:relative!important; isolation:isolate; }
+#gbShopView .gbshop-avatar-preview img.gb-frame-universal-photo,
+#gb-profile-layer img.gb-frame-universal-photo { animation:none!important;box-shadow:none!important;filter:none!important; }
+#gbShopView .gbshop-avatar-preview img.gb-frame-universal-overlay,
+#gb-profile-layer img.gb-frame-universal-overlay { position:absolute!important;inset:0!important;left:0!important;top:0!important;width:100%!important;height:100%!important;max-width:none!important;object-fit:contain!important;z-index:2!important;filter:none!important;box-shadow:none!important;border:0!important;background:transparent!important;pointer-events:none!important; }

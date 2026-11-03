@@ -251,22 +251,10 @@ let gbGiftOwned=new Set();
 window.gbGiftOwnershipRefresh=async()=>{if(!sb||!user||user.is_anonymous){gbGiftOwned=new Set();gbpfPaint();return;}const {data,error}=await sb.rpc('gb_owned_gift_frames');if(error){console.warn('Gift frames lookup:',error.message);const status=$p('gbpf-status');if(status)status.textContent='Could not refresh claimed frames: '+error.message;return;}const status=$p('gbpf-status');if(status&&status.textContent.startsWith('Could not refresh claimed frames:'))status.textContent='';gbGiftOwned=new Set((data||[]).map(x=>x.frame_id));gbpfPaint();};
 const gbpfLocalKey=()=>user?.id?'gbpf-equipped-'+user.id:'gbpf-equipped-guest';
 const gbpfLocal=()=>{try{return gbpfNormalize(localStorage.getItem(gbpfLocalKey())||'none')}catch{return 'none'}};
-// Each paid frame has a different transparent opening. Keep the avatar clipped
-// to that opening rather than assuming 70% fits all designs.
-const gbpfShopHole={
- frame_babybat:[55.6,49.8,49.9],frame_emobaby:[44.8,48.8,54.6],
- frame_clowngal:[49.6,49.4,54.3],frame_heartballoon:[50.2,49.4,48.0],
- frame_foxy:[50.6,49.8,50.5],frame_cuteangel:[49.3,49.3,46.0],
- frame_purplefluffy:[47.4,48.3,47.0],frame_poseidon:[46.1,47.0,48.2],
- frame_greek:[42.1,46.5,47.3]
-};
-const gbpfFit=(el,id)=>{
- if(!el)return;
- const fit=gbpfShopHole[id];
- el.classList.toggle('gbpf-paid-fit',Boolean(fit));
- if(fit){el.style.setProperty('--gbpf-hole-size',fit[0]+'%');el.style.setProperty('--gbpf-hole-x',fit[1]+'%');el.style.setProperty('--gbpf-hole-y',fit[2]+'%');el.style.setProperty('--gbpf-photo-clip',(fit[0]/1.4).toFixed(3)+'%');}
- else{el.style.removeProperty('--gbpf-hole-size');el.style.removeProperty('--gbpf-hole-x');el.style.removeProperty('--gbpf-hole-y');el.style.removeProperty('--gbpf-photo-clip');}
-};
+// Paid frame photograph fitting is now handled by gb-frame-universal.js.
+// The same transparent-hole renderer is used in Edit Profile, own profile,
+// public profiles, and the Shop. Future shop frame files need no manual sizes.
+const gbpfFit=(el,id)=>{if(!el)return;el.classList.remove('gbpf-paid-fit');};
 const gbpfCurrent=()=>gbpfNormalize(profile?.equipped_frame??gbpfLocal());
 const gbpfSetLocal=id=>{try{localStorage.setItem(gbpfLocalKey(),id)}catch{}};
 function gbpfDecorate(el,id){

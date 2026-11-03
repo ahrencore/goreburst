@@ -12,15 +12,8 @@ const layer=document.createElement('section');layer.id='gbShopView';layer.classN
 $('app').appendChild(layer);
 const tabs=[...layer.querySelectorAll('[data-cat]')];let cat='specials',balance=null,rows=[],busy=false,selected=null,uid='',pendingByItem={};
 const pendingKey=id=>'gbshop-pending-v1:'+uid+':'+id;
-// Each image has a slightly different transparent opening. Fit the PFP to the
-// actual opening instead of forcing one photo size onto all nine frames.
-const framePhotoFit={
- frame_babybat:[55.6,49.8,49.9],frame_emobaby:[44.8,48.8,54.6],
- frame_clowngal:[49.6,49.4,54.3],frame_heartballoon:[50.2,49.4,48.0],
- frame_foxy:[50.6,49.8,50.5],frame_cuteangel:[49.3,49.3,46.0],
- frame_purplefluffy:[47.4,48.3,47.0],frame_poseidon:[46.1,47.0,48.2],
- frame_greek:[42.1,46.5,47.3]
-};
+// The universal frame renderer positions photographs from transparent artwork.
+// No manual per-frame dimensions are needed here.
 function getApi(){return window.gbShopApi||null}
 function isFrame(id){return id.startsWith('frame_')}
 function frameOwned(id){return rows.some(x=>x.item_id===id)}
@@ -31,11 +24,7 @@ async function openShop(){if(window.gbShopBlocked)return;document.querySelectorA
 function closeShop(){if(busy)return;layer.classList.remove('active');if(typeof menu==='function')menu();else $('menu').classList.add('active')}
 function openModal(id){const found=Object.values(PRODUCTS).flat().find(p=>p[0]===id);if(!found)return;selected=found;const [_,price,src,label]=found,frame=isFrame(id),lives=id.startsWith('lives_');$('gbshopPreviewTitle').textContent=frame?'YOUR FRAME PREVIEW':'SHOP ITEM';$('gbshopProductText').textContent=frame?'Permanent profile frame':lives?`Unlimited lives for ${label}`:label;$('gbshopModalStatus').textContent='';$('gbshopPreview').hidden=!frame;$('gbshopItemImg').hidden=frame||lives;$('gbshopItemImg').src=src?ROOT+src:'';
  if(frame){
-   const preview=$('gbshopPreview');const fit=framePhotoFit[id]||[56,0,0];
-   preview.style.setProperty('--gbshop-photo-size',fit[0]+'%');
-   preview.style.setProperty('--gbshop-photo-x',fit[1]+'%');
-   preview.style.setProperty('--gbshop-photo-y',fit[2]+'%');
-   preview.style.setProperty('--gbshop-photo-clip', (fit[0]/1.4).toFixed(3)+'%');
+   // A single shared renderer crops the avatar to this frame's real transparent opening.
    $('gbshopAvatarImg').src=$('gbMenuAvatar')?.src||'assets/avatars/01_Mr_Walker.png';
    $('gbshopFrameImg').src=ROOT+src;
  }
