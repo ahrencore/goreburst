@@ -1117,9 +1117,32 @@ async function checkEnd(){
 }
 function finish(win){if(eventRun){weeklyFinish(win);return}if(mode==='ended'||mode==='failed')return;mode=win?'ended':'failed';if(!win){failedPending=true;save.pendingFailure=true;persist()}else{failedPending=false;save.pendingFailure=false;persist()}const priorBest=save.best[chosen]||0;const stars=win?(chosen===4?3:starPoints>=100?3:starPoints>=65?2:1):0;
  let earnedCoins=0;
- if(win){const previous=save.best[chosen]||0;const best=Math.max(previous,stars);const base=[0,10,30,50][stars];const total=base+Math.max(0,Math.floor(starPoints-100));const oldBest=Math.max(Number(save.bestCoins?.[chosen]||0),[0,10,30,50][previous]);earnedCoins=Math.max(0,total-oldBest);save.coins+=earnedCoins;save.bestCoins=save.bestCoins||{};save.bestCoins[chosen]=Math.max(oldBest,total);save.best[chosen]=best;save.current=Math.max(save.current,chosen+1);persist()}
+ if(win){const previous=save.best[chosen]||0;const best=Math.max(previous,stars);const base=[0,10,30,50][stars];const total=base+Math.max(0,Math.floor(starPoints-100));const oldBest=Math.max(Number(save.bestCoins?.[chosen]||0),[0,10,30,50][previous]);earnedCoins=Math.max(0,total-oldBest);if(!(typeof window.gbWalletIsSignedIn==='function'&&window.gbWalletIsSignedIn()))save.coins+=earnedCoins;save.bestCoins=save.bestCoins||{};save.bestCoins[chosen]=Math.max(oldBest,total);save.best[chosen]=best;save.current=Math.max(save.current,chosen+1);persist()}
  playSfx(win?'victory':'fail');
- $('result').classList.toggle('lost',!win);$('gbFail').hidden=win;document.querySelector('#result .gb-win-shell').hidden=!win;if(!win){$('gbFailedLevel').textContent='LEVEL '+chosen;const count=Math.max(0,save.lives-1);$('gbFailureHearts').innerHTML=Array.from({length:5},(_,i)=>'<span class="'+(i<count?'full':'empty')+'">♥</span>').join('');$('gbFailureHint').textContent='';$('gbFailureObjectives').innerHTML='<div class="failure-objectives-header">OBJECTIVES • CURRENT PROGRESS</div>'+Object.entries(conf.goals).map(([t,n])=>{const done=Math.min(n,collected[t]||0),remaining=n-done;return '<div class="failure-objective-row"><img src="'+goalIcon(t)+'" alt=""><div><span>'+done+' / '+n+'</span><div class="failure-progress-track"><div class="failure-progress-fill" style="width:'+Math.round(done/n*100)+'%"></div></div></div><strong>'+remaining+' left</strong></div>'}).join('');$('gbPlusMoves').disabled=false;}$('resultlevel').textContent=win?'LEVEL '+chosen+' COMPLETED':'LEVEL '+chosen+' FAILED';$('headline').textContent=win?'SCARY!':'TRY AGAIN';$('resultstars').innerHTML=Array.from({length:3},(_,i)=>'<img class=\"victory-star '+(i<stars?'earned':'unearned')+'\" src=\"assets/star.png\" alt=\"'+(i<stars?'earned star':'unearned star')+'\">').join('');$('recap').innerHTML=Object.entries(conf.goals).map(([t,n])=>`<div class="gb-complete-goal"><img src="${goalIcon(t)}" alt=""><b>${collected[t]}/${n}</b><em>${collected[t]>=n?'✓':'·'}</em></div>`).join('');$('rewards').innerHTML=win?'<img class="reward-coin" src="assets/coin-skull-new.png" alt="Skull coin"><strong>+'+earnedCoins+'</strong><span>COINS</span>':'Life lost · '+save.lives+'/5 remaining' ;$('reward-note').textContent='';$('goNext').style.display=win?'inline-block':'none';$('result').hidden=false}
+ $('result').classList.toggle('lost',!win);$('gbFail').hidden=win;document.querySelector('#result .gb-win-shell').hidden=!win;if(!win){$('gbFailedLevel').textContent='LEVEL '+chosen;const count=Math.max(0,save.lives-1);$('gbFailureHearts').innerHTML=Array.from({length:5},(_,i)=>'<span class="'+(i<count?'full':'empty')+'">♥</span>').join('');$('gbFailureHint').textContent='';$('gbFailureObjectives').innerHTML='<div class="failure-objectives-header">OBJECTIVES • CURRENT PROGRESS</div>'+Object.entries(conf.goals).map(([t,n])=>{const done=Math.min(n,collected[t]||0),remaining=n-done;return '<div class="failure-objective-row"><img src="'+goalIcon(t)+'" alt=""><div><span>'+done+' / '+n+'</span><div class="failure-progress-track"><div class="failure-progress-fill" style="width:'+Math.round(done/n*100)+'%"></div></div></div><strong>'+remaining+' left</strong></div>'}).join('');$('gbPlusMoves').disabled=false;}$('resultlevel').textContent=win?'LEVEL '+chosen+' COMPLETED':'LEVEL '+chosen+' FAILED';$('headline').textContent=win?'SCARY!':'TRY AGAIN';$('resultstars').innerHTML=Array.from({length:3},(_,i)=>'<img class=\"victory-star '+(i<stars?'earned':'unearned')+'\" src=\"assets/star.png\" alt=\"'+(i<stars?'earned star':'unearned star')+'\">').join('');$('recap').innerHTML=Object.entries(conf.goals).map(([t,n])=>`<div class="gb-complete-goal"><img src="${goalIcon(t)}" alt=""><b>${collected[t]}/${n}</b><em>${collected[t]>=n?'✓':'·'}</em></div>`).join('');$('rewards').innerHTML=win?'<img class="reward-coin" src="assets/coin-skull-new.png" alt="Skull coin"><strong>+'+earnedCoins+'</strong><span>COINS</span>':'Life lost · '+save.lives+'/5 remaining' ;$('reward-note').textContent='';$('goNext').style.display=win?'inline-block':'none';$('result').hidden=false;
+ if(win && typeof window.gbWalletIsSignedIn==='function' && window.gbWalletIsSignedIn()){
+   const rewardLevel=chosen, rewardStars=stars, rewardPoints=starPoints;
+   const rewardBox=$('rewards'), rewardNote=$('reward-note');
+   rewardBox.innerHTML='<img class="reward-coin" src="assets/coin-skull-new.png" alt="Skull coin"><strong>…</strong><span>CHECKING CLOUD REWARD</span>';
+   const rewardRun=async()=>{
+     rewardNote.textContent='Confirming your level reward with Supabase…';
+     try{
+       if(typeof window.gbWalletClaimLevelCoins!=='function')throw Error('Cloud wallet not ready. Reload while signed in.');
+       const receipt=await window.gbWalletClaimLevelCoins(rewardLevel,rewardStars,rewardPoints);
+       save.coins=receipt.balance_after;persist();
+       window.dispatchEvent(new Event('gb-wallet-balance-changed'));
+       if(rewardBox.isConnected){
+         rewardBox.innerHTML='<img class="reward-coin" src="assets/coin-skull-new.png" alt="Skull coin"><strong>+'+receipt.credited+'</strong><span>CLOUD COINS</span>';
+         rewardNote.textContent=receipt.credited?'Reward saved to Supabase':'Reward already claimed or not eligible';
+       }
+     }catch(e){
+       console.error('Cloud level reward claim:',e);
+       if(rewardNote.isConnected){rewardNote.textContent='Cloud reward not confirmed: '+(e?.message||'connection error')+' · Replay this level to retry.';}
+     }
+   };
+   void rewardRun();
+ }
+}
 function finalizeFailedAttempt(){if(failedPending&&!failedAttemptPaid){consumeFailedLife();failedAttemptPaid=true;failedPending=false;save.pendingFailure=false;persist()}}
 $('gbRetry').onclick=()=>{finalizeFailedAttempt();selectedPre.clear();if(!canAttempt())return;start(chosen)};
 $('gbFailHome').onclick=()=>{finalizeFailedAttempt();menu()};
@@ -1202,7 +1225,7 @@ document.getElementById('gamepause').onclick=openGbSettings;
 document.getElementById('gbSettingsClose').onclick=closeGbSettings;
 document.getElementById('gbSettings').addEventListener('click',e=>{if(e.target.id==='gbSettings')closeGbSettings()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeGbSettings()});
-</script><link rel="stylesheet" href="assets/gb-giftcodes.css"><script defer src="assets/gb-giftcodes.js"></script><script src="assets/gb-events.js?v=wallet-wheel-cloud-20261103"></script><script type="module" src="assets/gb-profile.js?v=wallet-wheel-cloud-20261103"></script><script defer src="assets/gb-collectibles.js"></script><style id="gb-events-badge-final-position">
+</script><link rel="stylesheet" href="assets/gb-giftcodes.css"><script defer src="assets/gb-giftcodes.js"></script><script src="assets/gb-events.js?v=wallet-wheel-cloud-20261103"></script><script type="module" src="assets/gb-profile.js?v=level-cloud-20261103a"></script><script defer src="assets/gb-collectibles.js"></script><style id="gb-events-badge-final-position">
 /* Fixed badge: a child of the actual EVENTS tap area, not a pseudo-element. */
 #menu .bottom-tabs #events.ev-tab-has-reward::after{content:none!important;display:none!important}
 #menu .bottom-tabs #events{position:absolute!important;overflow:hidden!important}

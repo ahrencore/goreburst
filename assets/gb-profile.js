@@ -173,6 +173,23 @@ window.gbWalletGetCloudBalance = async () => {
   return amount;
 };
 
+// Server-computed, bounded coin rewards, recorded once per best outcome per level.
+// The browser controls the match-3 simulation, so this is abuse-limiting rather than proof of gameplay.
+window.gbWalletClaimLevelCoins=async(level,stars,points)=>{
+  if(!sb)throw Error('Cloud connection not available');
+  const {data:auth,error:authError}=await sb.auth.getUser();
+  if(authError||!auth?.user||auth.user.is_anonymous)throw Error('Registered account required');
+  if(!Number.isInteger(level)||level<1||level>10000||!Number.isInteger(stars)||stars<1||stars>3||!Number.isFinite(points)||points<0)throw Error('Invalid level result');
+  const {data,error}=await sb.rpc('gb_claim_level_coin_reward_v2',{
+    p_level:level,p_stars:stars,p_points:Math.floor(points)
+  });
+  if(error)throw Error(error.message);
+  const result=Array.isArray(data)?data[0]:data;
+  const balance_after=Number(result?.balance_after),credited=Number(result?.credited);
+  if(!Number.isSafeInteger(balance_after)||balance_after<0||!Number.isInteger(credited)||credited<0||credited>1000)throw Error('Invalid cloud reward receipt');
+  return {balance_after,credited};
+};
+
 // Server-authoritative Wheel of Misfortune: the draw, cost and coin prize share one transaction.
 window.gbWheelCloudSpin = async (requestId) => {
   if (!sb || !requestId) throw Error('Cloud wallet is unavailable.');
