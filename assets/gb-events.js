@@ -411,6 +411,9 @@ function evSudokuRender(){
   const s=sudoku;if(!s)return;
   const pts={easy:350,medium:650,hard:1000}[s.difficulty];
   evDisplay(`${evHeader('SUDOKU',evSudokuMenu)}<div class="ev-sudo-shell"><div class="ev-sudo-stats"><div><small>DIFFICULTY</small><strong>${s.difficulty.toUpperCase()}</strong></div><div><small>MISTAKES</small><strong id="evSudoErrors">0 / 3</strong></div><div><small>TIME</small><strong id="evSudoTime">00:00</strong></div><div><small>WIN POINTS</small><strong>+${pts}</strong></div></div><div class="ev-sudoku-grid" id="evSudoBoard">${s.values.map((n,i)=>`<button class="ev-sudoku-cell" data-cell="${i}" aria-label="Sudoku row ${Math.floor(i/9)+1} column ${i%9+1}">${n?`<img src="${sudokuSrc(n)}" alt="">`:''}</button>`).join('')}</div><div class="ev-sudoku-tray" aria-label="Select Sudoku symbol">${sudokuImgs.map((x,i)=>`<button data-symbol="${i+1}" aria-label="Choose symbol ${i+1}"><img src="${sudokuSrc(i+1)}" alt=""><small class="ev-sudo-remain"></small></button>`).join('')}</div><div class="ev-sudo-tools ev-sudo-tools-clean">${[['evSudoHint','✦','HINT'],['evSudoNotes','✎','NOTES'],['evSudoUndo','↶','UNDO'],['evSudoErase','⌫','ERASE']].map(([id,symbol,label])=>`<button type="button" id="${id}" class="ev-sudo-tool" aria-label="${label}" title="${label}"><span class="ev-sudo-tool-icon" aria-hidden="true">${symbol}</span><span class="ev-sudo-tool-label">${label}</span></button>`).join('')}</div><p class="ev-note">Select a tile, then choose a symbol. Tap a symbol first to light up every matching tile.</p></div>`,evSudokuMenu);
+  // Safari-safe Sudoku sizing: content must never determine an empty row's height.
+  // Match the rendered grid's border-box height to its actual width.
+  evSudokuKeepBoardSquare();
   evRoot.querySelectorAll('[data-cell]').forEach(b=>b.onclick=()=>{const i=+b.dataset.cell;s.selected=i;if(s.values[i])s.highlight=s.values[i];evSudokuPaint()});
   evRoot.querySelectorAll('[data-symbol]').forEach(b=>b.onclick=()=>{const n=+b.dataset.symbol;if(evSudokuRemaining(n)===0)return;s.choice=n;s.highlight=n;if(s.selected>=0&&!s.givens.has(s.selected)&&s.values[s.selected]!==s.answer[s.selected]&&!s.done){if(s.notes){const i=s.selected;if(!s.values[i]){const marks=s.noteMarks[i]||[];s.noteMarks[i]=marks.includes(n)?marks.filter(x=>x!==n):[...marks,n];}evSudokuPaint()}else evSudokuPlace(n)}else evSudokuPaint()});
   evRoot.querySelector('#evSudoNotes').onclick=()=>{s.notes=!s.notes;evRoot.querySelector('#evSudoNotes').classList.toggle('active',s.notes);evRoot.querySelector('#evSudoNotes').setAttribute('aria-pressed',String(s.notes));};
@@ -419,6 +422,15 @@ function evSudokuRender(){
   evRoot.querySelector('#evSudoHint').onclick=()=>{if(s.done||s.hintsLeft<=0)return;const i=s.selected>=0&&!s.givens.has(s.selected)&&s.values[s.selected]!==s.answer[s.selected]?s.selected:s.values.findIndex((n,i)=>n!==s.answer[i]&&!s.givens.has(i));if(i>=0){s.hintsLeft--;s.values[i]=s.answer[i];s.wrong.delete(i);s.selected=i;s.highlight=0;evSudokuPaint();evSudokuCheck()}};
   evSudokuPaint();
 }
+function evSudokuKeepBoardSquare(){
+  const board=evRoot && evRoot.querySelector('#evSudoBoard');
+  if(!board)return;
+  const width=board.getBoundingClientRect().width;
+  if(width>0)board.style.height=width+'px';
+}
+// Attach once. The board may be recreated on a new Sudoku game; always find it afresh.
+window.addEventListener('resize', evSudokuKeepBoardSquare);
+window.addEventListener('orientationchange', evSudokuKeepBoardSquare);
 function evSudokuRemaining(n){const s=sudoku;return 9-s.values.filter((v,i)=>v===n&&s.answer[i]===n).length}
 function evSudokuPaint(){
   const s=sudoku;if(!s)return;
