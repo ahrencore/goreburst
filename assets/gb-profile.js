@@ -203,6 +203,30 @@ window.gbWheelCloudSpin = async (requestId) => {
   return {prize_index:idx,balance_after:amount,spins_today:spins};
 };
 
+// Shop receipts are account-owned. Cloud backup authorization is NOT the same as
+// account ownership: the former may be delayed by a save revision conflict.
+// Never credit receipts to a device bound to another account. On an unbound
+// browser, only match a meaningful local save to this user's cloud progression.
+async function gbShopCanDeliverToLocal(uid){
+  if(!uid||!user||user.id!==uid)return false;
+  const bound=localStorage.getItem(cloudBindingKey);
+  if(bound && bound!==uid)return false;
+  const local=readLocalGameSave();
+  if(local.gbShopOwner && local.gbShopOwner!==uid)return false;
+  if(canAutoBackup()||bound===uid)return true;
+  if(!sb||gbprFreshGameShell(local))return false;
+  const {data:cloud,error}=await sb.from('player_cloud_backups')
+    .select('snapshot').eq('player_id',uid).maybeSingle();
+  if(error||!cloud?.snapshot)return false;
+  const remote=validSnapshot(cloud.snapshot);
+  const best=x=>saveFingerprint(x&&typeof x.best==='object'?x.best:{});
+  // Level and per-level best-stars are an identity fingerprint, not a fallback
+  // to simply trust whichever account is currently signed in.
+  return Number(local.current)===Number(remote.current) &&
+    best(local)===best(remote) &&
+    retainsClaimReceipts(local,remote) && retainsClaimReceipts(remote,local);
+}
+
 // The storefront never receives a privileged key; authenticated user RPCs only.
 window.gbShopApi={
   async sync(){
@@ -219,9 +243,20 @@ window.gbShopApi={
     // Keeping receipts on the server makes a purchase safe even if local progress
     // is still being restored; later sync applies each receipt at most once.
     const consumables=(orders||[]).filter(x=>!String(x.item_id).startsWith('frame_'));
-    const deliveryPending=!canAutoBackup() && consumables.length>0;
-    if(canAutoBackup())for(const receipt of consumables)window.gbShopApplyOrder?.(receipt,who.id);
-    else if(deliveryPending)console.info('Shop purchases saved to account; gameplay delivery waits for verified progress.');
+    const deliveryReady=await gbShopCanDeliverToLocal(who.id);
+    const deliveryPending=!deliveryReady && consumables.length>0;
+    if(deliveryReady){
+      if(typeof window.gbShopApplyOrder!=='function')
+        throw Error('Gameplay inventory is not ready; your paid receipt remains saved.');
+      for(const receipt of consumables){
+        // Re-check the authenticated user before modifying this browser's save.
+        const {data:check}=await sb.auth.getUser();
+        if(check?.user?.id!==who.id)throw Error('Account changed during shop sync.');
+        window.gbShopApplyOrder(receipt,who.id);
+      }
+    } else if(deliveryPending){
+      console.info('Shop receipt safely retained. The browser save is not yet verified for this account.');
+    }
     const balance=await window.gbWalletGetCloudBalance();
     return {uid:who.id,balance,orders:orders||[],deliveryPending};
   },

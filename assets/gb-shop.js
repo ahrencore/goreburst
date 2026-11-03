@@ -64,7 +64,7 @@ async function purchase(){if(!selected||busy)return;const [id,price,,label]=sele
       $('gbshopModalStatus').textContent=isFrame(id)
          ? 'Purchased! Find your frame under Edit Profile → Frames.'
          : latest.deliveryPending
-           ? 'Purchase confirmed in Supabase. Your item will be delivered when this account’s game progress finishes loading. Do not buy it again.'
+           ? 'Purchase confirmed and saved to this account. This browser’s game save could not yet be safely matched to that account; the item is pending. Do not purchase again.'
            : 'Purchased! Your item has been added to your game.';
     }else{
       $('gbshopModalStatus').textContent='Purchase confirmed by Supabase. Inventory display is offline; do not buy again.';
