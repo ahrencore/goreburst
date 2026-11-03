@@ -251,6 +251,22 @@ let gbGiftOwned=new Set();
 window.gbGiftOwnershipRefresh=async()=>{if(!sb||!user||user.is_anonymous){gbGiftOwned=new Set();gbpfPaint();return;}const {data,error}=await sb.rpc('gb_owned_gift_frames');if(error){console.warn('Gift frames lookup:',error.message);const status=$p('gbpf-status');if(status)status.textContent='Could not refresh claimed frames: '+error.message;return;}const status=$p('gbpf-status');if(status&&status.textContent.startsWith('Could not refresh claimed frames:'))status.textContent='';gbGiftOwned=new Set((data||[]).map(x=>x.frame_id));gbpfPaint();};
 const gbpfLocalKey=()=>user?.id?'gbpf-equipped-'+user.id:'gbpf-equipped-guest';
 const gbpfLocal=()=>{try{return gbpfNormalize(localStorage.getItem(gbpfLocalKey())||'none')}catch{return 'none'}};
+// Each paid frame has a different transparent opening. Keep the avatar clipped
+// to that opening rather than assuming 70% fits all designs.
+const gbpfShopHole={
+ frame_babybat:[55.6,49.8,49.9],frame_emobaby:[44.8,48.8,54.6],
+ frame_clowngal:[49.6,49.4,54.3],frame_heartballoon:[50.2,49.4,48.0],
+ frame_foxy:[50.6,49.8,50.5],frame_cuteangel:[49.3,49.3,46.0],
+ frame_purplefluffy:[47.4,48.3,47.0],frame_poseidon:[46.1,47.0,48.2],
+ frame_greek:[42.1,46.5,47.3]
+};
+const gbpfFit=(el,id)=>{
+ if(!el)return;
+ const fit=gbpfShopHole[id];
+ el.classList.toggle('gbpf-paid-fit',Boolean(fit));
+ if(fit){el.style.setProperty('--gbpf-hole-size',fit[0]+'%');el.style.setProperty('--gbpf-hole-x',fit[1]+'%');el.style.setProperty('--gbpf-hole-y',fit[2]+'%');}
+ else{el.style.removeProperty('--gbpf-hole-size');el.style.removeProperty('--gbpf-hole-x');el.style.removeProperty('--gbpf-hole-y');}
+};
 const gbpfCurrent=()=>gbpfNormalize(profile?.equipped_frame??gbpfLocal());
 const gbpfSetLocal=id=>{try{localStorage.setItem(gbpfLocalKey(),id)}catch{}};
 function gbpfDecorate(el,id){
@@ -258,12 +274,13 @@ function gbpfDecorate(el,id){
  let wrap=el.closest('.gbpf-hero-avatar-wrap');
  if(!wrap){wrap=document.createElement('span');wrap.className='gbpf-hero-avatar-wrap';el.parentNode.insertBefore(wrap,el);wrap.appendChild(el)}
  wrap.querySelectorAll('.gbpf-overlay').forEach(x=>x.remove());
+ gbpfFit(wrap,id);
  el.classList.add('gbpf-avatar-img');
  const src=gbpfFile(id);
  if(!src)return;
  const frame=document.createElement('img');frame.src=src;frame.className='gbpf-overlay';frame.alt='';frame.setAttribute('aria-hidden','true');wrap.appendChild(frame);
 }
-function gbpfPaint(){const selected=gbpfCurrent();const hero=$p('gbpr-current-avatar');gbpfDecorate(hero,selected);const avatar=$p('gbpf-preview-avatar');if(avatar)avatar.src=avatarUrl();const border=$p('gbpf-preview-border');if(border){border.src=gbpfFile(selected)||'';border.hidden=!gbpfFile(selected)};
+function gbpfPaint(){const selected=gbpfCurrent();gbpfFit(prFramePanel.querySelector('.gbpf-preview'),selected);const hero=$p('gbpr-current-avatar');gbpfDecorate(hero,selected);const avatar=$p('gbpf-preview-avatar');if(avatar)avatar.src=avatarUrl();const border=$p('gbpf-preview-border');if(border){border.src=gbpfFile(selected)||'';border.hidden=!gbpfFile(selected)};
  const hud=document.getElementById('gbMenuAvatar');if(hud){const old=document.getElementById('gbpf-hud-frame');if(old)old.remove();if(gbpfFile(selected)){const overlay=document.createElement('img');overlay.id='gbpf-hud-frame';overlay.src=gbpfFile(selected);overlay.alt='';overlay.setAttribute('aria-hidden','true');hud.insertAdjacentElement('afterend',overlay)}}
  const choices=$p('gbpf-options');if(choices){choices.innerHTML=['none','1','2','3','4','5',...Array.from({length:19},(_,i)=>'gift_'+String(i+1).padStart(2,'0')).filter(id=>gbGiftOwned.has(id)),...gbShopFrameIds.filter(id=>gbShopFrameOwned.has(id))].map(id=>{const locked=id==='hungry_gate'||(id.startsWith('gift_')&&!gbGiftOwned.has(id))||(id.startsWith('frame_')&&!gbShopFrameOwned.has(id));const chosen=id===selected;const inner=gbpfFile(id)?'<img src="'+gbpfFile(id)+'" alt="">':'<span class="gbpf-empty">○</span>';return '<button type="button" data-gbpf-frame="'+id+'" class="gbpf-choice '+(chosen?'selected ':'')+(locked?'locked':'')+'" aria-label="'+(locked?'Locked frame':id==='none'?'No frame':'Profile frame '+id)+'" aria-pressed="'+chosen+'">'+inner+(locked?'<span class="gbpf-lock">🔒</span>':'')+(chosen?'<span class="gbpf-tick">✓</span>':'')+'</button>'}).join('')}
 }

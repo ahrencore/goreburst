@@ -15,11 +15,11 @@ const pendingKey=id=>'gbshop-pending-v1:'+uid+':'+id;
 // Each image has a slightly different transparent opening. Fit the PFP to the
 // actual opening instead of forcing one photo size onto all nine frames.
 const framePhotoFit={
- frame_babybat:[64,0,0],frame_emobaby:[55,0,0],
- frame_clowngal:[59,0,-3],frame_heartballoon:[57,0,0],
- frame_foxy:[65,0,0],frame_cuteangel:[55,0,1],
- frame_purplefluffy:[59,0,0],frame_poseidon:[55,0,1],
- frame_greek:[53,0,0]
+ frame_babybat:[55.6,49.8,49.9],frame_emobaby:[44.8,48.8,54.6],
+ frame_clowngal:[49.6,49.4,54.3],frame_heartballoon:[50.2,49.4,48.0],
+ frame_foxy:[50.6,49.8,50.5],frame_cuteangel:[49.3,49.3,46.0],
+ frame_purplefluffy:[47.4,48.3,47.0],frame_poseidon:[46.1,47.0,48.2],
+ frame_greek:[42.1,46.5,47.3]
 };
 function getApi(){return window.gbShopApi||null}
 function isFrame(id){return id.startsWith('frame_')}

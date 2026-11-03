@@ -387,3 +387,19 @@ img.gbpf-rank-overlay {
   text-shadow: none !important;
 }
 /* Leave existing avatar photographs and unrelated decorative UI unchanged. */
+
+/* Store paid frames use measured transparency-hole geometry; avatars remain within the frame. */
+#gb-profile-layer .gbpf-preview.gbpf-paid-fit > #gbpf-preview-avatar,
+#gb-profile-layer .gbpf-preview.gbpf-paid-fit > img#gbpf-preview-avatar {
+ position:absolute!important;left:var(--gbpf-hole-x)!important;top:var(--gbpf-hole-y)!important;
+ width:var(--gbpf-hole-size)!important;height:var(--gbpf-hole-size)!important;
+ transform:translate(-50%,-50%)!important;object-fit:cover!important;
+ border-radius:50%!important;box-shadow:none!important;filter:none!important;
+}
+#gb-profile-layer .gbpr-hero .gbpf-hero-avatar-wrap.gbpf-paid-fit > img.gbpf-avatar-img,
+#gb-profile-layer .gbpr-hub-identity .gbpr-hero .gbpf-hero-avatar-wrap.gbpf-paid-fit > img.gbpf-avatar-img {
+ position:absolute!important;left:var(--gbpf-hole-x)!important;top:var(--gbpf-hole-y)!important;
+ width:var(--gbpf-hole-size)!important;height:var(--gbpf-hole-size)!important;
+ transform:translate(-50%,-50%)!important;object-fit:cover!important;
+ border-radius:50%!important;box-shadow:none!important;filter:none!important;
+}

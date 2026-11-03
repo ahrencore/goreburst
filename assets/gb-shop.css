@@ -30,7 +30,7 @@
 #gbShopView .gbshop-preview-title{font:900 18px Georgia,serif;color:#ffe4ae;text-shadow:0 0 10px #f681df;margin-top:3px}
 #gbShopView .gbshop-avatar-preview{position:relative;width:min(100%,270px);aspect-ratio:1/1;flex-shrink:0}
 #gbShopView .gbshop-avatar-preview img{position:absolute;display:block}
-#gbShopView .gbshop-avatar-preview .gbshop-avatar{inset:auto;left:calc(50% + var(--gbshop-photo-x,0%));top:calc(50% + var(--gbshop-photo-y,0%));transform:translate(-50%,-50%);width:var(--gbshop-photo-size,56%);height:var(--gbshop-photo-size,56%);border-radius:50%;object-fit:cover;object-position:center;box-shadow:none;filter:none}
+#gbShopView .gbshop-avatar-preview .gbshop-avatar{inset:auto;left:var(--gbshop-photo-x,50%);top:var(--gbshop-photo-y,50%);transform:translate(-50%,-50%);width:var(--gbshop-photo-size,56%);height:var(--gbshop-photo-size,56%);border-radius:50%;object-fit:cover;object-position:center;box-shadow:none;filter:none}
 #gbShopView .gbshop-avatar-preview .gbshop-frame{inset:0;width:100%;height:100%;object-fit:contain;filter:none}
 #gbShopView .gbshop-item-preview{width:150px;height:150px;object-fit:contain}
 #gbShopView .gbshop-product-desc{font:14px system-ui,sans-serif;color:#f4cee9;text-align:center}
