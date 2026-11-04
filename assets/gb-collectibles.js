@@ -54,7 +54,11 @@ const candidates=(i,k)=>{
   `${folders[i]}-${n}-${hy}.png`,`${n}_${un}.webp`,`${n}-${hy}.webp`
  ];
  const dirs=[folders[i], ...(i===10?['puppet-theatre']:[]),...(i===11?['crooked-menagerie']:[])];
- return [...new Set(dirs.flatMap(dir=>stems.map(f=>`${A}collectibles/${dir}/${f.endsWith('.png')&&optimizedCardFiles.has(dir+'/'+f.slice(0,-4)+'.webp')?f.slice(0,-4)+'.webp':f}`)))];
+ return [...new Set(dirs.flatMap(dir=>stems.flatMap(f=>{
+  const png=`${A}collectibles/${dir}/${f}`;
+  const webp=f.endsWith('.png')?`${A}collectibles/${dir}/${f.slice(0,-4)}.webp`:null;
+  return webp&&optimizedCardFiles.has(`${dir}/${f.slice(0,-4)}.webp`)?[webp,png]:[png];
+ })))];
 };
 const art=(i,k,name)=>`<img data-gbc-album="${i}" data-gbc-card="${k}" data-gbc-try="0" loading="lazy" decoding="async" src="${candidates(i,k)[0]}" alt="${esc(name)}">`;
 const blurbs={
@@ -166,7 +170,7 @@ async function openPack(type){
  finally{packBusy=false;if($('gbcModal').hidden&&screen.classList.contains('active'))lobby();}
 }
 
-function lobby(){page=-1;$('gbcBarTitle').textContent='COLLECTIBLES';$('gbcBack').textContent='‹ BACK';$('gbcContent').innerHTML='<h1 class="gbc-headline">THE CURSED COLLECTION</h1><p class="gbc-sub">12 albums · 108 cards · One very strange carnival</p><div class="gbc-total"><strong>COMPLETE THE COLLECTION</strong><div class="gbc-completion-rewards" aria-label="Completion rewards"><div class="gbc-completion-prize"><img src="assets/coin-skull-new.png" alt="Skull Coins"><b>15,000</b></div><div class="gbc-completion-prize"><img src="assets/heart.png" alt="Lives"><b>24H</b></div><div class="gbc-completion-prize gbc-frame-prize" title="Exclusive special profile frame"><img src="assets/collectibles/reward-icons/hungry_gate_frame.webp" alt="Special profile frame"><b>×1</b></div></div><div class="gbc-progress"><span style="width:0%"></span></div><small>'+(inventoryReady?(ownTotal()+' / 108 collected'):('Collection unavailable · '+esc(inventoryError||'Loading')))+'</small></div><div class="gbc-albums">'+albums.map((a,i)=>`<button class="gbc-album ${i===0?'featured':''}" type="button" data-album="${i}" aria-label="Open ${esc(a[0])}"><span class="gbc-album-pic" style="--gbc-light:${a[2]}"><img src="${A}collectibles/album-promos/${String(i+1).padStart(2,'0')}_${promoNames[i]}.webp" alt="" loading="lazy"></span><span class="gbc-album-name">${esc(a[0])}</span><span class="gbc-count">${inventoryReady?setCount(i):'—'} / 9</span><span class="gbc-tiny">VIEW ALBUM</span></button>`).join('')+'</div>'+packView()+`<div class="gbcf-testbar"><button type="button" class="gbcf-testbutton" id="gbcfOpenTest">PREVIEW COMPLETION FRAMES</button><small>Preview only · does not unlock frames or grant rewards</small></div>`+'<p class="gbc-note">'+(inventoryReady?'Find collectible cards in packs to fill your albums.':'Sign in to load your collection.')+'</p>';const progress=$('gbcContent').querySelector('.gbc-progress span');if(progress)progress.style.width=(inventoryReady?Math.round(ownTotal()/108*100):0)+'%';$('gbcContent').scrollTop=0;}
+function lobby(){page=-1;$('gbcBarTitle').textContent='COLLECTIBLES';$('gbcBack').textContent='‹ BACK';$('gbcContent').innerHTML='<h1 class="gbc-headline">THE CURSED COLLECTION</h1><p class="gbc-sub">12 albums · 108 cards · One very strange carnival</p><div class="gbc-total"><strong>COMPLETE THE COLLECTION</strong><div class="gbc-completion-rewards" aria-label="Completion rewards"><div class="gbc-completion-prize"><img src="assets/coin-skull-new.png" alt="Skull Coins"><b>15,000</b></div><div class="gbc-completion-prize"><img src="assets/heart.png" alt="Lives"><b>24H</b></div><div class="gbc-completion-prize gbc-frame-prize" title="Exclusive special profile frame"><img src="assets/collectibles/reward-icons/hungry_gate_frame.webp" alt="Special profile frame" data-gbc-fallback="png"><b>×1</b></div></div><div class="gbc-progress"><span style="width:0%"></span></div><small>'+(inventoryReady?(ownTotal()+' / 108 collected'):('Collection unavailable · '+esc(inventoryError||'Loading')))+'</small></div><div class="gbc-albums">'+albums.map((a,i)=>`<button class="gbc-album ${i===0?'featured':''}" type="button" data-album="${i}" aria-label="Open ${esc(a[0])}"><span class="gbc-album-pic" style="--gbc-light:${a[2]}"><img src="${A}collectibles/album-promos/${String(i+1).padStart(2,'0')}_${promoNames[i]}.webp" alt="" loading="lazy" data-gbc-fallback="png"></span><span class="gbc-album-name">${esc(a[0])}</span><span class="gbc-count">${inventoryReady?setCount(i):'—'} / 9</span><span class="gbc-tiny">VIEW ALBUM</span></button>`).join('')+'</div>'+packView()+`<div class="gbcf-testbar"><button type="button" class="gbcf-testbutton" id="gbcfOpenTest">PREVIEW COMPLETION FRAMES</button><small>Preview only · does not unlock frames or grant rewards</small></div>`+'<p class="gbc-note">'+(inventoryReady?'Find collectible cards in packs to fill your albums.':'Sign in to load your collection.')+'</p>';const progress=$('gbcContent').querySelector('.gbc-progress span');if(progress)progress.style.width=(inventoryReady?Math.round(ownTotal()/108*100):0)+'%';$('gbcContent').scrollTop=0;}
 function rewardCount(text){const match=String(text).match(/^\s*(\d+)/);return '×'+(match?match[1]:'1');}
 function album(i){
  page=i;const a=albums[i], arr=albumNames(i),rr=rewards[i];
@@ -231,10 +235,22 @@ function gbcfClose(){gbcfOverlay?.remove();gbcfOverlay=null;}
 function gbcfDraw(){if(!gbcfOverlay)return;
  const frame=gbcfFrames.find(x=>x.number===gbcfSelected)||gbcfFrames[0];
  const avatar=document.getElementById('gbMenuAvatar')?.currentSrc||document.getElementById('gbMenuAvatar')?.src||'assets/avatars/01_Mr_Walker.png';
- gbcfOverlay.innerHTML=`<section class="gbcf-box"><button type="button" class="gbcf-close" id="gbcfClose" aria-label="Close">×</button><h3>EXCLUSIVE FRAME FIT TEST</h3><p>Frame ${gbcfSelected} of 10 · ${gbcfSelected===1?'Hungry Gate':'Collection completion '+gbcfSelected}</p><div class="gbcf-avatar-wrap"><img class="gbcf-avatar" alt="Your current profile photo" src="${avatar.replace(/&/g,'&amp;').replace(/"/g,'&quot;')}"><img class="gbcf-art" alt="Exclusive frame" src="${frame.src}"></div><div class="gbcf-choices">${gbcfFrames.map(x=>`<button type="button" class="gbcf-choice" data-gbcf-frame="${x.number}" aria-pressed="${x.number===gbcfSelected}"><img src="${x.src}" alt="">${x.number}</button>`).join('')}<button type="button" class="gbcf-choice gbcf-unavailable" disabled aria-label="Frame 10 not supplied">10 · pending</button></div><p class="gbcf-warning">TEST ONLY: no frame ownership, coins or lives are awarded.</p><p>PFP stays at its original size and is clipped to the actual transparent opening of each decorative frame.</p></section>`;
+ gbcfOverlay.innerHTML=`<section class="gbcf-box"><button type="button" class="gbcf-close" id="gbcfClose" aria-label="Close">×</button><h3>EXCLUSIVE FRAME FIT TEST</h3><p>Frame ${gbcfSelected} of 10 · ${gbcfSelected===1?'Hungry Gate':'Collection completion '+gbcfSelected}</p><div class="gbcf-avatar-wrap"><img class="gbcf-avatar" alt="Your current profile photo" src="${avatar.replace(/&/g,'&amp;').replace(/"/g,'&quot;')}"><img class="gbcf-art" alt="Exclusive frame" ${gbcfSelected===1?'data-gbc-fallback="png"':''} src="${frame.src}"></div><div class="gbcf-choices">${gbcfFrames.map(x=>`<button type="button" class="gbcf-choice" data-gbcf-frame="${x.number}" aria-pressed="${x.number===gbcfSelected}"><img src="${x.src}" ${x.number===1?'data-gbc-fallback="png"':''} alt="">${x.number}</button>`).join('')}<button type="button" class="gbcf-choice gbcf-unavailable" disabled aria-label="Frame 10 not supplied">10 · pending</button></div><p class="gbcf-warning">TEST ONLY: no frame ownership, coins or lives are awarded.</p><p>PFP stays at its original size and is clipped to the actual transparent opening of each decorative frame.</p></section>`;
 }
 document.addEventListener('click',e=>{if(!gbcfOverlay)return;const choice=e.target.closest('[data-gbcf-frame]');if(choice){gbcfSelected=Number(choice.dataset.gbcfFrame);gbcfDraw();return;}if(e.target.closest('#gbcfClose')||e.target===gbcfOverlay){gbcfClose();}},true);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&gbcfOverlay){gbcfClose();e.stopImmediatePropagation();}},true);
+
+
+// Prefer optimized assets but recover automatically when a WebP upload is absent.
+// Album art / rewards / Hungry Gate test only; collectible cards use their own ordered fallback above.
+document.addEventListener('error',e=>{
+ const img=e.target;
+ if(!(img instanceof HTMLImageElement)||img.dataset.gbcFallback!=='png')return;
+ const src=img.getAttribute('src')||'';
+ if(!/\.webp(?:[?#]|$)/i.test(src))return;
+ img.removeAttribute('data-gbc-fallback');
+ img.src=src.replace(/\.webp(?=([?#]|$))/i,'.png');
+},true);
 
 const tab=$('collectibles');if(tab)tab.onclick=()=>{lobby();view('gbCollectView');void loadOwnership()};
 })();
