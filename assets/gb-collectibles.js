@@ -62,7 +62,7 @@ const candidates=(i,k)=>{
   return webp&&optimizedCardFiles.has(`${dir}/${f.slice(0,-4)}.webp`)?[webp,png]:[png];
  })))];
 };
-const art=(i,k,name)=>`<img data-gbc-album="${i}" data-gbc-card="${k}" data-gbc-try="0" loading="lazy" decoding="async" src="${candidates(i,k)[0]}" alt="${esc(name)}">`;
+const art=(i,k,name)=>`<img data-gbc-album="${i}" data-gbc-card="${k}" data-gbc-try="0" loading="lazy" decoding="async" ${i===2?'style="width:70%!important;height:auto!important;aspect-ratio:1/1!important;max-width:70%!important;max-height:70%!important;object-fit:contain!important;margin:auto!important;border:0!important;box-shadow:none!important"':''} src="${candidates(i,k)[0]}" alt="${esc(name)}">`;
 const blurbs={
  0:'The ringmaster who knows considerably more than he should.',
  1:"The toys have been waiting for someone to play with them. Unfortunately, they're not very nice.",

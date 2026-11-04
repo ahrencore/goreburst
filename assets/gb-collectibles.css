@@ -122,3 +122,11 @@
 }
 
 /* Broken Toys Curios also retain their original pack reveal behavior, using lighter image assets. */
+
+/* Album 3 verified 70% square Curio art: overrides legacy tall-card image sizing. */
+#gbCollectView .gbc-card.gbc-card-curio .gbc-curio-slot {position:relative;display:grid;place-items:center;isolation:isolate}
+#gbCollectView .gbc-card.gbc-card-curio .gbc-curio-slot > img[data-gbc-album="2"] {
+  width:70%!important;height:auto!important;aspect-ratio:1 / 1!important;
+  max-width:70%!important;max-height:70%!important;object-fit:contain!important;
+  margin:0 auto!important;padding:0!important;border:none!important;box-shadow:none!important;
+}
