@@ -34,6 +34,24 @@
 #gbCollectView .gbc-card img{display:block;width:100%;aspect-ratio:3/4.2;object-fit:fill;border:1.5px solid #e889db;border-radius:9px;box-shadow:0 0 7px #ff46c97f}
 #gbCollectView .gbc-card-stars{display:block;color:#ffd266;font-size:11px;letter-spacing:1px;text-shadow:0 0 5px #ffc45d;margin:3px 0 2px}
 #gbCollectView .gbc-card-label{font:700 10px/1.18 Georgia,serif;display:block;color:#ffe5d9;min-height:25px}
+/* Mr. Walker Curios: preserve the original album slot and shrink only the art to 70%. */
+#gbCollectView .gbc-card.gbc-card-curio .gbc-curio-slot{
+  display:flex;align-items:center;justify-content:center;width:100%;
+  aspect-ratio:3/4.2;overflow:hidden;
+  border:1.5px solid #e889db;border-radius:9px;
+  background:linear-gradient(150deg,#2a1238,#110a1c);
+  box-shadow:0 0 7px #ff46c97f;
+}
+#gbCollectView .gbc-card.gbc-card-curio .gbc-curio-slot > img{
+  display:block;flex:none;width:70%;height:70%;max-width:70%;max-height:70%;
+  aspect-ratio:auto;object-fit:contain;object-position:center;
+  border:0;border-radius:0;box-shadow:none;background:transparent;
+}
+#gbCollectView .gbc-card.gbc-card-curio .gbc-curio-slot > .gbc-unowned{
+  width:70%;height:70%;aspect-ratio:auto;min-height:0;display:grid;place-items:center;
+  background:transparent;border:0;box-shadow:none;
+}
+
 #gbCollectView .gbc-placeholder{min-height:92px;aspect-ratio:3/4.2;border:1.5px solid #874a85;border-radius:10px;background:linear-gradient(150deg,#2a1238,#110a1c);display:grid;place-items:center;color:#815c8d;font-size:26px;box-shadow:inset 0 0 12px #ac55b624}
 #gbCollectView .gbc-note{font:11px/1.4 system-ui;color:#bfa2be;text-align:center;margin:12px 0 0}
 #gbCollectView .gbc-card-modal{position:absolute;inset:0;z-index:8;display:flex;align-items:center;justify-content:center;padding:14px;background:#08040deF;backdrop-filter:blur(5px)}
