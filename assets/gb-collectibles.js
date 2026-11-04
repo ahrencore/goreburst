@@ -44,7 +44,9 @@ const slug=s=>String(s).normalize('NFKD').replace(/[\u0300-\u036f]/g,'')
   .replace(/[’']/g,'').replace(/&/g,'and').toLowerCase()
   .replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 const curio4Files=['01_honk_honk','02_smile_for_me','03_funny_business','04_the_balloon_man','05_laughing_gas','06_too_many_teeth','07_the_crying_clown','08_a_very_bad_joke','09_the_last_laugh'];
+const curio5Files=['01_pickled_eyeballs','02_somethings_floating','03_the_talking_jar','04_do_not_shake','05_the_two_headed_specimen','06_growing_pains','07_a_jar_full_of_screams','08_the_collectors_favourite','09_the_thing_that_shouldnt_exist'];
 const candidates=(i,k)=>{
+ if(i===4){const stem=curio5Files[k];return [`${A}collectibles/jarred-curiosities/${stem}.webp`,`${A}collectibles/jarred-curiosities/${stem}.png`];}
  if(i===3){const stem=curio4Files[k];return [`${A}collectibles/laughing-nightmares/${stem}.webp`,`${A}collectibles/laughing-nightmares/${stem}.png`];}
  const n=String(k+1).padStart(2,'0'), name=albumNames(i)[k], hy=slug(name), un=hy.replace(/-/g,'_');
  const stems=[
@@ -173,7 +175,7 @@ function album(i){
  page=i;const a=albums[i], arr=albumNames(i),rr=rewards[i];
  $('gbcBarTitle').textContent='ALBUM';$('gbcBack').textContent='‹ ALBUMS';
  const description=blurbs[i];
- $('gbcContent').innerHTML=`<div class="gbc-person gbc-person-text"><div><h2>${esc(a[0])}</h2><p>${esc(description)}</p></div></div><div class="gbc-rewards"><div class="gbc-reward"><img src="${A}coin-skull-new.png" alt=""><b>${rr[0]}</b></div><div class="gbc-reward"><img src="${A+rr[1]}" alt=""><b>${rewardCount(rewardDetails[i][0])}</b></div><div class="gbc-reward"><img src="${A+rr[2]}" alt=""><b>${rewardCount(rewardDetails[i][1])}</b></div></div><div class="gbc-claim-row"><button class="gbc-btn gbc-claim" type="button" id="gbcClaimSet">CLAIM</button></div><div class="gbc-cards">${arr.map((name,k)=>`<button class="gbc-card ${(i===0||i===1||i===2||i===3)?'gbc-card-curio':''}" type="button" data-card="${k}" aria-label="View card ${esc(name)}">${ownedArt(i,k,name)}${extraBadge(i,k)}<span class="gbc-card-stars">${'★'.repeat(rarities[k])}</span><span class="gbc-card-label">${esc(name)}</span></button>`).join('')}</div><p class="gbc-note">${inventoryReady?'Only collected cards are revealed.':'Your collection could not be loaded.'}</p>`;
+ $('gbcContent').innerHTML=`<div class="gbc-person gbc-person-text"><div><h2>${esc(a[0])}</h2><p>${esc(description)}</p></div></div><div class="gbc-rewards"><div class="gbc-reward"><img src="${A}coin-skull-new.png" alt=""><b>${rr[0]}</b></div><div class="gbc-reward"><img src="${A+rr[1]}" alt=""><b>${rewardCount(rewardDetails[i][0])}</b></div><div class="gbc-reward"><img src="${A+rr[2]}" alt=""><b>${rewardCount(rewardDetails[i][1])}</b></div></div><div class="gbc-claim-row"><button class="gbc-btn gbc-claim" type="button" id="gbcClaimSet">CLAIM</button></div><div class="gbc-cards">${arr.map((name,k)=>`<button class="gbc-card ${(i===0||i===1||i===2||i===3||i===4)?'gbc-card-curio':''}" type="button" data-card="${k}" aria-label="View card ${esc(name)}">${ownedArt(i,k,name)}${extraBadge(i,k)}<span class="gbc-card-stars">${'★'.repeat(rarities[k])}</span><span class="gbc-card-label">${esc(name)}</span></button>`).join('')}</div><p class="gbc-note">${inventoryReady?'Only collected cards are revealed.':'Your collection could not be loaded.'}</p>`;
  $('gbcContent').scrollTop=0;
 }
 function card(k){
