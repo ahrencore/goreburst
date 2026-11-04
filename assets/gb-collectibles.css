@@ -34,7 +34,7 @@
 #gbCollectView .gbc-card img{display:block;width:100%;aspect-ratio:3/4.2;object-fit:fill;border:1.5px solid #e889db;border-radius:9px;box-shadow:0 0 7px #ff46c97f}
 #gbCollectView .gbc-card-stars{display:block;color:#ffd266;font-size:11px;letter-spacing:1px;text-shadow:0 0 5px #ffc45d;margin:3px 0 2px}
 #gbCollectView .gbc-card-label{font:700 10px/1.18 Georgia,serif;display:block;color:#ffe5d9;min-height:25px}
-/* Albums 1–2 Curios: preserve their original album slots, display art at 70%. */
+/* Albums 1–3 Curios: preserve their original album slots, display art at 70%. */
 #gbCollectView .gbc-card.gbc-card-curio .gbc-curio-slot{
   display:flex;align-items:center;justify-content:center;width:100%;
   aspect-ratio:3/4.2;overflow:hidden;

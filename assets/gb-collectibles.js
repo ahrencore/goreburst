@@ -44,7 +44,9 @@ const albumNames=i=>i===0?names:otherCards[i-1];
 const slug=s=>String(s).normalize('NFKD').replace(/[\u0300-\u036f]/g,'')
   .replace(/[’']/g,'').replace(/&/g,'and').toLowerCase()
   .replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+const curio3Files=['01_admit_one','02_cotton_candy','03_step_right_up','04_the_wrong_tent','05_funhouse_rules','06_the_midnight_parade','07_the_tent_that_breathes','08_no_way_out','09_the_carnival_is_alive'];
 const candidates=(i,k)=>{
+ if(i===2){const stem=curio3Files[k];return [`${A}collectibles/twisted-carnival/${stem}.webp`,`${A}collectibles/twisted-carnival/${stem}.png`];}
  const n=String(k+1).padStart(2,'0'), name=albumNames(i)[k], hy=slug(name), un=hy.replace(/-/g,'_');
  const stems=[
   ...(exact[i]?[exact[i][k]]:[]),
@@ -176,7 +178,7 @@ function album(i){
  page=i;const a=albums[i], arr=albumNames(i),rr=rewards[i];
  $('gbcBarTitle').textContent='ALBUM';$('gbcBack').textContent='‹ ALBUMS';
  const description=blurbs[i];
- $('gbcContent').innerHTML=`<div class="gbc-person gbc-person-text"><div><h2>${esc(a[0])}</h2><p>${esc(description)}</p></div></div><div class="gbc-rewards"><div class="gbc-reward"><img src="${A}coin-skull-new.png" alt=""><b>${rr[0]}</b></div><div class="gbc-reward"><img src="${A+rr[1]}" alt=""><b>${rewardCount(rewardDetails[i][0])}</b></div><div class="gbc-reward"><img src="${A+rr[2]}" alt=""><b>${rewardCount(rewardDetails[i][1])}</b></div></div><div class="gbc-claim-row"><button class="gbc-btn gbc-claim" type="button" id="gbcClaimSet">CLAIM</button></div><div class="gbc-cards">${arr.map((name,k)=>`<button class="gbc-card ${(i===0||i===1)?'gbc-card-curio':''}" type="button" data-card="${k}" aria-label="View card ${esc(name)}">${(i===0||i===1)?`<span class="gbc-curio-slot">${ownedArt(i,k,name)}</span>`:ownedArt(i,k,name)}${extraBadge(i,k)}<span class="gbc-card-stars">${'★'.repeat(rarities[k])}</span><span class="gbc-card-label">${esc(name)}</span></button>`).join('')}</div><p class="gbc-note">${inventoryReady?'Only collected cards are revealed.':'Your collection could not be loaded.'}</p>`;
+ $('gbcContent').innerHTML=`<div class="gbc-person gbc-person-text"><div><h2>${esc(a[0])}</h2><p>${esc(description)}</p></div></div><div class="gbc-rewards"><div class="gbc-reward"><img src="${A}coin-skull-new.png" alt=""><b>${rr[0]}</b></div><div class="gbc-reward"><img src="${A+rr[1]}" alt=""><b>${rewardCount(rewardDetails[i][0])}</b></div><div class="gbc-reward"><img src="${A+rr[2]}" alt=""><b>${rewardCount(rewardDetails[i][1])}</b></div></div><div class="gbc-claim-row"><button class="gbc-btn gbc-claim" type="button" id="gbcClaimSet">CLAIM</button></div><div class="gbc-cards">${arr.map((name,k)=>`<button class="gbc-card ${(i===0||i===1||i===2)?'gbc-card-curio':''}" type="button" data-card="${k}" aria-label="View card ${esc(name)}">${(i===0||i===1||i===2)?`<span class="gbc-curio-slot">${ownedArt(i,k,name)}</span>`:ownedArt(i,k,name)}${extraBadge(i,k)}<span class="gbc-card-stars">${'★'.repeat(rarities[k])}</span><span class="gbc-card-label">${esc(name)}</span></button>`).join('')}</div><p class="gbc-note">${inventoryReady?'Only collected cards are revealed.':'Your collection could not be loaded.'}</p>`;
  $('gbcContent').scrollTop=0;
 }
 function card(k){
