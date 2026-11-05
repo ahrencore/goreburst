@@ -343,18 +343,18 @@ async function openPack(type){
  finally{packBusy=false;if(screen.classList.contains('active')&&page<0)lobby(true);}
 }
 
-// The lobby previews the NEXT global completion reward, not this account's historical award.
-// The server continues to decide the actual prize at claim time under a global lock.
+// The next exclusive frame belongs to THIS PLAYER'S collection round.
+// Other players' completions never advance this account's reward preview.
 function grandRewardCoinLabel(){
- return grandNextPosition>9?'25,000':'15,000';
+ return collectionRound>9?'25,000':'15,000';
 }
 function grandRewardFrameMarkup(){
- const next=Math.max(1,Number(grandNextPosition)||1);
+ const next=Math.max(1,Number(collectionRound)||1);
  if(!rewardStatusReady||next>9)return '';
  const src=next===1
   ? 'assets/collectibles/reward-icons/hungry_gate_frame.png'
   : `assets/collectibles/completion-frames/completion_${String(next).padStart(2,'0')}.webp`;
- return `<div class="gbc-completion-prize gbc-frame-prize" title="Exclusive frame preview — next global claimant"><img src="${src}" alt="Next available exclusive completion frame"><b>×1</b></div>`;
+ return `<div class="gbc-completion-prize gbc-frame-prize" title="Exclusive frame preview for your current collection round"><img src="${src}" alt="Exclusive frame for this collection round"><b>×1</b></div>`;
 }
 function claimButtonMarkup(id,label,disabled,showDot){
  return `<div class="gbc-claim-row"><button class="gbc-btn gbc-claim ${showDot?'gbc-claim-ready':''}" id="${id}" type="button" ${disabled?'disabled':''}>${showDot?'<span class="gbc-claim-button-dot" aria-hidden="true"></span>':''}${label}</button></div>`;
