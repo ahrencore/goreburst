@@ -189,6 +189,9 @@ async function buyPack(type,count){
  // Refresh from the server. Do not assume failed or timed-out transactions were rolled back.
  await loadOwnership();
  buyBusy=false;
+ // loadOwnership() rendered the pack buttons while buyBusy was true.
+ // Re-render after clearing the flag so BUY and OPEN become usable again.
+ if(screen.classList.contains('active'))page<0?lobby(true):album(page,true);
  if(failed){
   showNotice('CHECK YOUR PURCHASE',`${successful} of ${count} packs confirmed. ${failed.message||'Network error'}. Please check your balance and pack count before retrying.`);
  }else{
@@ -227,7 +230,7 @@ async function openPack(type){
   $('gbcModal').hidden=false;
   renderPackReveal();
  }catch(e){showNotice('COULD NOT OPEN PACK',e?.message||'Please check your collection before trying again.');}
- finally{packBusy=false;if($('gbcModal').hidden&&screen.classList.contains('active'))lobby(true);}
+ finally{packBusy=false;if(screen.classList.contains('active')&&page<0)lobby(true);}
 }
 
 function lobby(keepScroll=false){const scroll=$('gbcContent'),previous=keepScroll?scroll.scrollTop:0;page=-1;$('gbcBarTitle').textContent='COLLECTIBLES';$('gbcBack').textContent='‹ BACK';$('gbcContent').innerHTML='<h1 class="gbc-headline">ALBUM OF CURIOSITIES</h1><p class="gbc-sub">12 albums · 108 curios · one very strange carnival</p><div class="gbc-total"><strong>COMPLETE THE COLLECTION</strong><div class="gbc-completion-rewards" aria-label="Completion rewards"><div class="gbc-completion-prize"><img src="assets/coin-skull-new.png" alt="Skull Coins"><b>15,000</b></div><div class="gbc-completion-prize"><img src="assets/heart.png" alt="Lives"><b>24H</b></div><div class="gbc-completion-prize gbc-frame-prize" title="Exclusive special profile frame"><img src="assets/collectibles/reward-icons/hungry_gate_frame.png" alt="Special profile frame"><b>×1</b></div></div><div class="gbc-progress"><span style="width:0%"></span></div><small>'+(inventoryReady?(ownTotal()+' / 108 collected'):('Collection unavailable · '+esc(inventoryError||'Loading')))+'</small></div><div class="gbc-albums">'+albums.map((a,i)=>`<button class="gbc-album ${i===0?'featured':''}" type="button" data-album="${i}" aria-label="Open ${esc(a[0])}"><span class="gbc-album-pic" style="--gbc-light:${a[2]}"><img src="${A}collectibles/album-promos/${String(i+1).padStart(2,'0')}_${promoNames[i]}.webp" alt="" loading="lazy"></span><span class="gbc-album-name">${esc(a[0])}</span><span class="gbc-count">${inventoryReady?setCount(i):'—'} / 9</span><span class="gbc-tiny">VIEW ALBUM</span></button>`).join('')+'</div>'+packView()+`<div class="gbcf-testbar"><button type="button" class="gbcf-testbutton" id="gbcfOpenTest">PREVIEW COMPLETION FRAMES</button><small>Preview only · does not unlock frames or grant rewards</small></div>`+'<p class="gbc-note">'+(inventoryReady?'Find Curios in packs to fill your albums.':'Sign in to load your collection.')+'</p>';const progress=$('gbcContent').querySelector('.gbc-progress span');if(progress)progress.style.width=(inventoryReady?Math.round(ownTotal()/108*100):0)+'%';scroll.scrollTop=previous;}
