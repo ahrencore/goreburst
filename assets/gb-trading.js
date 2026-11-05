@@ -39,10 +39,101 @@ const sheet=document.createElement('style');sheet.textContent=`
 #gbtrade-send-overlay button:disabled{opacity:.5}
 #gbtrade-send-overlay .gbtrade-friend{width:95%;display:flex;align-items:center;justify-content:space-between;text-align:left;margin:7px auto;background:#2b153a}
 #gbtrade-send-overlay .gbtrade-status{font-size:12px;color:#f9d2ee;min-height:20px;white-space:pre-wrap}
+
+/* Carnival-themed confirm trade dialog, scoped to the trading feature. */
+#gbtrade-confirm-overlay[hidden]{display:none!important}
+#gbtrade-confirm-overlay{
+ position:fixed;inset:0;z-index:999998;padding:18px;
+ display:flex;align-items:center;justify-content:center;
+ background:rgba(8,3,17,.86);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)
+}
+#gbtrade-confirm-overlay .gbtrade-confirm-panel{
+ position:relative;box-sizing:border-box;width:min(390px,100%);max-height:90vh;overflow:auto;
+ padding:25px 19px 20px;text-align:center;color:#fff0fa;
+ border:2px solid #f69ee8;border-radius:22px;
+ background:radial-gradient(ellipse at 50% 0%,#64266e 0%,#30143f 49%,#170b29 100%);
+ box-shadow:0 0 0 2px rgba(255,177,235,.12) inset,0 0 14px #e659d5aa,0 0 30px #8736c5bb
+}
+#gbtrade-confirm-overlay .gbtrade-confirm-symbol{font-size:30px;line-height:1.2;margin-bottom:6px;filter:drop-shadow(0 0 8px #e9a8fc)}
+#gbtrade-confirm-overlay .gbtrade-confirm-heading{
+ color:#ffdfa4;font-family:Georgia,serif;font-size:21px;font-weight:900;
+ letter-spacing:.04em;text-shadow:0 0 12px #fa83db;margin:5px 0 13px
+}
+#gbtrade-confirm-overlay .gbtrade-confirm-art{
+ width:94px;height:94px;object-fit:contain;display:block;margin:0 auto 10px;filter:drop-shadow(0 0 7px #d96fe9aa)
+}
+#gbtrade-confirm-overlay .gbtrade-confirm-card{color:#ffe0a6;font-size:15px;font-weight:800;overflow-wrap:anywhere}
+#gbtrade-confirm-overlay .gbtrade-confirm-copy{font-size:13px;line-height:1.55;color:#f7d9f9;margin:12px 0}
+#gbtrade-confirm-overlay .gbtrade-confirm-friend{font-weight:800;color:#ffdc9d;overflow-wrap:anywhere}
+#gbtrade-confirm-overlay .gbtrade-confirm-note{font-size:11px;color:#d8bcdf;margin:8px 0 18px}
+#gbtrade-confirm-overlay .gbtrade-confirm-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+#gbtrade-confirm-overlay .gbtrade-confirm-actions button{
+ min-height:44px;margin:0;padding:9px 8px;border-radius:12px;cursor:pointer;
+ font:800 12px system-ui,sans-serif;letter-spacing:.02em;
+ text-shadow:0 0 4px #1a082b;transition:filter .15s,box-shadow .15s
+}
+#gbtrade-confirm-overlay .gbtrade-confirm-cancel{
+ color:#faeafa;background:linear-gradient(180deg,#563062,#30173d);
+ border:1.5px solid #d69feb;box-shadow:inset 0 0 8px #aa5eca5e,0 0 8px #a550cc75
+}
+#gbtrade-confirm-overlay .gbtrade-confirm-accept{
+ color:#fff4e0;background:linear-gradient(180deg,#c348a2,#8032a0);
+ border:1.5px solid #ffd4a7;box-shadow:inset 0 0 9px #ffa8c76b,0 0 11px #f76bc7a1
+}
+#gbtrade-confirm-overlay button:focus-visible{outline:3px solid #ffdc93;outline-offset:3px}
+#gbtrade-confirm-overlay button:active{filter:brightness(1.15)}
+@media(prefers-reduced-motion:reduce){#gbtrade-confirm-overlay .gbtrade-confirm-actions button{transition:none}}
 `;document.head.appendChild(sheet);
 const overlay=document.createElement('div');overlay.id='gbtrade-send-overlay';overlay.hidden=true;
 overlay.innerHTML='<div class="gbtrade-dialog" role="dialog" aria-modal="true" aria-label="Trade duplicate card"><button type="button" id="gbtrade-close">✕ CLOSE</button><div class="gbtrade-title">SEND A DUPLICATE</div><img id="gbtrade-art" class="gbtrade-card" alt=""><div id="gbtrade-card-name"></div><p id="gbtrade-count">Trade Limit 0/5</p><div id="gbtrade-friends">Loading friends…</div><p id="gbtrade-status" class="gbtrade-status"></p></div>';
 document.body.appendChild(overlay);
+
+// Render confirmation in-game rather than invoking the browser's native confirm dialog.
+const tradeConfirm=document.createElement('div');
+tradeConfirm.id='gbtrade-confirm-overlay';
+tradeConfirm.hidden=true;
+tradeConfirm.innerHTML=`<div class="gbtrade-confirm-panel" role="alertdialog" aria-modal="true" aria-labelledby="gbtrade-confirm-heading" aria-describedby="gbtrade-confirm-copy">
+<div class="gbtrade-confirm-symbol" aria-hidden="true">✦</div>
+<div class="gbtrade-confirm-heading" id="gbtrade-confirm-heading">CONFIRM YOUR TRADE</div>
+<img class="gbtrade-confirm-art" id="gbtrade-confirm-art" alt="">
+<div class="gbtrade-confirm-card" id="gbtrade-confirm-card"></div>
+<p class="gbtrade-confirm-copy" id="gbtrade-confirm-copy">Send one duplicate to <span class="gbtrade-confirm-friend" id="gbtrade-confirm-friend"></span>?</p>
+<p class="gbtrade-confirm-note">Your first copy stays in your collection.</p>
+<div class="gbtrade-confirm-actions"><button class="gbtrade-confirm-cancel" type="button" id="gbtrade-confirm-no">CANCEL</button><button class="gbtrade-confirm-accept" type="button" id="gbtrade-confirm-yes">CONFIRM TRADE</button></div>
+</div>`;
+document.body.appendChild(tradeConfirm);
+let pendingTradeConfirmation=null;
+function closeTradeConfirm(accepted){
+ if(!pendingTradeConfirmation)return;
+ const {resolve,previousFocus}=pendingTradeConfirmation;pendingTradeConfirmation=null;
+ tradeConfirm.hidden=true;
+ if(previousFocus?.isConnected)previousFocus.focus();
+ resolve(accepted);
+}
+$('#gbtrade-confirm-no').addEventListener('click',()=>closeTradeConfirm(false));
+$('#gbtrade-confirm-yes').addEventListener('click',()=>closeTradeConfirm(true));
+tradeConfirm.addEventListener('click',e=>{if(e.target===tradeConfirm)closeTradeConfirm(false);});
+document.addEventListener('keydown',e=>{
+ if(tradeConfirm.hidden)return;
+ if(e.key==='Escape'){e.preventDefault();closeTradeConfirm(false);}
+ else if(e.key==='Tab'){
+  const first=$('#gbtrade-confirm-no'),last=$('#gbtrade-confirm-yes');
+  if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}
+  else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
+ }
+});
+function confirmTrade(card,recipient){
+ if(pendingTradeConfirmation)return Promise.resolve(false);
+ $('#gbtrade-confirm-art').src=card.artUrl||'';
+ $('#gbtrade-confirm-card').textContent=card.title||'Curio';
+ $('#gbtrade-confirm-friend').textContent=recipient;
+ tradeConfirm.hidden=false;
+ return new Promise(resolve=>{
+  pendingTradeConfirmation={resolve,previousFocus:document.activeElement};
+  $('#gbtrade-confirm-no').focus();
+ });
+}
+
 $('#gbtrade-close').onclick=()=>{if(!sending){overlay.hidden=true;currentCard=null;}};
 overlay.addEventListener('click',e=>{if(e.target===overlay&&!sending){overlay.hidden=true;currentCard=null;}});
 function cardImage(card){const [a,k]=String(card||'').split('_').map(Number);
@@ -70,7 +161,7 @@ window.gbTradeOpenCard=async function(card){
   $('#gbtrade-friends').querySelectorAll('[data-trade-friend]').forEach(btn=>btn.onclick=async()=>{
    if(sending||!currentCard)return;
    const who=btn.querySelector('span')?.textContent||'this friend';
-   if(!confirm(`Send ONE extra copy of ${currentCard.title} to ${who}? Your first copy stays yours.`))return;
+   if(!await confirmTrade(currentCard,who))return;
    sending=true;$('#gbtrade-status').textContent='Sending securely…';
    for(const b of $('#gbtrade-friends').querySelectorAll('button'))b.disabled=true;
    try{
