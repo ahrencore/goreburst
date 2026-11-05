@@ -340,7 +340,7 @@ function lobby(keepScroll=false){
  page=-1;
  $('gbcBarTitle').textContent='COLLECTIBLES';
  $('gbcBack').textContent='‹ BACK';
- const grandDisabled=!inventoryReady||!rewardStatusReady||ownTotal()<108||rewardClaims.has(0)||rewardBusy;
+ const grandDisabled=rewardBusy||(rewardStatusReady&&rewardClaims.has(0)); // Always allow a click to show status; server verifies eligibility.
  $('gbcContent').innerHTML=`
   <h1 class="gbc-headline">ALBUM OF CURIOSITIES</h1>
   <p class="gbc-sub">12 albums · 108 curios · one very strange carnival</p>
@@ -381,7 +381,7 @@ function album(i,keepScroll=false){
  $('gbcBack').textContent='‹ ALBUMS';
  const description=blurbs[i];
  const claimable=rewardCanClaim(i+1);
- const disabled=!inventoryReady||!rewardStatusReady||setCount(i)<9||rewardClaims.has(i+1)||rewardBusy;
+ const disabled=rewardBusy||(rewardStatusReady&&rewardClaims.has(i+1));
  $('gbcContent').innerHTML=`
   <div class="gbc-person gbc-person-text"><div><h2>${esc(a[0])}</h2><p>${esc(description)}</p></div></div>
   <div class="gbc-rewards">
@@ -421,19 +421,37 @@ screen.addEventListener('error',e=>{
  img.replaceWith(missing);
 },true);
 async function claimAlbumReward(albumNumber){
- if(rewardBusy||!inventoryReady||!packDb||!rewardStatusReady)return;
- if(rewardClaims.has(albumNumber)){showNotice('ALREADY CLAIMED','You have already received this reward.');return;}
- if(albumNumber===0?ownTotal()<108:setCount(albumNumber-1)<9){showNotice('COLLECTION INCOMPLETE','Collect every unique Curio first.');return;}
+ if(rewardBusy)return;
+ // Never silently ignore a claim: show the precise reason if the account has not loaded.
+ if(!inventoryReady||!packDb||!packUser){
+  showNotice('COLLECTION NOT READY','Your cloud collection is still loading. Try again in a moment.');
+  void loadOwnership();
+  return;
+ }
+ if(rewardStatusReady&&rewardClaims.has(albumNumber)){
+  showNotice('ALREADY CLAIMED','You have already received this reward.');return;
+ }
+ const ownedCount=albumNumber===0?ownTotal():setCount(albumNumber-1);
+ const needed=albumNumber===0?108:9;
+ if(ownedCount<needed){
+  showNotice('COLLECTION INCOMPLETE',`You currently have ${ownedCount} of ${needed} unique Curios. Collect all ${needed} to claim this reward.`);
+  void loadOwnership();
+  return;
+ }
  rewardBusy=true;
+ // Reward status can be temporarily unavailable while ownership works.
+ // The server-side RPC checks uniqueness, completed Curios, and claim entitlement atomically.
+ const db=packDb;
  try{
-  const {data,error}=await packDb.rpc('gb_claim_album_reward',{p_album:albumNumber});
+  const {data,error}=await db.rpc('gb_claim_album_reward',{p_album:albumNumber});
   if(error)throw error;
   if(data?.already_claimed){showNotice('ALREADY CLAIMED','You have already received this reward.');}
   else if(data?.claimed){
    showNotice('REWARD CLAIMED!',albumNumber===0?((Number(data.coins)||15000).toLocaleString()+' Skull Coins and 24 hours of unlimited lives awarded! '+(data.frame_id?'Your exclusive completion frame has been unlocked.':'All nine exclusive frames have been awarded.')):'Your Skull Coins and boosters have been awarded!');
+  }else{
+   showNotice('CLAIM STATUS UNKNOWN','The server did not confirm this reward. Please refresh your collection before retrying.');
   }
   await loadOwnership();
-  // Existing receipt-sync delivers boosters and unlimited lives to the bound game save.
   try{await window.gbShopApi?.sync?.();}catch(e){console.warn('Reward receipt sync pending:',e?.message||e);}
   if(albumNumber===0)void window.gbAlbumFrameRefresh?.();
  }catch(e){showNotice('CLAIM FAILED',e?.message||'Unable to claim this reward. Please try again.');}
