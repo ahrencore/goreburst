@@ -73,7 +73,7 @@ const prEditScreen=prScreen('edit','EDIT PROFILE');prEditScreen.append(prEdit,pr
 const prCustomizeTabs=document.createElement('div');prCustomizeTabs.className='gbpf-tabs';prCustomizeTabs.innerHTML='<button type="button" class="active" data-gbpf-tab="avatars">AVATARS</button><button type="button" data-gbpf-tab="frames">FRAMES</button>';
 prEditScreen.insertBefore(prCustomizeTabs,prAvatar);
 const prFramePanel=document.createElement('div');prFramePanel.className='gbpr-panel gbpr-hide';prFramePanel.id='gbpf-panel';
-prFramePanel.innerHTML='<div class="gbpr-tag">PROFILE FRAMES</div><p class="gbpr-muted">Five free frames for everyone. The final frame unlocks when all 108 collectible cards are genuinely owned.</p><div class="gbpf-preview"><img id="gbpf-preview-avatar" alt="Your avatar"><img id="gbpf-preview-border" alt="" hidden></div><div id="gbpf-options" class="gbpf-options"></div><p id="gbpf-status" class="gbpr-error" aria-live="polite"></p>';
+prFramePanel.innerHTML='<div class="gbpr-tag">PROFILE FRAMES</div><p class="gbpr-muted">Five free frames for everyone. Exclusive completion frames are awarded to the first nine players who claim all 12 albums.</p><div class="gbpf-preview"><img id="gbpf-preview-avatar" alt="Your avatar"><img id="gbpf-preview-border" alt="" hidden></div><div id="gbpf-options" class="gbpf-options"></div><p id="gbpf-status" class="gbpr-error" aria-live="polite"></p>';
 prEditScreen.append(prFramePanel);
 prCustomizeTabs.addEventListener('click',e=>{const b=e.target.closest('[data-gbpf-tab]');if(!b)return;const isFrames=b.dataset.gbpfTab==='frames';prAvatar.classList.toggle('gbpr-hide',isFrames);prFramePanel.classList.toggle('gbpr-hide',!isFrames);prCustomizeTabs.querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===b));if(isFrames){window.gbpfRefresh?.();void window.gbGiftOwnershipRefresh?.();void window.gbAlbumFrameRefresh?.()}});
 
@@ -282,14 +282,15 @@ const GBPF_PATH='assets/profile-frames/';
 const gbShopFrameIds=['babybat','emobaby','clowngal','heartballoon','foxy','cuteangel','purplefluffy','poseidon','greek'].map(s=>'frame_'+s);
 let gbShopFrameOwned=new Set();
 
-const gbpfFile=id=>gbShopFrameIds.includes(String(id))?'assets/shop-frames/'+String(id).slice(6)+'.webp':id==='hungry_gate'?GBPF_PATH+'hungry_gate.png':/^[1-5]$/.test(String(id))?GBPF_PATH+'frame_0'+id+'.png':/^gift_(0[1-9]|1[0-9])$/.test(String(id))?GBPF_PATH+id+'.png':'';
-const gbpfNormalize=id=>gbShopFrameIds.includes(String(id))?String(id):id==='hungry_gate'?'hungry_gate':/^[1-5]$/.test(String(id))?String(id):/^gift_(0[1-9]|1[0-9])$/.test(String(id))?String(id):'none';
-let gbAlbumFrameOwned=false;
+const gbpfFile=id=>gbShopFrameIds.includes(String(id))?'assets/shop-frames/'+String(id).slice(6)+'.webp':id==='hungry_gate'?GBPF_PATH+'hungry_gate.png':/^album_completion_0[2-9]$/.test(String(id))?'assets/collectibles/completion-frames/completion_'+String(id).slice(-2)+'.webp':/^[1-5]$/.test(String(id))?GBPF_PATH+'frame_0'+id+'.png':/^gift_(0[1-9]|1[0-9])$/.test(String(id))?GBPF_PATH+id+'.png':'';
+const gbpfNormalize=id=>gbShopFrameIds.includes(String(id))?String(id):id==='hungry_gate'?'hungry_gate':/^album_completion_0[2-9]$/.test(String(id))?String(id):/^[1-5]$/.test(String(id))?String(id):/^gift_(0[1-9]|1[0-9])$/.test(String(id))?String(id):'none';
+let gbAlbumFrameId=null;
 window.gbAlbumFrameRefresh=async()=>{
- if(!sb||!user||user.is_anonymous){gbAlbumFrameOwned=false;gbpfPaint();return;}
+ if(!sb||!user||user.is_anonymous){gbAlbumFrameId=null;gbpfPaint();return;}
  const {data,error}=await sb.rpc('gb_album_reward_status');
  if(error){console.warn('Album frame lookup:',error.message);return;}
- gbAlbumFrameOwned=Array.isArray(data?.claimed)&&data.claimed.includes(0);
+ const id=String(data?.grand_frame_id||'');
+ gbAlbumFrameId=(id==='hungry_gate'||/^album_completion_0[2-9]$/.test(id))?id:null;
  gbpfPaint();
 };
 let gbGiftOwned=new Set();
@@ -327,10 +328,10 @@ function gbpfDecorate(el,id){
 }
 function gbpfPaint(){const selected=gbpfCurrent();gbpfFit(prFramePanel.querySelector('.gbpf-preview'),selected);const hero=$p('gbpr-current-avatar');gbpfDecorate(hero,selected);const avatar=$p('gbpf-preview-avatar');if(avatar)avatar.src=avatarUrl();const border=$p('gbpf-preview-border');if(border){border.src=gbpfFile(selected)||'';border.hidden=!gbpfFile(selected)};
  const hud=document.getElementById('gbMenuAvatar');if(hud){const old=document.getElementById('gbpf-hud-frame');if(old)old.remove();if(gbpfFile(selected)){const overlay=document.createElement('img');overlay.id='gbpf-hud-frame';overlay.src=gbpfFile(selected);overlay.alt='';overlay.setAttribute('aria-hidden','true');hud.insertAdjacentElement('afterend',overlay)}}
- const choices=$p('gbpf-options');if(choices){choices.innerHTML=['none','1','2','3','4','5',...(gbAlbumFrameOwned?['hungry_gate']:[]),...Array.from({length:19},(_,i)=>'gift_'+String(i+1).padStart(2,'0')).filter(id=>gbGiftOwned.has(id)),...gbShopFrameIds.filter(id=>gbShopFrameOwned.has(id))].map(id=>{const locked=(id==='hungry_gate'&&!gbAlbumFrameOwned)||(id.startsWith('gift_')&&!gbGiftOwned.has(id))||(id.startsWith('frame_')&&!gbShopFrameOwned.has(id));const chosen=id===selected;const inner=gbpfFile(id)?'<img src="'+gbpfFile(id)+'" alt="">':'<span class="gbpf-empty">○</span>';return '<button type="button" data-gbpf-frame="'+id+'" class="gbpf-choice '+(chosen?'selected ':'')+(locked?'locked':'')+'" aria-label="'+(locked?'Locked frame':id==='none'?'No frame':'Profile frame '+id)+'" aria-pressed="'+chosen+'">'+inner+(locked?'<span class="gbpf-lock">🔒</span>':'')+(chosen?'<span class="gbpf-tick">✓</span>':'')+'</button>'}).join('')}
+ const choices=$p('gbpf-options');if(choices){choices.innerHTML=['none','1','2','3','4','5',...(gbAlbumFrameId?[gbAlbumFrameId]:[]),...Array.from({length:19},(_,i)=>'gift_'+String(i+1).padStart(2,'0')).filter(id=>gbGiftOwned.has(id)),...gbShopFrameIds.filter(id=>gbShopFrameOwned.has(id))].map(id=>{const locked=((id==='hungry_gate'||id.startsWith('album_completion_'))&&id!==gbAlbumFrameId)||(id.startsWith('gift_')&&!gbGiftOwned.has(id))||(id.startsWith('frame_')&&!gbShopFrameOwned.has(id));const chosen=id===selected;const inner=gbpfFile(id)?'<img src="'+gbpfFile(id)+'" alt="">':'<span class="gbpf-empty">○</span>';return '<button type="button" data-gbpf-frame="'+id+'" class="gbpf-choice '+(chosen?'selected ':'')+(locked?'locked':'')+'" aria-label="'+(locked?'Locked frame':id==='none'?'No frame':'Profile frame '+id)+'" aria-pressed="'+chosen+'">'+inner+(locked?'<span class="gbpf-lock">🔒</span>':'')+(chosen?'<span class="gbpf-tick">✓</span>':'')+'</button>'}).join('')}
 }
 window.gbpfRefresh=gbpfPaint;
-prFramePanel.addEventListener('click',async e=>{const button=e.target.closest('[data-gbpf-frame]');if(!button)return;const id=gbpfNormalize(button.dataset.gbpfFrame);const status=$p('gbpf-status');if(id==='hungry_gate'&&!gbAlbumFrameOwned){status.textContent='Locked: complete all 12 albums and claim the grand prize first.';return}if(id.startsWith('gift_')&&!gbGiftOwned.has(id)){status.textContent='Locked: redeem its gift code in Settings.';return}if(id.startsWith('frame_')&&!gbShopFrameOwned.has(id)){status.textContent='Purchase this frame in the Carnival Shop first.';return}
+prFramePanel.addEventListener('click',async e=>{const button=e.target.closest('[data-gbpf-frame]');if(!button)return;const id=gbpfNormalize(button.dataset.gbpfFrame);const status=$p('gbpf-status');if((id==='hungry_gate'||id.startsWith('album_completion_'))&&id!==gbAlbumFrameId){status.textContent='This exclusive completion frame was not awarded to your account.';return}if(id.startsWith('gift_')&&!gbGiftOwned.has(id)){status.textContent='Locked: redeem its gift code in Settings.';return}if(id.startsWith('frame_')&&!gbShopFrameOwned.has(id)){status.textContent='Purchase this frame in the Carnival Shop first.';return}
  if(sb&&gbprRegistered()){status.textContent='Saving frame…';const result=await sb.from('profiles').update({equipped_frame:id}).eq('id',user.id);if(result.error){status.textContent='Could not save frame. Run the included Supabase migration first. '+result.error.message;return}profile={...profile,equipped_frame:id}}
  gbpfSetLocal(id);status.textContent='Frame equipped!';gbpfPaint();});
 
