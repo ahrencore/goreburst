@@ -155,3 +155,17 @@
  border-radius:50%;background:#ff1738;box-shadow:0 0 7px 2px #ff244f;
  z-index:3;pointer-events:none;
 }
+
+
+/* 2026-11-05 follow-up fix: collectibles reward dots align with Events and claimed promo labels are removed. */
+#menu .bottom-tabs #collectibles{position:absolute!important;overflow:visible!important;isolation:isolate}
+#menu .bottom-tabs #collectibles.gbc-tab-has-reward{animation:gb-events-invite 1.8s ease-in-out infinite!important;filter:drop-shadow(0 0 5px #ff79ec) drop-shadow(0 0 8px #a050ff)!important}
+#menu .bottom-tabs #collectibles .gbc-tab-red-badge{position:absolute!important;right:11%!important;top:68%!important;width:10px!important;height:10px!important;border-radius:50%!important;background:#ff163c!important;box-shadow:0 0 7px 2px #ff2d49!important;animation:gbcRewardDotPulse 1.8s ease-in-out infinite!important}
+#menu .bottom-tabs #collectibles .gbc-tab-red-badge[hidden]{display:none!important}
+#gbCollectView .gbc-album-claimed{display:none!important}
+#gbCollectView .gbc-album-reward-dot{animation:gbcRewardDotPulse 1.8s ease-in-out infinite}
+#gbCollectView .gbc-claim{position:relative}
+#gbCollectView .gbc-claim.gbc-claim-ready{padding-right:34px}
+#gbCollectView .gbc-claim-button-dot{position:absolute;right:9px;top:5px;width:10px;height:10px;border-radius:50%;background:#ff1738;box-shadow:0 0 7px 2px #ff244f;pointer-events:none;animation:gbcRewardDotPulse 1.8s ease-in-out infinite}
+@keyframes gbcRewardDotPulse{0%,100%{transform:scale(1);opacity:1;filter:drop-shadow(0 0 0 transparent)}50%{transform:scale(1.08);opacity:.82;filter:drop-shadow(0 0 7px #ff5d89)}}
+@media(prefers-reduced-motion:reduce){#menu .bottom-tabs #collectibles.gbc-tab-has-reward{animation:none!important}#menu .bottom-tabs #collectibles .gbc-tab-red-badge,#gbCollectView .gbc-album-reward-dot,#gbCollectView .gbc-claim-button-dot{animation:none!important}}
