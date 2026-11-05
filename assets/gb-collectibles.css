@@ -129,3 +129,8 @@
 #gbCollectView .gbc-notice-totals>div{display:flex;justify-content:space-between;align-items:center;gap:12px;font:12px system-ui,sans-serif;color:#e4c6e8}
 #gbCollectView .gbc-notice-totals b{white-space:nowrap;font:800 14px system-ui,sans-serif;color:#ffe3a0}
 #gbCollectView .gbc-notice-panel .gbc-coins-short{color:#ff9aa8}
+
+/* Secure album reward claim styling */
+#gbCollectView .gbc-claim-row{display:flex;justify-content:center;margin:9px 0 12px}
+#gbCollectView .gbc-claim{border:1.5px solid #ffe0a6;border-radius:12px;background:linear-gradient(180deg,#ac3e9f,#592267);box-shadow:0 0 12px #f56ccd9c,inset 0 0 8px #ffca9975;color:#fff0ca;font-weight:800;padding:9px 16px;min-height:36px}
+#gbCollectView .gbc-claim:disabled{opacity:.6;box-shadow:none;cursor:default}

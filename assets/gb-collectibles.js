@@ -93,13 +93,14 @@ const SUPABASE_URL='https://harqhhpobaepfkfeitmw.supabase.co';
 const SUPABASE_KEY='sb_publishable_K9F36jgWZaMWywln6Wwaiw_4zJ7523C';
 const $=id=>document.getElementById(id);let page=-1;
 // Read-only ownership integration. Only trusted server jobs may mutate inventory.
+let rewardClaims=new Set(), rewardStatusReady=false, rewardBusy=false;
 let owned=new Map(), inventoryReady=false, inventoryError='', packs={carnival:0,freakshow:0,nightmare:0}, packBusy=false, packDb=null, packUser=null, cloudCoins=null, buyBusy=false;
 const cardKey=(a,k)=>String(a+1).padStart(2,'0')+'_'+String(k+1).padStart(2,'0');
 const qty=(a,k)=>owned.get(cardKey(a,k))||0;
 const setCount=a=>albumNames(a).filter((_,k)=>qty(a,k)>0).length;
 const ownTotal=()=>albums.reduce((t,_,i)=>t+setCount(i),0);
 async function loadOwnership(){
- inventoryReady=false;inventoryError='';owned=new Map();packs={carnival:0,freakshow:0,nightmare:0};packDb=null;packUser=null;cloudCoins=null;
+ inventoryReady=false;inventoryError='';rewardStatusReady=false;rewardClaims=new Set();owned=new Map();packs={carnival:0,freakshow:0,nightmare:0};packDb=null;packUser=null;cloudCoins=null;
  try{
   if(typeof SUPABASE_URL==='undefined'||typeof SUPABASE_KEY==='undefined')throw Error('Cloud connection unavailable');
   const {createClient}=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
@@ -116,6 +117,11 @@ async function loadOwnership(){
   const {data:balance,error:balanceErr}=await db.from('gb_card_pack_balances').select('pack_type,quantity').eq('user_id',auth.user.id);
   if(balanceErr)throw balanceErr;
   for(const b of balance||[])if(Object.hasOwn(packs,b.pack_type))packs[b.pack_type]=Math.max(0,Number(b.quantity)||0);
+   rewardClaims=new Set();rewardStatusReady=false;
+   const {data:rewardData,error:rewardErr}=await db.rpc('gb_album_reward_status');
+   if(!rewardErr && rewardData && Array.isArray(rewardData.claimed)){
+     rewardClaims=new Set(rewardData.claimed.map(Number));rewardStatusReady=true;
+   }else if(rewardErr){console.warn('Album reward status:',rewardErr.message);}
   inventoryReady=true;
  }catch(e){inventoryError=e?.message||'Collection unavailable';}
  if(screen.classList.contains('active'))page<0?lobby(true):album(page,true);
@@ -233,13 +239,13 @@ async function openPack(type){
  finally{packBusy=false;if(screen.classList.contains('active')&&page<0)lobby(true);}
 }
 
-function lobby(keepScroll=false){const scroll=$('gbcContent'),previous=keepScroll?scroll.scrollTop:0;page=-1;$('gbcBarTitle').textContent='COLLECTIBLES';$('gbcBack').textContent='‹ BACK';$('gbcContent').innerHTML='<h1 class="gbc-headline">ALBUM OF CURIOSITIES</h1><p class="gbc-sub">12 albums · 108 curios · one very strange carnival</p><div class="gbc-total"><strong>COMPLETE THE COLLECTION</strong><div class="gbc-completion-rewards" aria-label="Completion rewards"><div class="gbc-completion-prize"><img src="assets/coin-skull-new.png" alt="Skull Coins"><b>15,000</b></div><div class="gbc-completion-prize"><img src="assets/heart.png" alt="Lives"><b>24H</b></div><div class="gbc-completion-prize gbc-frame-prize" title="Exclusive special profile frame"><img src="assets/collectibles/reward-icons/hungry_gate_frame.png" alt="Special profile frame"><b>×1</b></div></div><div class="gbc-progress"><span style="width:0%"></span></div><small>'+(inventoryReady?(ownTotal()+' / 108 collected'):('Collection unavailable · '+esc(inventoryError||'Loading')))+'</small></div><div class="gbc-albums">'+albums.map((a,i)=>`<button class="gbc-album ${i===0?'featured':''}" type="button" data-album="${i}" aria-label="Open ${esc(a[0])}"><span class="gbc-album-pic" style="--gbc-light:${a[2]}"><img src="${A}collectibles/album-promos/${String(i+1).padStart(2,'0')}_${promoNames[i]}.webp" alt="" loading="lazy"></span><span class="gbc-album-name">${esc(a[0])}</span><span class="gbc-count">${inventoryReady?setCount(i):'—'} / 9</span><span class="gbc-tiny">VIEW ALBUM</span></button>`).join('')+'</div>'+packView()+`<div class="gbcf-testbar"><button type="button" class="gbcf-testbutton" id="gbcfOpenTest">PREVIEW COMPLETION FRAMES</button><small>Preview only · does not unlock frames or grant rewards</small></div>`+'<p class="gbc-note">'+(inventoryReady?'Find Curios in packs to fill your albums.':'Sign in to load your collection.')+'</p>';const progress=$('gbcContent').querySelector('.gbc-progress span');if(progress)progress.style.width=(inventoryReady?Math.round(ownTotal()/108*100):0)+'%';scroll.scrollTop=previous;}
+function lobby(keepScroll=false){const scroll=$('gbcContent'),previous=keepScroll?scroll.scrollTop:0;page=-1;$('gbcBarTitle').textContent='COLLECTIBLES';$('gbcBack').textContent='‹ BACK';$('gbcContent').innerHTML='<h1 class="gbc-headline">ALBUM OF CURIOSITIES</h1><p class="gbc-sub">12 albums · 108 curios · one very strange carnival</p><div class="gbc-total"><strong>COMPLETE THE COLLECTION</strong><div class="gbc-completion-rewards" aria-label="Completion rewards"><div class="gbc-completion-prize"><img src="assets/coin-skull-new.png" alt="Skull Coins"><b>15,000</b></div><div class="gbc-completion-prize"><img src="assets/heart.png" alt="Lives"><b>24H</b></div><div class="gbc-completion-prize gbc-frame-prize" title="Exclusive special profile frame"><img src="assets/collectibles/reward-icons/hungry_gate_frame.png" alt="Special profile frame"><b>×1</b></div></div><div class="gbc-claim-row"><button class="gbc-btn gbc-claim" id="gbcClaimGrand" type="button" '+(!inventoryReady||!rewardStatusReady||ownTotal()<108||rewardClaims.has(0)||rewardBusy?'disabled':'')+'>'+(rewardClaims.has(0)?'CLAIMED':'CLAIM GRAND REWARD')+'</button></div><div class="gbc-progress"><span style="width:0%"></span></div><small>'+(inventoryReady?(ownTotal()+' / 108 collected'):('Collection unavailable · '+esc(inventoryError||'Loading')))+'</small></div><div class="gbc-albums">'+albums.map((a,i)=>`<button class="gbc-album ${i===0?'featured':''}" type="button" data-album="${i}" aria-label="Open ${esc(a[0])}"><span class="gbc-album-pic" style="--gbc-light:${a[2]}"><img src="${A}collectibles/album-promos/${String(i+1).padStart(2,'0')}_${promoNames[i]}.webp" alt="" loading="lazy"></span><span class="gbc-album-name">${esc(a[0])}</span><span class="gbc-count">${inventoryReady?setCount(i):'—'} / 9</span><span class="gbc-tiny">VIEW ALBUM</span></button>`).join('')+'</div>'+packView()+`<div class="gbcf-testbar"><button type="button" class="gbcf-testbutton" id="gbcfOpenTest">PREVIEW COMPLETION FRAMES</button><small>Preview only · does not unlock frames or grant rewards</small></div>`+'<p class="gbc-note">'+(inventoryReady?'Find Curios in packs to fill your albums.':'Sign in to load your collection.')+'</p>';const progress=$('gbcContent').querySelector('.gbc-progress span');if(progress)progress.style.width=(inventoryReady?Math.round(ownTotal()/108*100):0)+'%';scroll.scrollTop=previous;}
 function rewardCount(text){const match=String(text).match(/^\s*(\d+)/);return '×'+(match?match[1]:'1');}
 function album(i,keepScroll=false){
  const scroller=$('gbcContent'),previous=keepScroll?scroller.scrollTop:0;page=i;const a=albums[i], arr=albumNames(i),rr=rewards[i];
  $('gbcBarTitle').textContent='ALBUM';$('gbcBack').textContent='‹ ALBUMS';
  const description=blurbs[i];
- $('gbcContent').innerHTML=`<div class="gbc-person gbc-person-text"><div><h2>${esc(a[0])}</h2><p>${esc(description)}</p></div></div><div class="gbc-rewards"><div class="gbc-reward"><img src="${A}coin-skull-new.png" alt=""><b>${rr[0]}</b></div><div class="gbc-reward"><img src="${A+rr[1]}" alt=""><b>${rewardCount(rewardDetails[i][0])}</b></div><div class="gbc-reward"><img src="${A+rr[2]}" alt=""><b>${rewardCount(rewardDetails[i][1])}</b></div></div><div class="gbc-claim-row"><button class="gbc-btn gbc-claim" type="button" id="gbcClaimSet">CLAIM</button></div><div class="gbc-cards">${arr.map((name,k)=>`<button class="gbc-card ${(i>=0&&i<=11)?'gbc-card-curio':''} ${i===7?'gbc-freakshow-curio':''}" type="button" data-card="${k}" aria-label="View card ${esc(name)}">${ownedArt(i,k,name)}${extraBadge(i,k)}<span class="gbc-card-stars">${'★'.repeat(rarities[k])}</span><span class="gbc-card-label">${esc(name)}</span></button>`).join('')}</div><p class="gbc-note">${inventoryReady?'Only collected cards are revealed.':'Your collection could not be loaded.'}</p>`;
+ $('gbcContent').innerHTML=`<div class="gbc-person gbc-person-text"><div><h2>${esc(a[0])}</h2><p>${esc(description)}</p></div></div><div class="gbc-rewards"><div class="gbc-reward"><img src="${A}coin-skull-new.png" alt=""><b>${rr[0]}</b></div><div class="gbc-reward"><img src="${A+rr[1]}" alt=""><b>${rewardCount(rewardDetails[i][0])}</b></div><div class="gbc-reward"><img src="${A+rr[2]}" alt=""><b>${rewardCount(rewardDetails[i][1])}</b></div></div><div class="gbc-claim-row"><button class="gbc-btn gbc-claim" type="button" id="gbcClaimSet" ${!inventoryReady||!rewardStatusReady||setCount(i)<9||rewardClaims.has(i+1)||rewardBusy?"disabled":""}>${rewardClaims.has(i+1)?"CLAIMED":"CLAIM"}</button></div><div class="gbc-cards">${arr.map((name,k)=>`<button class="gbc-card ${(i>=0&&i<=11)?'gbc-card-curio':''} ${i===7?'gbc-freakshow-curio':''}" type="button" data-card="${k}" aria-label="View card ${esc(name)}">${ownedArt(i,k,name)}${extraBadge(i,k)}<span class="gbc-card-stars">${'★'.repeat(rarities[k])}</span><span class="gbc-card-label">${esc(name)}</span></button>`).join('')}</div><p class="gbc-note">${inventoryReady?'Only collected cards are revealed.':'Your collection could not be loaded.'}</p>`;
  scroller.scrollTop=previous;
 }
 function card(k){
@@ -268,7 +274,26 @@ screen.addEventListener('error',e=>{
  missing.title='Artwork not uploaded or filename mismatch: '+folders[i]+' card '+String(k+1).padStart(2,'0');
  img.replaceWith(missing);
 },true);
-$('gbcContent').addEventListener('click',e=>{if(e.target.closest('#gbcfOpenTest')){gbcfOpen();return;}const buyBtn=e.target.closest('[data-buy-pack]');if(buyBtn){selectPurchase(buyBtn.dataset.buyPack);return;}const packBtn=e.target.closest('[data-open-pack]');if(packBtn){void openPack(packBtn.dataset.openPack);return;}if(e.target.closest('#gbcClaimSet')){showNotice('ALBUM REWARDS',inventoryReady&&setCount(page)===9?'Album reward claiming will be activated with the secure rewards system.':'Complete this set first!');return;}const c=e.target.closest('[data-card]');if(c){card(+c.dataset.card);return;}const a=e.target.closest('[data-album]');if(a){album(+a.dataset.album);return;}});
+async function claimAlbumReward(albumNumber){
+ if(rewardBusy||!inventoryReady||!packDb||!rewardStatusReady)return;
+ if(rewardClaims.has(albumNumber)){showNotice('ALREADY CLAIMED','You have already received this reward.');return;}
+ if(albumNumber===0?ownTotal()<108:setCount(albumNumber-1)<9){showNotice('COLLECTION INCOMPLETE','Collect every unique Curio first.');return;}
+ rewardBusy=true;
+ try{
+  const {data,error}=await packDb.rpc('gb_claim_album_reward',{p_album:albumNumber});
+  if(error)throw error;
+  if(data?.already_claimed){showNotice('ALREADY CLAIMED','You have already received this reward.');}
+  else if(data?.claimed){
+   showNotice('REWARD CLAIMED!',albumNumber===0?'15,000 Skull Coins, 24 hours of unlimited lives and your Hungry Gate frame are unlocked!':'Your Skull Coins and boosters have been awarded!');
+  }
+  await loadOwnership();
+  // Existing receipt-sync delivers boosters and unlimited lives to the bound game save.
+  try{await window.gbShopApi?.sync?.();}catch(e){console.warn('Reward receipt sync pending:',e?.message||e);}
+  if(albumNumber===0)void window.gbAlbumFrameRefresh?.();
+ }catch(e){showNotice('CLAIM FAILED',e?.message||'Unable to claim this reward. Please try again.');}
+ finally{rewardBusy=false;if(screen.classList.contains('active'))page<0?lobby(true):album(page,true);}
+}
+$('gbcContent').addEventListener('click',e=>{if(e.target.closest('#gbcfOpenTest')){gbcfOpen();return;}const buyBtn=e.target.closest('[data-buy-pack]');if(buyBtn){selectPurchase(buyBtn.dataset.buyPack);return;}const packBtn=e.target.closest('[data-open-pack]');if(packBtn){void openPack(packBtn.dataset.openPack);return;}if(e.target.closest('#gbcClaimGrand')){void claimAlbumReward(0);return;}if(e.target.closest('#gbcClaimSet')){void claimAlbumReward(page+1);return;}const c=e.target.closest('[data-card]');if(c){card(+c.dataset.card);return;}const a=e.target.closest('[data-album]');if(a){album(+a.dataset.album);return;}});
 $('gbcBack').addEventListener('click',()=>page<0?view('menu'):lobby());$('gbcHome').addEventListener('click',()=>view('menu'));
 function closeCardDetail(){
  const wasReveal=revealedCards.length>0;
