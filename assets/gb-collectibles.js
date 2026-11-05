@@ -289,7 +289,7 @@ document.addEventListener('keydown',e=>{
  if(!$('gbcModal').hidden){if(!revealedCards.length||revealStep>=revealedCards.length)closeCardDetail();return;}
  if(page>=0)lobby();else view('menu');
 });
-const tradeScript=document.createElement('script');tradeScript.src='assets/gb-trading.js?v=mail-unified-notices-20261104c';tradeScript.defer=true;document.head.appendChild(tradeScript);
+const tradeScript=document.createElement('script');tradeScript.src='assets/gb-trading.js?v=carnival-trade-confirm-20261105b';tradeScript.defer=true;document.head.appendChild(tradeScript);
 
 // Exclusive full-collection frame FIT TEST only. This dialog makes no database writes.
 const gbcfCss=document.createElement('style');gbcfCss.textContent=`
