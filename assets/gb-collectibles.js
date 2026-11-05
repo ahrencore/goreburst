@@ -5,7 +5,7 @@ const A='assets/', albums=[
 ['Mr. Walker','walker.webp','#c73b86'],['Broken Toys','bear.png','#b36c8b'],['Twisted Carnival','star.png','#e2a456'],['Laughing Nightmares','clownbomb.png','#a649ad'],['Jarred Curiosities','ghost-green.png','#40a98a'],['Midnight Rides','ferris.png','#456fc2'],['Forbidden Tricks','booster-cards.webp','#8b5cc7'],['Freakshow Faces','rabbit.png','#bd5779'],['Cursed Keepsakes','heart.png','#a9366f'],['Ghostly Attractions','ghost-blue.png','#46a6bc'],['The Puppet Theatre','booster-musicbox.webp','#a66fbd'],['The Crooked Menagerie','bear.png','#72a884']
 ];
 const promoNames=["mr_walker", "broken_toys", "twisted_carnival", "laughing_nightmares", "jarred_curiosities", "midnight_rides", "forbidden_tricks", "freakshow_faces", "cursed_keepsakes", "ghostly_attractions", "the_puppet_theatre", "the_crooked_menagerie"];
-const names=['Mr. Walker?','One, Two, Peekaboo','Three, Four, Hear Him Roar','Five, Six, Crucifix','Seven, Eight, Stay Awake','Nine, Ten, Look Again','Always Watching','Something in Darkness','Eyes Everywhere'];
+const names=['Mr. Walker?','One, Two, Peekaboo','Three, Four, Lock your door','Five, Six, Crucifix','Seven, Eight, Stay Awake','Nine, Ten, Look Again','Always Watching','Something in Darkness','Eyes Everywhere'];
 const rarities=[1,1,2,2,3,3,4,4,5];
 const files=['01-mr-walker.png','02-peekaboo.png','03-roar.png','04-crucifix.png','05-stay-awake.png','06-look-again.png','07-always-watching.png','08-darkness.png','09-eyes-everywhere.png'];
 const brokenFiles=['01-teddy-needs-a-hug.png', '02-missing-an-eye.png', '03-dolly-dearest.png', '04-batteries-not-included.png', '05-the-wrong-stuffing.png', '06-playtimes-over.png', '07-the-dollhouse-family.png', '08-nobodys-favourite.png', '09-toymakers-last-creation.png'];
