@@ -158,6 +158,7 @@ const SUPABASE_KEY='sb_publishable_K9F36jgWZaMWywln6Wwaiw_4zJ7523C';
 const $=id=>document.getElementById(id);let page=-1;
 // Read-only ownership integration. Only trusted server jobs may mutate inventory.
 let rewardClaims=new Set(), rewardStatusReady=false, rewardBusy=false, grandNextPosition=1, grandClaimedPosition=null, grandClaimedFrameId=null;
+let collectionRound=1, legacyResetPending=false, grandConfirmOpen=false;
 let rewardStatusError="";
 
 let owned=new Map(), inventoryReady=false, inventoryError='', packs={carnival:0,freakshow:0,nightmare:0}, packBusy=false, packDb=null, packUser=null, cloudCoins=null, buyBusy=false;
@@ -165,8 +166,9 @@ const cardKey=(a,k)=>String(a+1).padStart(2,'0')+'_'+String(k+1).padStart(2,'0')
 const qty=(a,k)=>owned.get(cardKey(a,k))||0;
 const setCount=a=>albumNames(a).filter((_,k)=>qty(a,k)>0).length;
 const ownTotal=()=>albums.reduce((t,_,i)=>t+setCount(i),0);
-const rewardCanClaim=n=>inventoryReady&&rewardStatusReady&&!rewardClaims.has(n)&&
-  (n===0?ownTotal()===108:setCount(n-1)===9);
+const rewardCanClaim=n=>inventoryReady&&rewardStatusReady&&
+ (n===0?(legacyResetPending||(!rewardClaims.has(0)&&ownTotal()===108)):
+ (!rewardClaims.has(n)&&setCount(n-1)===9));
 const anyRewardToClaim=()=>Array.from({length:13},(_,n)=>n).some(rewardCanClaim);
 function updateCollectRewardNotification(){
   const tab=document.getElementById('collectibles');
@@ -179,7 +181,7 @@ function updateCollectRewardNotification(){
 }
 
 async function loadOwnership(){
- inventoryReady=false;inventoryError='';rewardStatusReady=false;rewardStatusError='';rewardClaims=new Set();grandNextPosition=1;grandClaimedPosition=null;grandClaimedFrameId=null;owned=new Map();packs={carnival:0,freakshow:0,nightmare:0};packDb=null;packUser=null;cloudCoins=null;
+ inventoryReady=false;inventoryError='';rewardStatusReady=false;rewardStatusError='';rewardClaims=new Set();grandNextPosition=1;grandClaimedPosition=null;grandClaimedFrameId=null;collectionRound=1;legacyResetPending=false;owned=new Map();packs={carnival:0,freakshow:0,nightmare:0};packDb=null;packUser=null;cloudCoins=null;
  try{
   if(typeof SUPABASE_URL==='undefined'||typeof SUPABASE_KEY==='undefined')throw Error('Cloud connection unavailable');
   const {createClient}=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
@@ -199,7 +201,7 @@ async function loadOwnership(){
    rewardClaims=new Set();rewardStatusReady=false;
    const {data:rewardData,error:rewardErr}=await db.rpc('gb_album_reward_status');
    if(!rewardErr && rewardData && Array.isArray(rewardData.claimed)){
-     rewardClaims=new Set(rewardData.claimed.map(Number));rewardStatusReady=true;grandNextPosition=Math.max(1,Number(rewardData.next_grand_position)||1);grandClaimedPosition=rewardData.grand_position??null;grandClaimedFrameId=rewardData.grand_frame_id??null;
+     rewardClaims=new Set(rewardData.claimed.map(Number));rewardStatusReady=true;grandNextPosition=Math.max(1,Number(rewardData.next_grand_position)||1);grandClaimedPosition=rewardData.grand_position??null;grandClaimedFrameId=rewardData.grand_frame_id??null;collectionRound=Math.max(1,Number(rewardData.current_round)||1);legacyResetPending=Boolean(rewardData.pending_legacy_reset);
    }else {rewardStatusError=rewardErr?.message||'Reward status unavailable';console.warn('Album reward status:',rewardStatusError);}
   inventoryReady=true;
  }catch(e){inventoryError=e?.message||'Collection unavailable';}
@@ -231,7 +233,26 @@ function showNotice(title,message,button='CLOSE'){
  notice.innerHTML=`<div class="gbc-notice-panel" role="alertdialog" aria-modal="true" aria-label="${esc(title)}"><span class="gbc-notice-spark">✦</span><h3>${esc(title)}</h3><p>${esc(message)}</p><div class="gbc-notice-actions"><button class="gbc-btn gbc-notice-primary" data-notice-close type="button">${esc(button)}</button></div></div>`;
  notice.hidden=false;
 }
-function closeNotice(){if(buyBusy)return;notice.hidden=true;notice.innerHTML='';buySelection=null;}
+function closeNotice(){if(buyBusy)return;notice.hidden=true;notice.innerHTML='';buySelection=null;grandConfirmOpen=false;}
+function showGrandResetConfirm(){
+ if(rewardBusy||buyBusy||packBusy)return;
+ if(!inventoryReady||!packDb||!packUser){showNotice('COLLECTION NOT READY','Your cloud collection is still loading.');void loadOwnership();return;}
+ if(rewardStatusReady&&!legacyResetPending&&rewardClaims.has(0)){showNotice('ALREADY CLAIMED','This round was already completed.');return;}
+ if(!legacyResetPending&&ownTotal()!==108){showNotice('COLLECTION INCOMPLETE',`Collect all 108 unique Curios first. You currently have ${ownTotal()}/108.`);return;}
+ grandConfirmOpen=true;buySelection=null;
+ const previous=legacyResetPending
+  ? 'Your previous grand reward has already been awarded. Confirming will reset your old collection without granting it again.'
+  : 'Your grand reward will be awarded and all 108 Curios, including duplicates, will be cleared.';
+ notice.innerHTML=`<div class="gbc-notice-panel" role="alertdialog" aria-modal="true" aria-label="Confirm grand reward and collection reset">
+  <span class="gbc-notice-spark">✦</span><h3>GRAND REWARD</h3>
+  <p><strong>CLAIM REWARDS AND RESET THE ENTIRE ALBUM NOW?</strong></p>
+  <p>${previous}</p>
+  <p style="color:#ffdb9c;font-weight:800">Your active Curio collection returns to 0/108. Unopened packs, earned frames, prior rewards and game progress remain safe.</p>
+  <div class="gbc-notice-actions"><button type="button" class="gbc-btn" data-grand-reset-no>NO, CANCEL</button><button type="button" class="gbc-btn gbc-notice-primary" data-grand-reset-yes>YES, CLAIM!</button></div>
+ </div>`;
+ notice.hidden=false;
+}
+
 function drawPurchase(){
  if(!buySelection)return;
  const {type,quantity}=buySelection,price=packPrices[type],cost=quantity*price;
@@ -286,6 +307,8 @@ async function buyPack(type,count){
  }
 }
 notice.addEventListener('click',e=>{
+ if(e.target.closest('[data-grand-reset-no]')){closeNotice();return;}
+ if(e.target.closest('[data-grand-reset-yes]')){if(!grandConfirmOpen)return;grandConfirmOpen=false;notice.hidden=true;notice.innerHTML='';void claimAlbumReward(0,true);return;}
  if(e.target.closest('[data-notice-close]')){closeNotice();return;}
  if(!buySelection||buyBusy)return;
  if(e.target.closest('[data-buy-minus]')){buySelection.quantity=Math.max(1,buySelection.quantity-1);drawPurchase();return;}
@@ -341,10 +364,11 @@ function lobby(keepScroll=false){
  page=-1;
  $('gbcBarTitle').textContent='COLLECTIBLES';
  $('gbcBack').textContent='‹ BACK';
- const grandDisabled=rewardBusy||(rewardStatusReady&&rewardClaims.has(0)); // Always allow a click to show status; server verifies eligibility.
+ const grandDisabled=rewardBusy||(rewardStatusReady&&rewardClaims.has(0)&&!legacyResetPending); // A previous one-time grand claim may still require an explicit reset.
  $('gbcContent').innerHTML=`
   <h1 class="gbc-headline">ALBUM OF CURIOSITIES</h1>
   <p class="gbc-sub">12 albums · 108 curios · one very strange carnival</p>
+  <p class="gbc-sub" style="margin-top:-7px;color:#ffdca6;font-weight:800;letter-spacing:.1em">ROUND ${collectionRound}</p>
   <div class="gbc-total">
    <strong>COMPLETE THE COLLECTION</strong>
    <div class="gbc-completion-rewards" aria-label="Completion rewards">
@@ -352,7 +376,7 @@ function lobby(keepScroll=false){
     <div class="gbc-completion-prize"><img src="assets/heart.png" alt="Lives"><b>24H</b></div>
     ${grandRewardFrameMarkup()}
    </div>
-   ${claimButtonMarkup('gbcClaimGrand',rewardClaims.has(0)?'CLAIMED':'CLAIM GRAND REWARD',grandDisabled,rewardCanClaim(0))}
+   ${claimButtonMarkup('gbcClaimGrand',legacyResetPending?'START NEXT ROUND':rewardClaims.has(0)?'CLAIMED':'CLAIM GRAND REWARD',grandDisabled,rewardCanClaim(0))}
    <div class="gbc-progress"><span style="width:0%"></span></div>
    <small>${inventoryReady?(ownTotal()+' / 108 collected'):('Collection unavailable · '+esc(inventoryError||'Loading'))}</small>
   </div>
@@ -421,41 +445,38 @@ screen.addEventListener('error',e=>{
  missing.title='Artwork not uploaded or filename mismatch: '+folders[i]+' card '+String(k+1).padStart(2,'0');
  img.replaceWith(missing);
 },true);
-async function claimAlbumReward(albumNumber){
+async function claimAlbumReward(albumNumber,confirmedReset=false){
  if(rewardBusy)return;
- // Never silently ignore a claim: show the precise reason if the account has not loaded.
- if(!inventoryReady||!packDb||!packUser){
-  showNotice('COLLECTION NOT READY','Your cloud collection is still loading. Try again in a moment.');
-  void loadOwnership();
-  return;
+ if(!inventoryReady||!packDb||!packUser){showNotice('COLLECTION NOT READY','Your cloud collection is still loading.');void loadOwnership();return;}
+ if(albumNumber===0&&!confirmedReset){showGrandResetConfirm();return;}
+ if(rewardStatusReady&&rewardClaims.has(albumNumber)&&!(albumNumber===0&&legacyResetPending)){
+  showNotice('ALREADY CLAIMED','This reward has already been received for the current round.');return;
  }
- if(rewardStatusReady&&rewardClaims.has(albumNumber)){
-  showNotice('ALREADY CLAIMED','You have already received this reward.');return;
- }
- const ownedCount=albumNumber===0?ownTotal():setCount(albumNumber-1);
- const needed=albumNumber===0?108:9;
- if(ownedCount<needed){
-  showNotice('COLLECTION INCOMPLETE',`You currently have ${ownedCount} of ${needed} unique Curios. Collect all ${needed} to claim this reward.`);
-  void loadOwnership();
-  return;
+ const count=albumNumber===0?ownTotal():setCount(albumNumber-1);
+ if(!(albumNumber===0&&legacyResetPending)&&count<(albumNumber===0?108:9)){
+  showNotice('COLLECTION INCOMPLETE',`You have ${count} of ${albumNumber===0?108:9} required Curios.`);return;
  }
  rewardBusy=true;
- // Reward status can be temporarily unavailable while ownership works.
- // The server-side RPC checks uniqueness, completed Curios, and claim entitlement atomically.
- const db=packDb;
  try{
-  const {data,error}=await db.rpc('gb_claim_album_reward',{p_album:albumNumber});
+  const {data,error}=await packDb.rpc('gb_claim_album_reward',{
+   p_album:albumNumber,p_confirm_reset:Boolean(confirmedReset)
+  });
   if(error)throw error;
-  if(data?.already_claimed){showNotice('ALREADY CLAIMED','You have already received this reward.');}
-  else if(data?.claimed){
-   showNotice('REWARD CLAIMED!',albumNumber===0?((Number(data.coins)||15000).toLocaleString()+' Skull Coins and 24 hours of unlimited lives awarded! '+(data.frame_id?'Your exclusive completion frame has been unlocked.':'All nine exclusive frames have been awarded.')):'Your Skull Coins and boosters have been awarded!');
-  }else{
-   showNotice('CLAIM STATUS UNKNOWN','The server did not confirm this reward. Please refresh your collection before retrying.');
-  }
-  await loadOwnership();
-  try{await window.gbShopApi?.sync?.();}catch(e){console.warn('Reward receipt sync pending:',e?.message||e);}
+  if(data?.reset_done){
+   await loadOwnership();
+   if(data?.claimed){
+    showNotice('GRAND REWARD CLAIMED!',`${Number(data.coins||0).toLocaleString()} Skull Coins, 24 hours of unlimited lives${data.frame_id?' and an exclusive frame':''} awarded! Your collection has reset to Round ${data.next_round}.`);
+   }else if(data?.already_awarded){
+    showNotice('ROUND RESET COMPLETE',`Your previously claimed reward is preserved. Welcome to Round ${data.next_round}!`);
+   }else showNotice('NEXT ROUND READY',`Welcome to Round ${data.next_round}!`);
+  }else if(data?.claimed){
+   await loadOwnership();
+   showNotice('REWARD CLAIMED!','Your Skull Coins and boosters have been awarded!');
+  }else if(data?.already_claimed){showNotice('ALREADY CLAIMED','This album reward has already been collected this round.');}
+  else showNotice('CLAIM STATUS UNKNOWN','The server did not confirm the claim. Refresh before retrying.');
+  try{await window.gbShopApi?.sync?.();}catch(e){console.warn('Reward sync pending:',e?.message||e);}
   if(albumNumber===0)void window.gbAlbumFrameRefresh?.();
- }catch(e){showNotice('CLAIM FAILED',e?.message||'Unable to claim this reward. Please try again.');}
+ }catch(e){showNotice('CLAIM FAILED',e?.message||'Unable to claim. Your collection should remain unchanged.');}
  finally{rewardBusy=false;if(screen.classList.contains('active'))page<0?lobby(true):album(page,true);}
 }
 $('gbcContent').addEventListener('click',e=>{if(e.target.closest('#gbcfOpenTest')){gbcfOpen();return;}const buyBtn=e.target.closest('[data-buy-pack]');if(buyBtn){selectPurchase(buyBtn.dataset.buyPack);return;}const packBtn=e.target.closest('[data-open-pack]');if(packBtn){void openPack(packBtn.dataset.openPack);return;}if(e.target.closest('#gbcClaimGrand')){void claimAlbumReward(0);return;}if(e.target.closest('#gbcClaimSet')){void claimAlbumReward(page+1);return;}const c=e.target.closest('[data-card]');if(c){card(+c.dataset.card);return;}const a=e.target.closest('[data-album]');if(a){album(+a.dataset.album);return;}});
