@@ -287,10 +287,25 @@ const gbpfNormalize=id=>gbShopFrameIds.includes(String(id))?String(id):id==='hun
 let gbAlbumFrameOwned=new Set();
 window.gbAlbumFrameRefresh=async()=>{
  if(!sb||!user||user.is_anonymous){gbAlbumFrameOwned=new Set();gbpfPaint();return;}
- const {data,error}=await sb.rpc('gb_album_reward_status');
- if(error){console.warn('Album frame lookup:',error.message);return;}
- const ids=Array.isArray(data?.owned_grand_frames)?data.owned_grand_frames:[];
+ // Read verified entitlements directly, independently of the collection-status RPC.
+ // Every user with a completed personal round owns its exclusive frame permanently.
+ let ids=[];
+ const direct=await sb.rpc('gb_owned_completion_frames');
+ if(!direct.error&&Array.isArray(direct.data)){
+  ids=direct.data.map(x=>typeof x==='string'?x:x?.frame_id).filter(Boolean);
+ }else{
+  const fallback=await sb.rpc('gb_album_reward_status');
+  if(fallback.error){
+   console.warn('Completion frame lookup:',direct.error?.message||fallback.error.message);
+   const status=$p('gbpf-status');
+   if(status)status.textContent='Unable to refresh completion frames: '+(direct.error?.message||fallback.error.message);
+   return;
+  }
+  ids=Array.isArray(fallback.data?.owned_grand_frames)?fallback.data.owned_grand_frames:[];
+ }
  gbAlbumFrameOwned=new Set(ids.map(String).filter(id=>id==='hungry_gate'||/^album_completion_0[2-9]$/.test(id)));
+ const status=$p('gbpf-status');
+ if(status&&status.textContent.startsWith('Unable to refresh completion frames:'))status.textContent='';
  gbpfPaint();
 };
 let gbGiftOwned=new Set();
@@ -332,7 +347,7 @@ function gbpfPaint(){const selected=gbpfCurrent();gbpfFit(prFramePanel.querySele
 }
 window.gbpfRefresh=gbpfPaint;
 prFramePanel.addEventListener('click',async e=>{const button=e.target.closest('[data-gbpf-frame]');if(!button)return;const id=gbpfNormalize(button.dataset.gbpfFrame);const status=$p('gbpf-status');if((id==='hungry_gate'||id.startsWith('album_completion_'))&&!gbAlbumFrameOwned.has(id)){status.textContent='This exclusive completion frame was not awarded to your account.';return}if(id.startsWith('gift_')&&!gbGiftOwned.has(id)){status.textContent='Locked: redeem its gift code in Settings.';return}if(id.startsWith('frame_')&&!gbShopFrameOwned.has(id)){status.textContent='Purchase this frame in the Carnival Shop first.';return}
- if(sb&&gbprRegistered()){status.textContent='Saving frame…';const result=await sb.from('profiles').update({equipped_frame:id}).eq('id',user.id);if(result.error){status.textContent='Could not save frame. Run the included Supabase migration first. '+result.error.message;return}profile={...profile,equipped_frame:id}}
+ if(sb&&gbprRegistered()){status.textContent='Saving frame…';const result=await sb.from('profiles').update({equipped_frame:id}).eq('id',user.id);if(result.error){status.textContent='Could not equip frame: '+result.error.message;return}profile={...profile,equipped_frame:id}}
  gbpfSetLocal(id);status.textContent='Frame equipped!';gbpfPaint();});
 
 const gbprIsGuest=()=>Boolean(user?.is_anonymous);
