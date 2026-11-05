@@ -106,13 +106,13 @@ gbcBadgeStyle.textContent=`
 }
 #menu .bottom-tabs #collectibles .gbc-tab-red-badge{
  display:none!important;position:absolute!important;
- right:11%!important;top:68%!important;
+ right:17%!important;top:14%!important;
  width:10px!important;height:10px!important;
  margin:0!important;padding:0!important;border:0!important;
  border-radius:50%!important;background:#ff163c!important;
  box-shadow:0 0 7px 2px #ff2d49!important;
  pointer-events:none!important;z-index:55!important;
- animation:gbcRewardDotPulse 1.8s ease-in-out infinite!important;
+ animation:none!important;
 }
 #menu .bottom-tabs #collectibles .gbc-tab-red-badge[hidden]{display:none!important}
 #menu .bottom-tabs #collectibles.gbc-tab-has-reward .gbc-tab-red-badge:not([hidden]){display:block!important}

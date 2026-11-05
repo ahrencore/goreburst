@@ -160,7 +160,7 @@
 /* 2026-11-05 follow-up fix: collectibles reward dots align with Events and claimed promo labels are removed. */
 #menu .bottom-tabs #collectibles{position:absolute!important;overflow:visible!important;isolation:isolate}
 #menu .bottom-tabs #collectibles.gbc-tab-has-reward{animation:gb-events-invite 1.8s ease-in-out infinite!important;filter:drop-shadow(0 0 5px #ff79ec) drop-shadow(0 0 8px #a050ff)!important}
-#menu .bottom-tabs #collectibles .gbc-tab-red-badge{position:absolute!important;right:11%!important;top:68%!important;width:10px!important;height:10px!important;border-radius:50%!important;background:#ff163c!important;box-shadow:0 0 7px 2px #ff2d49!important;animation:gbcRewardDotPulse 1.8s ease-in-out infinite!important}
+#menu .bottom-tabs #collectibles .gbc-tab-red-badge{position:absolute!important;right:17%!important;top:14%!important;width:10px!important;height:10px!important;border-radius:50%!important;background:#ff163c!important;box-shadow:0 0 7px 2px #ff2d49!important;animation:gbcRewardDotPulse 1.8s ease-in-out infinite!important}
 #menu .bottom-tabs #collectibles .gbc-tab-red-badge[hidden]{display:none!important}
 #gbCollectView .gbc-album-claimed{display:none!important}
 #gbCollectView .gbc-album-reward-dot{animation:gbcRewardDotPulse 1.8s ease-in-out infinite}
