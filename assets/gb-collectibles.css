@@ -130,7 +130,28 @@
 #gbCollectView .gbc-notice-totals b{white-space:nowrap;font:800 14px system-ui,sans-serif;color:#ffe3a0}
 #gbCollectView .gbc-notice-panel .gbc-coins-short{color:#ff9aa8}
 
-/* Secure album reward claim styling */
-#gbCollectView .gbc-claim-row{display:flex;justify-content:center;margin:9px 0 12px}
-#gbCollectView .gbc-claim{border:1.5px solid #ffe0a6;border-radius:12px;background:linear-gradient(180deg,#ac3e9f,#592267);box-shadow:0 0 12px #f56ccd9c,inset 0 0 8px #ffca9975;color:#fff0ca;font-weight:800;padding:9px 16px;min-height:36px}
-#gbCollectView .gbc-claim:disabled{opacity:.6;box-shadow:none;cursor:default}
+/* Collectibles rewards notification badges — derived from verified claim state. */
+#menu .bottom-tabs #collectibles{overflow:visible!important}
+#menu .bottom-tabs #collectibles .gbc-tab-red-badge{
+ position:absolute!important;top:32%!important;right:17%!important;
+ width:11px!important;height:11px!important;margin:0!important;padding:0!important;
+ border:0!important;border-radius:50%!important;background:#ff1738!important;
+ box-shadow:0 0 5px 1px #ff244f!important;pointer-events:none!important;z-index:50!important;
+}
+#menu .bottom-tabs #collectibles .gbc-tab-red-badge[hidden]{display:none!important}
+#gbCollectView .gbc-album{position:relative}
+#gbCollectView .gbc-album-reward-dot{
+ position:absolute;right:7px;top:7px;width:11px;height:11px;border-radius:50%;
+ background:#ff1738;box-shadow:0 0 7px 2px #ff244f;z-index:5;pointer-events:none;
+}
+#gbCollectView .gbc-album-claimed{
+ display:inline-block;max-width:100%;padding:2px 6px;border-radius:9px;
+ border:1px solid #82d8ad;background:rgba(20,67,47,.8);
+ color:#b0f7ce;font:800 9px/1.3 system-ui,sans-serif;letter-spacing:.02em;
+}
+#gbCollectView .gbc-claim-row{position:relative}
+#gbCollectView .gbc-claim-red-dot{
+ position:absolute;width:11px;height:11px;right:calc(50% - 85px);top:-4px;
+ border-radius:50%;background:#ff1738;box-shadow:0 0 7px 2px #ff244f;
+ z-index:3;pointer-events:none;
+}

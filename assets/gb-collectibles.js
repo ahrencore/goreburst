@@ -84,6 +84,15 @@ const blurbs={
  11:'Creatures that evolution would rather not discuss.'
 };
 
+// Main menu badge: matches Events' physical badge slot (top:32%, right:17%).
+const gbcMenuTab=document.getElementById('collectibles');
+if(gbcMenuTab&&!gbcMenuTab.querySelector('.gbc-tab-red-badge')){
+ const dot=document.createElement('span');
+ dot.className='gbc-tab-red-badge';
+ dot.setAttribute('aria-hidden','true');
+ dot.hidden=true;
+ gbcMenuTab.appendChild(dot);
+}
 const screen=document.createElement('section');screen.id='gbCollectView';screen.className='view';screen.setAttribute('aria-label','Collectibles');
 screen.innerHTML='<div class="gbc-root"><header class="gbc-bar"><button type="button" class="gbc-btn" id="gbcBack">‹ BACK</button><div class="gbc-bar-title" id="gbcBarTitle">COLLECTIBLES</div><button class="gbc-btn" type="button" id="gbcHome">HOME</button></header><div class="gbc-scroll" id="gbcContent"></div></div><div class="gbc-card-modal" id="gbcModal" hidden></div>';
 document.getElementById('app').appendChild(screen);
@@ -99,6 +108,19 @@ const cardKey=(a,k)=>String(a+1).padStart(2,'0')+'_'+String(k+1).padStart(2,'0')
 const qty=(a,k)=>owned.get(cardKey(a,k))||0;
 const setCount=a=>albumNames(a).filter((_,k)=>qty(a,k)>0).length;
 const ownTotal=()=>albums.reduce((t,_,i)=>t+setCount(i),0);
+const rewardCanClaim=n=>inventoryReady&&rewardStatusReady&&!rewardClaims.has(n)&&
+  (n===0?ownTotal()===108:setCount(n-1)===9);
+const anyRewardToClaim=()=>Array.from({length:13},(_,n)=>n).some(rewardCanClaim);
+function updateCollectRewardNotification(){
+  const tab=document.getElementById('collectibles');
+  if(!tab)return;
+  const show=anyRewardToClaim();
+  tab.classList.toggle('gbc-tab-has-reward',show);
+  tab.setAttribute('aria-label',show?'Collectibles — rewards ready':'Collectibles');
+  const badge=tab.querySelector('.gbc-tab-red-badge');
+  if(badge)badge.hidden=!show;
+}
+
 async function loadOwnership(){
  inventoryReady=false;inventoryError='';rewardStatusReady=false;rewardClaims=new Set();grandNextPosition=1;grandClaimedPosition=null;grandClaimedFrameId=null;owned=new Map();packs={carnival:0,freakshow:0,nightmare:0};packDb=null;packUser=null;cloudCoins=null;
  try{
@@ -124,6 +146,7 @@ async function loadOwnership(){
    }else if(rewardErr){console.warn('Album reward status:',rewardErr.message);}
   inventoryReady=true;
  }catch(e){inventoryError=e?.message||'Collection unavailable';}
+ updateCollectRewardNotification();
  if(screen.classList.contains('active'))page<0?lobby(true):album(page,true);
 }
 const ownedArt=(i,k,name)=>qty(i,k)>0?art(i,k,name):'<span class="gbc-unowned" aria-hidden="true">?</span>';
@@ -239,13 +262,13 @@ async function openPack(type){
  finally{packBusy=false;if(screen.classList.contains('active')&&page<0)lobby(true);}
 }
 
-function lobby(keepScroll=false){const scroll=$('gbcContent'),previous=keepScroll?scroll.scrollTop:0;page=-1;$('gbcBarTitle').textContent='COLLECTIBLES';$('gbcBack').textContent='‹ BACK';$('gbcContent').innerHTML='<h1 class="gbc-headline">ALBUM OF CURIOSITIES</h1><p class="gbc-sub">12 albums · 108 curios · one very strange carnival</p><div class="gbc-total"><strong>COMPLETE THE COLLECTION</strong><div class="gbc-completion-rewards" aria-label="Completion rewards"><div class="gbc-completion-prize"><img src="assets/coin-skull-new.png" alt="Skull Coins"><b>'+((rewardClaims.has(0)?Number(grandClaimedPosition)>9:grandNextPosition>9)?'25,000':'15,000')+'</b></div><div class="gbc-completion-prize"><img src="assets/heart.png" alt="Lives"><b>24H</b></div>'+(grandNextPosition<=9||rewardClaims.has(0)&&grandClaimedFrameId?'<div class="gbc-completion-prize gbc-frame-prize" title="Exclusive completion frame for the first nine claimants"><img src="'+(grandClaimedFrameId&&grandClaimedFrameId!=="hungry_gate"?'assets/collectibles/completion-frames/completion_'+grandClaimedFrameId.slice(-2)+'.webp':'assets/collectibles/reward-icons/hungry_gate_frame.png')+'" alt="Exclusive frame"><b>×1</b></div>':'')+'</div><div class="gbc-claim-row"><button class="gbc-btn gbc-claim" id="gbcClaimGrand" type="button" '+(!inventoryReady||!rewardStatusReady||ownTotal()<108||rewardClaims.has(0)||rewardBusy?'disabled':'')+'>'+(rewardClaims.has(0)?'CLAIMED':'CLAIM GRAND REWARD')+'</button></div><div class="gbc-progress"><span style="width:0%"></span></div><small>'+(inventoryReady?(ownTotal()+' / 108 collected'):('Collection unavailable · '+esc(inventoryError||'Loading')))+'</small></div><div class="gbc-albums">'+albums.map((a,i)=>`<button class="gbc-album ${i===0?'featured':''}" type="button" data-album="${i}" aria-label="Open ${esc(a[0])}"><span class="gbc-album-pic" style="--gbc-light:${a[2]}"><img src="${A}collectibles/album-promos/${String(i+1).padStart(2,'0')}_${promoNames[i]}.webp" alt="" loading="lazy"></span><span class="gbc-album-name">${esc(a[0])}</span><span class="gbc-count">${inventoryReady?setCount(i):'—'} / 9</span><span class="gbc-tiny">VIEW ALBUM</span></button>`).join('')+'</div>'+packView()+`<div class="gbcf-testbar"><button type="button" class="gbcf-testbutton" id="gbcfOpenTest">PREVIEW COMPLETION FRAMES</button><small>Preview only · does not unlock frames or grant rewards</small></div>`+'<p class="gbc-note">'+(inventoryReady?'Find Curios in packs to fill your albums.':'Sign in to load your collection.')+'</p>';const progress=$('gbcContent').querySelector('.gbc-progress span');if(progress)progress.style.width=(inventoryReady?Math.round(ownTotal()/108*100):0)+'%';scroll.scrollTop=previous;}
+function lobby(keepScroll=false){const scroll=$('gbcContent'),previous=keepScroll?scroll.scrollTop:0;page=-1;$('gbcBarTitle').textContent='COLLECTIBLES';$('gbcBack').textContent='‹ BACK';$('gbcContent').innerHTML='<h1 class="gbc-headline">ALBUM OF CURIOSITIES</h1><p class="gbc-sub">12 albums · 108 curios · one very strange carnival</p><div class="gbc-total"><strong>COMPLETE THE COLLECTION</strong><div class="gbc-completion-rewards" aria-label="Completion rewards"><div class="gbc-completion-prize"><img src="assets/coin-skull-new.png" alt="Skull Coins"><b>'+((rewardClaims.has(0)?Number(grandClaimedPosition)>9:grandNextPosition>9)?'25,000':'15,000')+'</b></div><div class="gbc-completion-prize"><img src="assets/heart.png" alt="Lives"><b>24H</b></div>'+(grandNextPosition<=9||rewardClaims.has(0)&&grandClaimedFrameId?'<div class="gbc-completion-prize gbc-frame-prize" title="Exclusive completion frame for the first nine claimants"><img src="'+(grandClaimedFrameId&&grandClaimedFrameId!=="hungry_gate"?'assets/collectibles/completion-frames/completion_'+grandClaimedFrameId.slice(-2)+'.webp':'assets/collectibles/reward-icons/hungry_gate_frame.png')+'" alt="Exclusive frame"><b>×1</b></div>':'')+'</div><div class="gbc-claim-row">${rewardCanClaim(0)?`<span class="gbc-claim-red-dot" aria-label="Grand reward ready to claim"></span>`:""}<button class="gbc-btn gbc-claim" id="gbcClaimGrand" type="button" '+(!inventoryReady||!rewardStatusReady||ownTotal()<108||rewardClaims.has(0)||rewardBusy?'disabled':'')+'>'+(rewardClaims.has(0)?'CLAIMED':'CLAIM GRAND REWARD')+'</button></div><div class="gbc-progress"><span style="width:0%"></span></div><small>'+(inventoryReady?(ownTotal()+' / 108 collected'):('Collection unavailable · '+esc(inventoryError||'Loading')))+'</small></div><div class="gbc-albums">'+albums.map((a,i)=>`<button class="gbc-album ${i===0?'featured':''}" type="button" data-album="${i}" aria-label="Open ${esc(a[0])}"><span class="gbc-album-pic" style="--gbc-light:${a[2]}"><img src="${A}collectibles/album-promos/${String(i+1).padStart(2,'0')}_${promoNames[i]}.webp" alt="" loading="lazy"></span>${rewardCanClaim(i+1)?`<span class="gbc-album-reward-dot" aria-label="Unclaimed album reward"></span>`:""}<span class="gbc-album-name">${esc(a[0])}</span>${rewardClaims.has(i+1)?`<span class="gbc-album-claimed">CLAIMED</span>`:""}<span class="gbc-count">${inventoryReady?setCount(i):'—'} / 9</span><span class="gbc-tiny">VIEW ALBUM</span></button>`).join('')+'</div>'+packView()+`<div class="gbcf-testbar"><button type="button" class="gbcf-testbutton" id="gbcfOpenTest">PREVIEW COMPLETION FRAMES</button><small>Preview only · does not unlock frames or grant rewards</small></div>`+'<p class="gbc-note">'+(inventoryReady?'Find Curios in packs to fill your albums.':'Sign in to load your collection.')+'</p>';const progress=$('gbcContent').querySelector('.gbc-progress span');if(progress)progress.style.width=(inventoryReady?Math.round(ownTotal()/108*100):0)+'%';scroll.scrollTop=previous;}
 function rewardCount(text){const match=String(text).match(/^\s*(\d+)/);return '×'+(match?match[1]:'1');}
 function album(i,keepScroll=false){
  const scroller=$('gbcContent'),previous=keepScroll?scroller.scrollTop:0;page=i;const a=albums[i], arr=albumNames(i),rr=rewards[i];
  $('gbcBarTitle').textContent='ALBUM';$('gbcBack').textContent='‹ ALBUMS';
  const description=blurbs[i];
- $('gbcContent').innerHTML=`<div class="gbc-person gbc-person-text"><div><h2>${esc(a[0])}</h2><p>${esc(description)}</p></div></div><div class="gbc-rewards"><div class="gbc-reward"><img src="${A}coin-skull-new.png" alt=""><b>${rr[0]}</b></div><div class="gbc-reward"><img src="${A+rr[1]}" alt=""><b>${rewardCount(rewardDetails[i][0])}</b></div><div class="gbc-reward"><img src="${A+rr[2]}" alt=""><b>${rewardCount(rewardDetails[i][1])}</b></div></div><div class="gbc-claim-row"><button class="gbc-btn gbc-claim" type="button" id="gbcClaimSet" ${!inventoryReady||!rewardStatusReady||setCount(i)<9||rewardClaims.has(i+1)||rewardBusy?"disabled":""}>${rewardClaims.has(i+1)?"CLAIMED":"CLAIM"}</button></div><div class="gbc-cards">${arr.map((name,k)=>`<button class="gbc-card ${(i>=0&&i<=11)?'gbc-card-curio':''} ${i===7?'gbc-freakshow-curio':''}" type="button" data-card="${k}" aria-label="View card ${esc(name)}">${ownedArt(i,k,name)}${extraBadge(i,k)}<span class="gbc-card-stars">${'★'.repeat(rarities[k])}</span><span class="gbc-card-label">${esc(name)}</span></button>`).join('')}</div><p class="gbc-note">${inventoryReady?'Only collected cards are revealed.':'Your collection could not be loaded.'}</p>`;
+ $('gbcContent').innerHTML=`<div class="gbc-person gbc-person-text"><div><h2>${esc(a[0])}</h2><p>${esc(description)}</p></div></div><div class="gbc-rewards"><div class="gbc-reward"><img src="${A}coin-skull-new.png" alt=""><b>${rr[0]}</b></div><div class="gbc-reward"><img src="${A+rr[1]}" alt=""><b>${rewardCount(rewardDetails[i][0])}</b></div><div class="gbc-reward"><img src="${A+rr[2]}" alt=""><b>${rewardCount(rewardDetails[i][1])}</b></div></div><div class="gbc-claim-row">${rewardCanClaim(i+1)?`<span class="gbc-claim-red-dot" aria-label="Album reward ready to claim"></span>`:""}<button class="gbc-btn gbc-claim" type="button" id="gbcClaimSet" ${!inventoryReady||!rewardStatusReady||setCount(i)<9||rewardClaims.has(i+1)||rewardBusy?"disabled":""}>${rewardClaims.has(i+1)?"CLAIMED":"CLAIM"}</button></div><div class="gbc-cards">${arr.map((name,k)=>`<button class="gbc-card ${(i>=0&&i<=11)?'gbc-card-curio':''} ${i===7?'gbc-freakshow-curio':''}" type="button" data-card="${k}" aria-label="View card ${esc(name)}">${ownedArt(i,k,name)}${extraBadge(i,k)}<span class="gbc-card-stars">${'★'.repeat(rarities[k])}</span><span class="gbc-card-label">${esc(name)}</span></button>`).join('')}</div><p class="gbc-note">${inventoryReady?'Only collected cards are revealed.':'Your collection could not be loaded.'}</p>`;
  scroller.scrollTop=previous;
 }
 function card(k){
@@ -345,5 +368,18 @@ function gbcfDraw(){if(!gbcfOverlay)return;
 document.addEventListener('click',e=>{if(!gbcfOverlay)return;const choice=e.target.closest('[data-gbcf-frame]');if(choice){gbcfSelected=Number(choice.dataset.gbcfFrame);gbcfDraw();return;}if(e.target.closest('#gbcfClose')||e.target===gbcfOverlay){gbcfClose();}},true);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&gbcfOverlay){gbcfClose();e.stopImmediatePropagation();}},true);
 
+// Refresh after sign-in/reload without requiring a trip into the Collectibles tab.
+let gbcNotificationRefreshBusy=false,gbcNotificationLastRefresh=0;
+async function refreshGbcNotifications(){
+ if(gbcNotificationRefreshBusy||packBusy||buyBusy||rewardBusy)return;
+ if(Date.now()-gbcNotificationLastRefresh<12000)return;
+ gbcNotificationRefreshBusy=true;
+ gbcNotificationLastRefresh=Date.now();
+ try{await loadOwnership();}
+ finally{gbcNotificationRefreshBusy=false;}
+}
+window.addEventListener('load',()=>{void refreshGbcNotifications();},{once:true});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)void refreshGbcNotifications();});
+window.addEventListener('focus',()=>{void refreshGbcNotifications();});
 const tab=$('collectibles');if(tab)tab.onclick=()=>{lobby();view('gbCollectView');void loadOwnership()};
 })();
