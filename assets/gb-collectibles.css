@@ -101,9 +101,9 @@
   padding:100% 0 0 0; overflow:hidden; box-sizing:content-box;
 }
 #gbCollectView .gbc-album-pic img {
-  position:absolute; top:0; right:0; bottom:0; left:0;
-  width:100%!important; height:100%!important; margin:0!important;
-  object-fit:cover!important; object-position:center center!important;
+  position:absolute; top:7.5%; left:7.5%; right:auto; bottom:auto;
+  width:85%!important; height:85%!important; margin:0!important;
+  object-fit:contain!important; object-position:center center!important;
   max-width:none; display:block; filter:none;
 }
 
