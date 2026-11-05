@@ -99,23 +99,27 @@ if(gbcMenuTab&&!gbcMenuTab.querySelector('.gbc-tab-red-badge')){
 const gbcBadgeStyle=document.createElement('style');
 gbcBadgeStyle.id='gbc-reward-notification-style';
 gbcBadgeStyle.textContent=`
-#menu .bottom-tabs #collectibles{position:absolute!important;overflow:visible!important;isolation:isolate}
+/* The Events tab uses the full-tab invite glow, NOT an independently flashing dot. */
 #menu .bottom-tabs #collectibles.gbc-tab-has-reward{
  animation:gb-events-invite 1.8s ease-in-out infinite!important;
- filter:drop-shadow(0 0 5px #ff79ec) drop-shadow(0 0 8px #a050ff)!important;
+ isolation:isolate;overflow:visible!important;
+ filter:drop-shadow(0 0 5px #ff79ec) drop-shadow(0 0 8px #a050ff)
 }
+/* Copy the Events badge's exact position, size, color and glow. */
+#menu .bottom-tabs #collectibles{position:absolute!important;overflow:visible!important}
 #menu .bottom-tabs #collectibles .gbc-tab-red-badge{
  display:none!important;position:absolute!important;
- right:17%!important;top:14%!important;
- width:10px!important;height:10px!important;
+ top:32%!important;right:17%!important;
+ width:11px!important;height:11px!important;
  margin:0!important;padding:0!important;border:0!important;
- border-radius:50%!important;background:#ff163c!important;
- box-shadow:0 0 7px 2px #ff2d49!important;
- pointer-events:none!important;z-index:55!important;
- animation:none!important;
+ border-radius:50%!important;background:#ff1738!important;
+ box-shadow:0 0 5px 1px #ff244f!important;
+ pointer-events:none!important;z-index:50!important;
+ animation:none!important;transform:none!important
 }
 #menu .bottom-tabs #collectibles .gbc-tab-red-badge[hidden]{display:none!important}
 #menu .bottom-tabs #collectibles.gbc-tab-has-reward .gbc-tab-red-badge:not([hidden]){display:block!important}
+@media(prefers-reduced-motion:reduce){#menu .bottom-tabs #collectibles.gbc-tab-has-reward{animation:none!important;filter:drop-shadow(0 0 10px #f858ce)}}
 #gbCollectView .gbc-album{position:relative}
 #gbCollectView .gbc-album-reward-dot{
  position:absolute;right:7px;top:7px;width:11px;height:11px;
