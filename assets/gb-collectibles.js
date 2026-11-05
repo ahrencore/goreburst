@@ -320,17 +320,18 @@ async function openPack(type){
  finally{packBusy=false;if(screen.classList.contains('active')&&page<0)lobby(true);}
 }
 
+// The lobby previews the NEXT global completion reward, not this account's historical award.
+// The server continues to decide the actual prize at claim time under a global lock.
 function grandRewardCoinLabel(){
- const claimedPos=Number(grandClaimedPosition)||0;
- const useTwentyFive=rewardClaims.has(0)?claimedPos>9:grandNextPosition>9;
- return useTwentyFive?'25,000':'15,000';
+ return grandNextPosition>9?'25,000':'15,000';
 }
 function grandRewardFrameMarkup(){
- if(!(grandNextPosition<=9||(rewardClaims.has(0)&&grandClaimedFrameId)))return '';
- const src=grandClaimedFrameId&&grandClaimedFrameId!=='hungry_gate'
-  ? `assets/collectibles/completion-frames/completion_${grandClaimedFrameId.slice(-2)}.webp`
-  : 'assets/collectibles/reward-icons/hungry_gate_frame.png';
- return `<div class="gbc-completion-prize gbc-frame-prize" title="Exclusive completion frame for the first nine claimants"><img src="${src}" alt="Exclusive frame"><b>×1</b></div>`;
+ const next=Math.max(1,Number(grandNextPosition)||1);
+ if(!rewardStatusReady||next>9)return '';
+ const src=next===1
+  ? 'assets/collectibles/reward-icons/hungry_gate_frame.png'
+  : `assets/collectibles/completion-frames/completion_${String(next).padStart(2,'0')}.webp`;
+ return `<div class="gbc-completion-prize gbc-frame-prize" title="Exclusive frame preview — next global claimant"><img src="${src}" alt="Next available exclusive completion frame"><b>×1</b></div>`;
 }
 function claimButtonMarkup(id,label,disabled,showDot){
  return `<div class="gbc-claim-row"><button class="gbc-btn gbc-claim ${showDot?'gbc-claim-ready':''}" id="${id}" type="button" ${disabled?'disabled':''}>${showDot?'<span class="gbc-claim-button-dot" aria-hidden="true"></span>':''}${label}</button></div>`;
