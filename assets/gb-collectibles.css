@@ -108,3 +108,24 @@
 }
 
 /* Albums 1–9 Curios: preserve their original album slots, display art at 70%. */
+
+/* 2026-11-05 Collectibles polish: secure pack-buy confirmations and notices. */
+#gbCollectView .gbc-notice-shade{position:absolute;z-index:30;inset:0;display:flex;align-items:center;justify-content:center;padding:17px;background:rgba(6,3,16,.84);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
+#gbCollectView .gbc-notice-shade[hidden]{display:none!important}
+#gbCollectView .gbc-notice-panel{position:relative;width:min(100%,390px);max-height:92%;overflow-y:auto;overscroll-behavior:contain;text-align:center;padding:20px 17px 17px;border:2px solid #ea85e4;border-radius:21px;background:radial-gradient(ellipse at 45% 0%,#452053,#1b102a 67%,#130c1f);box-shadow:0 0 15px #f44bd68c,0 0 38px #b22dba54,inset 0 0 18px #f2a1f51c;color:#ffe9ee}
+#gbCollectView .gbc-notice-spark{display:block;font:900 27px Georgia,serif;color:#ffd486;text-shadow:0 0 12px #e992e1;margin-bottom:2px}
+#gbCollectView .gbc-notice-panel h3{color:#ffe0aa;text-shadow:0 0 12px #f56fc7;font:700 21px/1.2 Georgia,serif;margin:3px 0 9px}
+#gbCollectView .gbc-notice-panel p{color:#edcfe6;font:13px/1.5 system-ui,sans-serif;margin:7px auto 13px;overflow-wrap:anywhere}
+#gbCollectView .gbc-notice-actions{display:flex;justify-content:center;gap:10px;margin-top:17px}
+#gbCollectView .gbc-notice-actions .gbc-btn{min-width:0;flex:1;min-height:43px;border-radius:13px;letter-spacing:.04em;white-space:normal}
+#gbCollectView .gbc-notice-actions .gbc-notice-primary{border-color:#ffe6aa;background:linear-gradient(180deg,#a33d83,#5b1c69);color:#fff2b7;box-shadow:0 0 15px #eb66be98,inset 0 1px #fff2ca85}
+#gbCollectView .gbc-notice-panel button:disabled{opacity:.4;cursor:default;box-shadow:none}
+#gbCollectView .gbc-notice-quantity{display:flex;align-items:center;justify-content:center;gap:17px;margin:17px 0 5px}
+#gbCollectView .gbc-notice-quantity .gbc-btn{height:42px;width:47px;font:700 25px Georgia,serif;padding:0}
+#gbCollectView .gbc-notice-quantity strong{min-width:95px;font:700 28px Georgia,serif;color:#ffe4b4;text-shadow:0 0 8px #d546d0}
+#gbCollectView .gbc-notice-quantity small{display:block;font:700 10px system-ui,sans-serif;letter-spacing:.06em;color:#cfa5de}
+#gbCollectView .gbc-notice-hint{font:11px system-ui,sans-serif;color:#c9b0d6}
+#gbCollectView .gbc-notice-totals{display:grid;gap:9px;margin-top:15px;padding:14px 12px;border:1px solid #ad6cbd;border-radius:13px;background:#160b23;box-shadow:inset 0 0 10px #ca73e526}
+#gbCollectView .gbc-notice-totals>div{display:flex;justify-content:space-between;align-items:center;gap:12px;font:12px system-ui,sans-serif;color:#e4c6e8}
+#gbCollectView .gbc-notice-totals b{white-space:nowrap;font:800 14px system-ui,sans-serif;color:#ffe3a0}
+#gbCollectView .gbc-notice-panel .gbc-coins-short{color:#ff9aa8}
