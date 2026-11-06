@@ -524,3 +524,30 @@
     background-image: url("promo-weekly-nightmare-static.webp") !important;
   }
 }
+
+
+/* 2026-11-06 — Four small Events cards: compact uniform titles + subtle gold artwork glow.
+   Weekly Nightmare featured card, event mechanics and existing marquee art are untouched. */
+.ev-root .ev-cards .ev-card > b {
+  font-family: Georgia, "Times New Roman", serif !important;
+  font-size: clamp(9px, 2.6vw, 11px) !important;
+  font-weight: 700 !important;
+  line-height: 1.25 !important;
+  letter-spacing: -0.24px !important;
+  white-space: nowrap !important;
+  min-height: 14px;
+  margin: 8px 7px 3px !important;
+}
+/* Red notification dot remains adjacent to the single-line card label. */
+.ev-root .ev-cards .ev-card.ev-has-reward > b {
+  max-width: calc(100% - 25px) !important;
+}
+/* The shadow follows the original transparent art silhouette, not the square card. */
+.ev-root .ev-cards .ev-card .ev-promo-art img {
+  filter: drop-shadow(0 0 3px rgba(255, 202, 95, .82))
+          drop-shadow(0 0 7px rgba(255, 170, 55, .65)) !important;
+}
+/* Match the art's soft golden light without repainting or changing the PNG itself. */
+.ev-root .ev-cards .ev-card .ev-promo-art {
+  background: #170d25 !important;
+}
