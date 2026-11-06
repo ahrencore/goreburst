@@ -68,35 +68,74 @@ function evRewardArt(i){const reward=evMissions[i][4];return Object.entries(rewa
 function dailyRecord(key,num=1){evRefresh();evData.missions[key]=Math.max(0,(evData.missions[key]||0)+num);evSave();evUpdateRewardDots()}
 function evAward(reward){for(const [key,n] of Object.entries(reward)){if(key==='coins')save.coins=Math.max(0,save.coins+n);else if(['RV','CB','FW'].includes(key))save.preSpecials[key]=(save.preSpecials[key]||0)+n;else save.boosterInventory[key]=(save.boosterInventory[key]||0)+n}persist();}
 
-// Daily claims are committed to Supabase; local gameplay counters remain provisional.
-let evDailyCloudBusy=false, evDailyCloudReady=false, evDailyCloudClaimed=new Set(), evDailyCloudDay="";
+// Daily claims use optimistic UI, but rewards are credited only after server confirmation.
+// Pending claims are per mission, so players can claim different missions immediately.
+let evDailyCloudReady=false, evDailyCloudClaimed=new Set(), evDailyCloudDay='';
+let evDailyCloudPending=new Set(), evDailyCloudStatusPromise=null, evDailyError='';
+let evDailyInventoryTimer=null;
+function evDailyRepaint(){if(evRoot.querySelector('.ev-daily-panel'))evDaily();else evUpdateRewardDots();}
+function evDailyScheduleInventorySync(){
+ // Never hold the claim button while collectibles inventory is refreshing.
+ clearTimeout(evDailyInventoryTimer);
+ evDailyInventoryTimer=setTimeout(()=>{
+  Promise.resolve().then(()=>window.gbShopApi?.sync?.()).catch(e=>console.warn('[Daily Missions] Inventory sync:',e));
+ },400);
+}
 async function evDailyCloudStatus(){
- try{
-  if(typeof window.gbDailyMissionRpc!=='function')throw Error('Collectibles cloud integration is not loaded');
-  const out=await window.gbDailyMissionRpc('gb_daily_mission_status',{});
-  evDailyCloudClaimed=new Set(Array.isArray(out?.claimed)?out.claimed.map(Number):[]);
-  evDailyCloudReady=true;
-  return true;
- }catch(err){evDailyCloudReady=false;console.warn('[Daily Missions] Cloud status:',err?.message||err);return false;}
+ if(evDailyCloudStatusPromise)return evDailyCloudStatusPromise;
+ const requestedDay=evDailyCloudDay;
+ evDailyCloudStatusPromise=(async()=>{
+  try{
+   if(typeof window.gbDailyMissionRpc!=='function')throw Error('Collectibles cloud integration is not loaded');
+   const out=await window.gbDailyMissionRpc('gb_daily_mission_status',{});
+   if(requestedDay!==evDailyCloudDay)return false;
+   const serverClaims=Array.isArray(out?.claimed)?out.claimed.map(Number):[];
+   // A concurrent claim can finish while the status call is in flight.
+   serverClaims.forEach(i=>evDailyCloudClaimed.add(i));
+   evDailyCloudReady=true;
+   return true;
+  }catch(err){
+   if(requestedDay===evDailyCloudDay){evDailyCloudReady=false;console.warn('[Daily Missions] Cloud status:',err?.message||err);}
+   return false;
+  }finally{
+   evDailyCloudStatusPromise=null;
+  }
+ })();
+ return evDailyCloudStatusPromise;
 }
 async function evDailyCloudClaim(i){
- if(evDailyCloudBusy)return;
- const q=evMission(i);
- if(evDailyCloudClaimed.has(i)||!Number.isInteger(i)||(evData.missions[q.key]||0)<q.target)return;
- if(!evDailyCloudReady){if(!await evDailyCloudStatus()){alert('Sign in to claim Daily Missions. Cloud rewards are currently unavailable.');return;}}
- evDailyCloudBusy=true;
+ const q=evMissions[i]&&evMission(i);
+ if(!q||!Number.isInteger(i)||evDailyCloudPending.has(i)||evDailyCloudClaimed.has(i)||evData.claims.includes(i)||(evData.missions[q.key]||0)<q.target)return;
+ const requestedDay=evDay();
+ evDailyError='';
+ evDailyCloudPending.add(i); // instant CLAIMED feedback, independent of network speed
+ evDailyRepaint();
  try{
-  const result=await window.gbDailyMissionRpc('gb_claim_daily_mission',{p_mission_id:i,p_reported_progress:Math.floor(evData.missions[q.key]||0),p_early_fallback:i===7&&q.key==='pieces'});
-  if(result?.already_claimed){evDailyCloudClaimed.add(i);evData.claims=[...new Set([...evData.claims,i])];evSave();evDaily();return;}
-  if(!result?.claimed)throw Error('The server did not confirm the reward');
-  evDailyCloudClaimed.add(i);evData.claims=[...new Set([...evData.claims,i])];
-  // Mirror server-granted boosters into the existing local game UI.
-  if(!Object.keys(evMissions[i][4]).some(k=>k.startsWith('pack_')))evAward(evMissions[i][4]);
-  evSave();evUpdateRewardDots();playSfx('victory');
-  try{await window.gbShopApi?.sync?.();}catch(e){console.warn('[Daily Missions] Inventory refresh pending',e);}
-  evDaily();
- }catch(err){alert('Reward not claimed: '+(err?.message||'Please try again.'));}
- finally{evDailyCloudBusy=false;}
+  if(typeof window.gbDailyMissionRpc!=='function')throw Error('Cloud rewards are not available');
+  const result=await window.gbDailyMissionRpc('gb_claim_daily_mission',{
+   p_mission_id:i,p_reported_progress:Math.floor(evData.missions[q.key]||0),p_early_fallback:i===7&&q.key==='pieces'
+  });
+  if(!result?.claimed&&!result?.already_claimed)throw Error('The server did not confirm the reward');
+  if(evDay()===requestedDay){
+   evDailyCloudClaimed.add(i);
+   evData.claims=[...new Set([...evData.claims,i])];
+   evSave();
+  }
+  if(result?.claimed){
+   // Mirror a *confirmed* booster once. Packs are server owned; no local pack grant.
+   if(!Object.keys(evMissions[i][4]).some(k=>k.startsWith('pack_')))evAward(evMissions[i][4]);
+   playSfx('victory');
+   evDailyScheduleInventorySync();
+  }
+ }catch(err){
+  if(evDay()===requestedDay){
+   evDailyError='Mission '+(i+1)+' was not claimed: '+(err?.message||'Please retry.');
+   console.warn('[Daily Missions] Claim failed:',err);
+  }
+ }finally{
+  evDailyCloudPending.delete(i);
+  evDailyRepaint();
+ }
 }
 function evBtn(text,fn,cls=''){const b=document.createElement('button');b.className='ev-btn '+cls;b.textContent=text;b.addEventListener('click',fn);return b}
 function evHeader(title,back){return `<div class="ev-head"><button class="ev-btn ev-btn-alt" data-ev-back>‹ BACK</button><strong>${title}</strong><span>✦</span></div>`}
@@ -106,14 +145,28 @@ function evHome(){evRefresh();let stats=`${evData.weeklyBest} stages cleared`;ev
 document.getElementById('events').onclick=()=>{ensureAudioGesture?.();evHome()};
 function evDaily(){
  evRefresh();
- if(evDailyCloudDay!==evDay()){evDailyCloudDay=evDay();evDailyCloudReady=false;evDailyCloudClaimed=new Set();}
- if(!evDailyCloudReady){void evDailyCloudStatus().then(ok=>{if(ok&&evRoot.querySelector('.ev-daily-panel'))evDaily();});}
+ if(evDailyCloudDay!==evDay()){
+  evDailyCloudDay=evDay();evDailyCloudReady=false;evDailyCloudClaimed=new Set();evDailyCloudPending.clear();evDailyError='';
+ }
+ if(!evDailyCloudReady&&!evDailyCloudStatusPromise){
+  void evDailyCloudStatus().then(ok=>{if(ok&&evRoot.querySelector('.ev-daily-panel'))evDaily();});
+ }
  const effectiveClaims=new Set([...evData.claims,...evDailyCloudClaimed]);
+ const visibleClaims=new Set([...effectiveClaims,...evDailyCloudPending]);
  const claimedCount=effectiveClaims.size;
- const sorted=evMissions.map((_,i)=>{const q=evMission(i),done=Math.min(q.target,evData.missions[q.key]||0),claimed=effectiveClaims.has(i);return {i,q,done,claimed,ready:!claimed&&done>=q.target}}).sort((a,b)=>Number(b.ready)-Number(a.ready)||Number(a.claimed)-Number(b.claimed)||a.i-b.i);
- const items=sorted.map(({i,q,done,claimed,ready})=>`<div class="ev-daily-item ${claimed?'ev-daily-claimed':ready?'ev-daily-ready':'ev-daily-pending'}"><div class="ev-daily-content"><div class="ev-daily-info"><b>${q.name}</b><span class="ev-daily-objective">${evMissionDescription(i,q)}</span><small>${done}/${q.target}</small><div class="ev-meter"><span style="width:${done/q.target*100}%"></span></div></div><div class="ev-daily-art">${evRewardArt(i)}</div></div><button class="ev-daily-claim" type="button" data-claim="${i}" ${claimed||!ready||!evDailyCloudReady?'disabled':''}>${claimed?'CLAIMED':!evDailyCloudReady?'CONNECTING':ready?'CLAIM':'IN PROGRESS'}</button></div>`).join('');
- evDisplay(`${evHeader('DAILY MISSIONS')}<section class="ev-daily-panel"><h2>TEN TICKETS TO TROUBLE</h2><p class="ev-daily-counter">${claimedCount} / 10 CLAIMED · RESETS DAILY</p><div class="ev-daily-list">${items}</div></section>`);
- evRoot.querySelectorAll('[data-claim]').forEach(b=>b.onclick=()=>{void evDailyCloudClaim(+b.dataset.claim);});evUpdateRewardDots();
+ const pendingCount=evDailyCloudPending.size;
+ const sorted=evMissions.map((_,i)=>{
+  const q=evMission(i),done=Math.min(q.target,evData.missions[q.key]||0);
+  const pending=evDailyCloudPending.has(i),claimed=effectiveClaims.has(i);
+  return {i,q,done,claimed,pending,ready:!claimed&&!pending&&done>=q.target};
+ }).sort((a,b)=>Number(b.ready)-Number(a.ready)||Number(a.claimed||a.pending)-Number(b.claimed||b.pending)||a.i-b.i);
+ const items=sorted.map(({i,q,done,claimed,pending,ready})=>`<div class="ev-daily-item ${claimed||pending?'ev-daily-claimed':ready?'ev-daily-ready':'ev-daily-pending'} ${pending?'ev-daily-syncing':''}"><div class="ev-daily-content"><div class="ev-daily-info"><b>${q.name}</b><span class="ev-daily-objective">${evMissionDescription(i,q)}</span><small>${done}/${q.target}</small><div class="ev-meter"><span style="width:${done/q.target*100}%"></span></div></div><div class="ev-daily-art">${evRewardArt(i)}</div></div><button class="ev-daily-claim" type="button" data-claim="${i}" ${claimed||pending||!ready?'disabled':''} ${pending?'aria-label="Claim pending server confirmation"':''}>${claimed||pending?'CLAIMED':ready?'CLAIM':'IN PROGRESS'}</button>${pending?'<small class="ev-daily-sync-note">Syncing reward…</small>':''}</div>`).join('');
+ const oldScroll=evRoot.querySelector('.ev-daily-panel')?evRoot.scrollTop:0;
+ evDisplay(`${evHeader('DAILY MISSIONS')}<section class="ev-daily-panel"><h2>TEN TICKETS TO TROUBLE</h2><p class="ev-daily-counter">${visibleClaims.size} / 10 CLAIMED${pendingCount?' · '+pendingCount+' SYNCING':''} · RESETS DAILY</p>${evDailyError?'<p class="ev-daily-error" role="alert"></p>':''}<div class="ev-daily-list">${items}</div></section>`);
+ evRoot.scrollTop=oldScroll;
+ if(evDailyError){const errorNode=evRoot.querySelector('.ev-daily-error');if(errorNode)errorNode.textContent=evDailyError;}
+ evRoot.querySelectorAll('[data-claim]').forEach(b=>b.onclick=()=>{void evDailyCloudClaim(+b.dataset.claim);});
+ evUpdateRewardDots();
 }
 
 const evWheelPrizes=[{label:'ROCKET',reward:{RV:1}},{label:'CLOWNBOMB',reward:{CB:1}},{label:'FERRIS WHEEL',reward:{FW:1}},{label:'HAMMER',reward:{hammer:1}},{label:'WATCH',reward:{watch:1}},{label:'500 COINS',reward:{coins:500}},{label:'300 COINS',reward:{coins:300}},{label:'100 COINS',reward:{coins:100}},{label:'MYSTERY BOOSTER',reward:null},{label:'LOSE 1 LIFE',negative:'life'},{label:'−100 COINS',negative:'coins'},{label:'LOSER!',negative:'loser'}];

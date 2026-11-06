@@ -162,8 +162,8 @@ let gbDailyClientPromise;
 window.gbDailyMissionRpc=async(functionName,args)=>{
  if(!gbDailyClientPromise)gbDailyClientPromise=import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm').then(({createClient})=>createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}));
  const client=await gbDailyClientPromise;
- const {data:authData,error:authError}=await client.auth.getUser();
- if(authError||!authData?.user)throw Error('Sign in required');
+ // The RPC enforces auth.uid() server-side. Avoid a network getUser() before every claim.
+ // Supabase JS automatically sends and refreshes the stored session token.
  const {data,error}=await client.rpc(functionName,args);
  if(error)throw error;
  return data;
