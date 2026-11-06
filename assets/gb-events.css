@@ -554,3 +554,18 @@
 
 /* Transparent label for simulated leaderboard challengers. */
 .gb-simulated-tag{display:inline-block;margin-inline-start:4px;padding:1px 4px;border:1px solid currentColor;border-radius:4px;font:600 9px/1.4 system-ui,sans-serif;opacity:.7;vertical-align:middle;letter-spacing:.04em;}
+
+/* Six elite bot photo/frame pairs. Each PFP uses its own measured circular frame
+   opening rather than the generic 70% photo area; never affects human avatars. */
+.ev-root .gbpf-rank-avatar.gbpf-elite-avatar > img.gbpf-elite-photo,
+.ev-root .ev-nightmare-rank-row .gbpf-rank-avatar.gbpf-elite-avatar > img.gbpf-elite-photo,
+.ev-root .ev-clash-row .gbpf-rank-avatar.gbpf-elite-avatar > img.gbpf-elite-photo {
+  left:var(--gb-elite-left)!important;
+  top:var(--gb-elite-top)!important;
+  width:var(--gb-elite-d)!important;
+  height:var(--gb-elite-d)!important;
+  border-radius:50%!important;
+  object-fit:cover!important;
+  filter:none!important;
+  box-shadow:none!important;
+}

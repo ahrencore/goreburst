@@ -1,0 +1,50 @@
+[
+  {
+    "bot": "🎀 vivian 🎀",
+    "stem": "bot_13_vivian",
+    "x": 50.0,
+    "y": 44.657,
+    "diameter": 42.424,
+    "frame_kb": 164
+  },
+  {
+    "bot": "𝚊𝚙𝚙𝚕𝚎",
+    "stem": "bot_20_apple",
+    "x": 47.368,
+    "y": 47.927,
+    "diameter": 41.786,
+    "frame_kb": 206
+  },
+  {
+    "bot": "Luna",
+    "stem": "bot_28_luna",
+    "x": 49.841,
+    "y": 44.577,
+    "diameter": 52.951,
+    "frame_kb": 204
+  },
+  {
+    "bot": "M A R C U S",
+    "stem": "bot_05_marcus",
+    "x": 47.608,
+    "y": 50.877,
+    "diameter": 38.756,
+    "frame_kb": 251
+  },
+  {
+    "bot": "Oliver James",
+    "stem": "bot_09_oliver",
+    "x": 47.049,
+    "y": 54.466,
+    "diameter": 47.368,
+    "frame_kb": 194
+  },
+  {
+    "bot": "Ryan",
+    "stem": "bot_24_ryan",
+    "x": 48.485,
+    "y": 51.276,
+    "diameter": 42.584,
+    "frame_kb": 153
+  }
+]
