@@ -482,3 +482,45 @@
 *::-webkit-scrollbar-corner{
   background:#190c26!important;
 }
+
+
+/* Gore Burst — Mr. Walker's Weekly Nightmare: approved animated marquee.
+   Display animation in both featured Events card and Weekly Nightmare lobby.
+   Keep live countdown/status and existing interactions untouched. */
+.ev-root #evWeeklyCard {
+  background-color: #180a20 !important;
+  background-image: url("promo-weekly-nightmare-animated.webp") !important;
+  background-position: center center !important;
+  background-repeat: no-repeat !important;
+  background-size: contain !important;
+  min-height: clamp(190px, 48vw, 290px);
+  isolation: isolate;
+}
+.ev-root #evWeeklyCard .ev-kicker {
+  position: absolute; top: 7px; left: 8px; z-index: 2;
+  background: #17091de8; border: 1px solid #bb6495a8;
+  border-radius: 7px; padding: 4px 6px;
+}
+.ev-root #evWeeklyCard h2 { font-size: 0 !important; margin: 0 !important; }
+.ev-root #evWeeklyCard h2 .ev-countdown {
+  position: absolute; right: 8px; top: 7px; z-index: 2;
+  font-size: 11px; margin: 0;
+}
+.ev-root #evWeeklyCard > span:last-child {
+  position: absolute; bottom: 7px; right: 8px; z-index: 2;
+  background: #17091dec; padding: 5px 9px; border-radius: 8px;
+  border: 1px solid #d57d9d8a;
+}
+.ev-root .ev-nightmare-art {
+  background-color: #180a20 !important;
+  background-image: url("promo-weekly-nightmare-animated.webp") !important;
+  background-position: center center !important;
+  background-repeat: no-repeat !important;
+  background-size: contain !important;
+  height: clamp(145px, 43vw, 245px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ev-root #evWeeklyCard, .ev-root .ev-nightmare-art {
+    background-image: url("promo-weekly-nightmare-static.webp") !important;
+  }
+}
