@@ -1136,11 +1136,16 @@ window.gbGhostParadeFetch=async function(){
   const {data:{session},error:authError}=await sb.auth.getSession();
   if(authError||!session)return {error:'Online player identity is starting. Try Refresh.'};
   if(gbprIsGuest())await gbUploadGuestStars();
-  const [registered,guests]=await Promise.all([sb.rpc('ghost_parade_top10'),sb.rpc('gb_guest_stars_top10')]);
+  const [registered,guests,featuredBots]=await Promise.all([
+    sb.rpc('ghost_parade_top10'),
+    sb.rpc('gb_guest_stars_top10'),
+    sb.rpc('gb_bot_ghost_parade')
+  ]);
   if(registered.error)return {error:'Leaderboard query failed: '+registered.error.message};
   if(guests.error)return {error:'Guest leaderboard setup required: '+guests.error.message};
+  if(featuredBots.error)return {error:'Ghost Parade bot setup required: '+featuredBots.error.message};
   const combined=new Map();
-  for(const r of [...(registered.data||[]),...(guests.data||[])]){
+  for(const r of [...(registered.data||[]),...(guests.data||[]),...(featuredBots.data||[])]){
     const id=String(r.user_id||r.player_id||r.id||('guest-'+r.display_name));
     const prev=combined.get(id);
     if(!prev||Number(r.total_stars||0)>Number(prev.total_stars||0))combined.set(id,r);
