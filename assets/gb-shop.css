@@ -46,3 +46,16 @@
 #gbShopView .gbshop-frames .gbshop-art img{filter:none!important}
 #gbShopView .gbshop-avatar-preview .gbshop-frame{filter:none!important;box-shadow:none!important}
 #gbShopView .gbshop-avatar-preview{width:min(100%,300px);height:auto;aspect-ratio:1;}
+
+/* Carnival-styled confirmations and shop receipts, replacing browser confirm/alert. */
+#gbShopView .gbshop-notice{position:absolute;inset:0;z-index:45;display:grid;place-items:center;padding:16px;background:rgba(8,2,17,.82);backdrop-filter:blur(5px)}
+#gbShopView .gbshop-notice[hidden]{display:none!important}
+#gbShopView .gbshop-notice-card{width:min(100%,360px);padding:24px 17px 18px;text-align:center;border:2px solid #ffaddf;border-radius:22px;background:radial-gradient(ellipse at 50% 0%,#64245f 0%,#35123f 54%,#190922 100%);box-shadow:0 0 15px #ff6bda,0 0 34px #bd4de088,inset 0 0 18px #d659be66;color:#ffe7f4}
+#gbShopView .gbshop-notice-emblem{font:900 30px Georgia,serif;color:#ffdd91;text-shadow:0 0 12px #f997e3;margin-bottom:6px}
+#gbShopView .gbshop-notice-card h2{font:900 22px Georgia,serif;letter-spacing:.02em;color:#ffe1ad;text-shadow:0 0 12px #f379d8;margin:0 0 10px}
+#gbShopView .gbshop-notice-card p{font:14px/1.5 system-ui,sans-serif;margin:0 0 18px;color:#f6d9f2;overflow-wrap:anywhere}
+#gbShopView .gbshop-notice-actions{display:flex;gap:10px;justify-content:center}
+#gbShopView .gbshop-notice-actions button{flex:1;min-height:47px;border:2px solid #ffd0ed;border-radius:24px;font:900 14px Georgia,serif;color:#fff4d4;text-shadow:0 0 6px #ca489e;box-shadow:0 0 12px #ed56c288}
+#gbShopView .gbshop-notice-primary{background:linear-gradient(#ec6bc4,#a92286,#6d155b)}
+#gbShopView .gbshop-notice-muted{background:linear-gradient(#67335e,#351d43)}
+#gbShopView .gbshop-notice-actions button:disabled{opacity:.7;cursor:wait}
