@@ -207,7 +207,7 @@ async function loadOwnership(){
  }catch(e){inventoryError=e?.message||'Collection unavailable';}
  updateCollectRewardNotification();
  console.info('[Gore Burst] Collectibles rewards:',{inventoryReady,rewardStatusReady,readyToClaim:anyRewardToClaim(),claimed:rewardClaims.size,ownedCurios:ownTotal()});
- if(screen.classList.contains('active'))page<0?lobby(true):album(page,true);
+ if(screen.classList.contains('active'))page===-2?showCurioExchange():page<0?lobby(true):album(page,true);
 }
 const ownedArt=(i,k,name)=>qty(i,k)>0?art(i,k,name):'<span class="gbc-unowned" aria-hidden="true">?</span>';
 window.gbTradeReloadCollection=loadOwnership;
@@ -219,7 +219,57 @@ const view=id=>{document.querySelectorAll('.view').forEach(v=>v.classList.toggle
 const packTypes=[['carnival',3,3],['freakshow',4,4],['nightmare',5,5]];
 const packWrapper=(type,stars)=>`<span class="gbc-pack-art" aria-hidden="true"><span class="gbc-pack-motif">${'★'.repeat(stars)}</span></span>`;
 const packPrices={carnival:600,freakshow:900,nightmare:1200};
-const packView=()=>`<section class="gbc-pack-zone"><h2>CURIO PACKS</h2><p class="gbc-note">Skull Coins: ${cloudCoins===null?'—':cloudCoins.toLocaleString()}</p><div class="gbc-packs">${packTypes.map(([key,count,max])=>`<div class="gbc-pack gbc-pack-${key}"><button class="gbc-pack-pick" type="button" data-open-pack="${key}" aria-label="Open ${key} pack, ${count} cards, up to ${max} stars" ${(!inventoryReady||!packs[key]||packBusy||buyBusy)?'disabled':''}>${packWrapper(key,max)}</button><span class="gbc-pack-owned">×${inventoryReady?packs[key]:'—'}</span><button type="button" data-open-pack="${key}" ${(!inventoryReady||!packs[key]||packBusy||buyBusy)?'disabled':''}>OPEN</button><button type="button" data-buy-pack="${key}" ${(!inventoryReady||!packDb||buyBusy||cloudCoins===null)?'disabled':''}>BUY · ${packPrices[key].toLocaleString()} COINS</button></div>`).join('')}</div></section>`;
+const curioSellPrices=[10,10,20,20,40,40,80,80,150];
+const exchangeExtras=()=>Array.from(owned.entries()).filter(([id,count])=>/^(0[1-9]|1[0-2])_0[1-9]$/.test(id)&&count>1).sort(([a],[b])=>a.localeCompare(b));
+let exchangeBusy=false;
+function showCurioExchange(){
+ page=-2;
+ $('gbcBarTitle').textContent='CURIO EXCHANGE';$('gbcBack').textContent='‹ BACK';
+ const entries=exchangeExtras();let estimated=0;
+ const cards=entries.map(([id,count])=>{
+  const [albumNum,cardNum]=id.split('_').map(Number);const a=albumNum-1,k=cardNum-1;
+  const price=curioSellPrices[k],extras=count-1;estimated+=price*extras;
+  const title=albumNames(a)?.[k]||'Unknown Curio';
+  return `<div class="gbc-exchange-item"><img loading="lazy" src="${candidates(a,k)[0]}" alt="${esc(title)}"><div class="gbc-exchange-info"><strong>${esc(title)}</strong><small>${'★'.repeat(rarities[k])} · ${esc(albums[a][0])}</small><small>Owned: ${count} · Sellable: ${extras}</small><b>${price} Skull Coins each</b></div><div class="gbc-exchange-actions"><label for="gbcSellQty${id}">QTY</label><select id="gbcSellQty${id}" data-sell-qty="${id}" ${exchangeBusy?'disabled':''}>${Array.from({length:extras},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join('')}</select><button type="button" class="gbc-btn" data-sell-curio="${id}" ${exchangeBusy||!inventoryReady?'disabled':''}>SELL</button></div></div>`;
+ }).join('');
+ $('gbcContent').innerHTML=`<div class="gbc-exchange-page"><h2>THE CURIO EXCHANGE</h2><p class="gbc-note">Only extra copies can be sold. Your last copy of each Curio is always protected.</p><div class="gbc-exchange-wallet">SKULL COINS: <b>${cloudCoins===null?'—':cloudCoins.toLocaleString()}</b></div>${!inventoryReady?'<p class="gbc-note">Collection unavailable. Sign in and try again.</p>':entries.length?`<div class="gbc-exchange-list">${cards}</div><div class="gbc-exchange-total"><span>${entries.reduce((n,[,count])=>n+count-1,0)} extras available</span><b>SELL ALL: +${estimated.toLocaleString()} COINS</b></div><button type="button" class="gbc-btn gbc-exchange-all" id="gbcSellAll" ${exchangeBusy?'disabled':''}>SELL ALL EXTRAS</button>`:'<p class="gbc-exchange-empty">No extra Curios to sell. Your collection is safe!</p>'}<button class="gbc-btn gbc-exchange-return" id="gbcExchangeBack" type="button">‹ BACK TO CURIO PACKS</button></div>`;
+ $('gbcContent').scrollTop=0;
+}
+async function sellCurio(id){
+ if(exchangeBusy||!inventoryReady||!packDb||page!==-2)return;
+ const extras=(owned.get(id)||0)-1;if(extras<1)return;
+ const selector=$('gbcContent').querySelector(`[data-sell-qty="${id}"]`);
+ const amount=Number(selector?.value);
+ if(!Number.isInteger(amount)||amount<1||amount>extras)return;
+ const [albumNum,cardNum]=id.split('_').map(Number),price=curioSellPrices[cardNum-1];
+ if(!window.confirm(`Sell ${amount} extra ${albumNames(albumNum-1)[cardNum-1]} Curio${amount>1?'s':''} for ${Number(amount*price).toLocaleString()} Skull Coins?\nYour last copy will be kept.`))return;
+ exchangeBusy=true;showCurioExchange();
+ try{
+  const {data,error}=await packDb.rpc('gb_sell_extra_curios',{p_card_id:id,p_quantity:amount});
+  if(error)throw error;
+  if(!data||data.success!==true)throw Error('Sale was not confirmed. Refresh your collection before retrying.');
+  await loadOwnership();try{await window.gbShopApi?.sync?.();}catch{}
+  if(page===-2)showCurioExchange();
+  alert(`Sold ${amount} duplicate${amount===1?'':'s'} for ${Number(data.coins_earned).toLocaleString()} Skull Coins!`);
+ }catch(e){alert('Sale not confirmed: '+(e?.message||'Unknown error')+'\nRefresh before retrying.');await loadOwnership();}
+ finally{exchangeBusy=false;if(page===-2)showCurioExchange();}
+}
+async function sellAllExtraCurios(){
+ if(exchangeBusy||!inventoryReady||!packDb||page!==-2)return;
+ const entries=exchangeExtras();if(!entries.length)return;
+ const quantity=entries.reduce((sum,[,count])=>sum+count-1,0);
+ const coins=entries.reduce((sum,[id,count])=>sum+(count-1)*curioSellPrices[Number(id.slice(-2))-1],0);
+ if(!window.confirm(`SELL ALL ${quantity} EXTRA CURIOS for approximately ${coins.toLocaleString()} Skull Coins?\nThis cannot be undone. One copy of every owned Curio will remain.`))return;
+ exchangeBusy=true;showCurioExchange();
+ try{
+  const {data,error}=await packDb.rpc('gb_sell_all_extra_curios');if(error)throw error;
+  if(!data||data.success!==true)throw Error('Sale was not confirmed. Refresh before retrying.');
+  await loadOwnership();try{await window.gbShopApi?.sync?.();}catch{}
+  alert(`Sold ${Number(data.curios_sold)} extras for ${Number(data.coins_earned).toLocaleString()} Skull Coins!`);
+ }catch(e){alert('Sale not confirmed: '+(e?.message||'Unknown error')+'\nRefresh before retrying.');await loadOwnership();}
+ finally{exchangeBusy=false;if(page===-2)showCurioExchange();}
+}
+const packView=()=>`<section class="gbc-pack-zone"><h2>CURIO PACKS</h2><p class="gbc-note">Skull Coins: ${cloudCoins===null?'—':cloudCoins.toLocaleString()}</p><div class="gbc-packs">${packTypes.map(([key,count,max])=>`<div class="gbc-pack gbc-pack-${key}"><button class="gbc-pack-pick" type="button" data-open-pack="${key}" aria-label="Open ${key} pack, ${count} cards, up to ${max} stars" ${(!inventoryReady||!packs[key]||packBusy||buyBusy)?'disabled':''}>${packWrapper(key,max)}</button><span class="gbc-pack-owned">×${inventoryReady?packs[key]:'—'}</span><button type="button" data-open-pack="${key}" ${(!inventoryReady||!packs[key]||packBusy||buyBusy)?'disabled':''}>OPEN</button><button type="button" data-buy-pack="${key}" ${(!inventoryReady||!packDb||buyBusy||cloudCoins===null)?'disabled':''}>BUY · ${packPrices[key].toLocaleString()} COINS</button></div>`).join('')}</div><div class="gbc-exchange-entry"><h3>THE CURIO EXCHANGE</h3><p>Too many strange things? Turn your extra Curios into Skull Coins!</p><button type="button" class="gbc-btn gbc-exchange-launch" id="gbcExchangeOpen">SELL CURIOS HERE</button></div></section>`;
 // Purchase calls remain one pack each because the existing server RPC accepts one pack.
 // A 1–5 pack purchase is a sequence of individually idempotent server transactions.
 const pendingPurchases={};
@@ -240,6 +290,8 @@ function showGrandResetConfirm(){
  if(rewardStatusReady&&!legacyResetPending&&rewardClaims.has(0)){showNotice('ALREADY CLAIMED','This round was already completed.');return;}
  if(!legacyResetPending&&ownTotal()!==108){showNotice('COLLECTION INCOMPLETE',`Collect all 108 unique Curios first. You currently have ${ownTotal()}/108.`);return;}
  grandConfirmOpen=true;buySelection=null;
+ const extraCount=exchangeExtras().reduce((sum,[,count])=>sum+count-1,0);
+ const extraWarning=extraCount>0?`You have ${extraCount} unsold duplicate Curios. Visit SELL CURIOS HERE before resetting if you want Skull Coins for them.`:'';
  const previous=legacyResetPending
   ? 'Your previous grand reward has already been awarded. Confirming will reset your old collection without granting it again.'
   : 'Your grand reward will be awarded and all 108 Curios, including duplicates, will be cleared.';
@@ -247,6 +299,7 @@ function showGrandResetConfirm(){
   <span class="gbc-notice-spark">✦</span><h3>GRAND REWARD</h3>
   <p><strong>CLAIM REWARDS AND RESET THE ENTIRE ALBUM NOW?</strong></p>
   <p>${previous}</p>
+  ${extraWarning?`<p style="color:#ffe08b;font-weight:800">${esc(extraWarning)}</p>`:''}
   <p style="color:#ffdb9c;font-weight:800">Your active Curio collection returns to 0/108. Unopened packs, earned frames, prior rewards and game progress remain safe.</p>
   <div class="gbc-notice-actions"><button type="button" class="gbc-btn" data-grand-reset-no>NO, CANCEL</button><button type="button" class="gbc-btn gbc-notice-primary" data-grand-reset-yes>YES, CLAIM!</button></div>
  </div>`;
@@ -299,7 +352,7 @@ async function buyPack(type,count){
  buyBusy=false;
  // loadOwnership() rendered the pack buttons while buyBusy was true.
  // Re-render after clearing the flag so BUY and OPEN become usable again.
- if(screen.classList.contains('active'))page<0?lobby(true):album(page,true);
+ if(screen.classList.contains('active'))page===-2?showCurioExchange():page<0?lobby(true):album(page,true);
  if(failed){
   showNotice('CHECK YOUR PURCHASE',`${successful} of ${count} packs confirmed. ${failed.message||'Network error'}. Please check your balance and pack count before retrying.`);
  }else{
@@ -390,7 +443,6 @@ function lobby(keepScroll=false){
    </button>`).join('')}
   </div>
   ${packView()}
-  <div class="gbcf-testbar"><button type="button" class="gbcf-testbutton" id="gbcfOpenTest">PREVIEW COMPLETION FRAMES</button><small>Preview only · does not unlock frames or grant rewards</small></div>
   ${inventoryReady&&!rewardStatusReady?'<p class="gbc-note" style="color:#ff9ebc">Reward notifications unavailable: '+esc(rewardStatusError||'Claim status could not load')+'</p>':''}
   <p class="gbc-note">${inventoryReady?'Find Curios in packs to fill your albums.':'Sign in to load your collection.'}</p>`;
  const progress=$('gbcContent').querySelector('.gbc-progress span');
@@ -477,10 +529,10 @@ async function claimAlbumReward(albumNumber,confirmedReset=false){
   try{await window.gbShopApi?.sync?.();}catch(e){console.warn('Reward sync pending:',e?.message||e);}
   if(albumNumber===0)void window.gbAlbumFrameRefresh?.();
  }catch(e){showNotice('CLAIM FAILED',e?.message||'Unable to claim. Your collection should remain unchanged.');}
- finally{rewardBusy=false;if(screen.classList.contains('active'))page<0?lobby(true):album(page,true);}
+ finally{rewardBusy=false;if(screen.classList.contains('active'))page===-2?showCurioExchange():page<0?lobby(true):album(page,true);}
 }
-$('gbcContent').addEventListener('click',e=>{if(e.target.closest('#gbcfOpenTest')){gbcfOpen();return;}const buyBtn=e.target.closest('[data-buy-pack]');if(buyBtn){selectPurchase(buyBtn.dataset.buyPack);return;}const packBtn=e.target.closest('[data-open-pack]');if(packBtn){void openPack(packBtn.dataset.openPack);return;}if(e.target.closest('#gbcClaimGrand')){void claimAlbumReward(0);return;}if(e.target.closest('#gbcClaimSet')){void claimAlbumReward(page+1);return;}const c=e.target.closest('[data-card]');if(c){card(+c.dataset.card);return;}const a=e.target.closest('[data-album]');if(a){album(+a.dataset.album);return;}});
-$('gbcBack').addEventListener('click',()=>page<0?view('menu'):lobby());$('gbcHome').addEventListener('click',()=>view('menu'));
+$('gbcContent').addEventListener('click',e=>{if(e.target.closest('#gbcExchangeOpen')){showCurioExchange();return;}if(e.target.closest('#gbcExchangeBack')){lobby(true);return;}if(e.target.closest('#gbcSellAll')){void sellAllExtraCurios();return;}const sellBtn=e.target.closest('[data-sell-curio]');if(sellBtn){void sellCurio(sellBtn.dataset.sellCurio);return;}const buyBtn=e.target.closest('[data-buy-pack]');if(buyBtn){selectPurchase(buyBtn.dataset.buyPack);return;}const packBtn=e.target.closest('[data-open-pack]');if(packBtn){void openPack(packBtn.dataset.openPack);return;}if(e.target.closest('#gbcClaimGrand')){void claimAlbumReward(0);return;}if(e.target.closest('#gbcClaimSet')){void claimAlbumReward(page+1);return;}const c=e.target.closest('[data-card]');if(c){card(+c.dataset.card);return;}const a=e.target.closest('[data-album]');if(a){album(+a.dataset.album);return;}});
+$('gbcBack').addEventListener('click',()=>page===-2?lobby():page<0?view('menu'):lobby());$('gbcHome').addEventListener('click',()=>view('menu'));
 function closeCardDetail(){
  const wasReveal=revealedCards.length>0;
  $('gbcModal').hidden=true;$('gbcModal').innerHTML='';revealedCards=[];revealStep=0;
@@ -498,38 +550,9 @@ document.addEventListener('keydown',e=>{
  if(e.key!=='Escape'||!screen.classList.contains('active'))return;
  if(!notice.hidden){closeNotice();e.stopImmediatePropagation();return;}
  if(!$('gbcModal').hidden){if(!revealedCards.length||revealStep>=revealedCards.length)closeCardDetail();return;}
- if(page>=0)lobby();else view('menu');
+ if(page>=0||page===-2)lobby();else view('menu');
 });
 const tradeScript=document.createElement('script');tradeScript.src='assets/gb-trading.js?v=carnival-trade-confirm-20261105b';tradeScript.defer=true;document.head.appendChild(tradeScript);
-
-// Exclusive full-collection frame FIT TEST only. This dialog makes no database writes.
-const gbcfCss=document.createElement('style');gbcfCss.textContent=`
-.gbcf-testbar{display:flex;align-items:center;flex-direction:column;gap:6px;padding:10px 12px 14px}
-.gbcf-testbutton{font:700 10px/1.2 inherit;letter-spacing:1px;color:#ffdcaa;border:1px solid #a26b9e;border-radius:11px;background:#321a39;padding:8px 11px;cursor:pointer}
-.gbcf-testbar small{font-size:10px;color:#c6a7d2;text-align:center}
-.gbcf-shade{position:fixed;z-index:2147483000;inset:0;background:rgba(0,0,0,.87);display:flex;align-items:center;justify-content:center;padding:10px;box-sizing:border-box}
-.gbcf-box{position:relative;width:min(94vw,440px);max-height:91dvh;overflow:auto;border:2px solid #b05db3;border-radius:16px;padding:14px;background:#180f27;text-align:center;color:#ffe9e4;box-sizing:border-box;box-shadow:0 0 28px #9724ae55}
-.gbcf-box h3{font-size:17px;margin:4px 30px 8px;letter-spacing:.5px}.gbcf-box p{font-size:11px;color:#ddc1e7;margin:7px 0}
-.gbcf-close{position:absolute;right:10px;top:8px;background:#462a57;color:white;border:1px solid #a67cb4;border-radius:8px;font-size:18px;width:30px;height:30px}
-.gbcf-avatar-wrap{position:relative;width:min(66vw,260px);aspect-ratio:1;margin:8px auto 12px;isolation:isolate}
-.gbcf-avatar{position:absolute;z-index:1;width:70%;height:70%;object-fit:cover;border-radius:50%;left:15%;top:15%;background:#291b3b}
-.gbcf-art{position:absolute;z-index:2;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none}
-.gbcf-choices{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;margin:12px auto}
-.gbcf-choice{border:1px solid #775074;background:#35233f;color:white;border-radius:8px;min-height:68px;padding:4px 2px;font-size:10px;cursor:pointer}
-.gbcf-choice img{display:block;object-fit:contain;height:43px;width:100%}.gbcf-choice[aria-pressed=true]{border-color:#ffe4a0;box-shadow:0 0 7px #f8b967}
-.gbcf-unavailable{opacity:.5}.gbcf-warning{font-size:10px;color:#ffd7a1}
-`;document.head.appendChild(gbcfCss);
-const gbcfFrames=[{number:1,src:'assets/collectibles/reward-icons/hungry_gate_frame.png'},...Array.from({length:8},(_,i)=>({number:i+2,src:'assets/collectibles/completion-frames/completion_'+String(i+2).padStart(2,'0')+'.webp'}))];
-let gbcfSelected=1,gbcfOverlay=null;
-function gbcfOpen(){if(gbcfOverlay)return;gbcfSelected=1;gbcfOverlay=document.createElement('div');gbcfOverlay.className='gbcf-shade';gbcfOverlay.setAttribute('role','dialog');gbcfOverlay.setAttribute('aria-modal','true');gbcfOverlay.setAttribute('aria-label','Completion frame preview');document.body.appendChild(gbcfOverlay);gbcfDraw();}
-function gbcfClose(){gbcfOverlay?.remove();gbcfOverlay=null;}
-function gbcfDraw(){if(!gbcfOverlay)return;
- const frame=gbcfFrames.find(x=>x.number===gbcfSelected)||gbcfFrames[0];
- const avatar=document.getElementById('gbMenuAvatar')?.currentSrc||document.getElementById('gbMenuAvatar')?.src||'assets/avatars/01_Mr_Walker.png';
- gbcfOverlay.innerHTML=`<section class="gbcf-box"><button type="button" class="gbcf-close" id="gbcfClose" aria-label="Close">×</button><h3>EXCLUSIVE FRAME FIT TEST</h3><p>Frame ${gbcfSelected} of 10 · ${gbcfSelected===1?'Hungry Gate':'Collection completion '+gbcfSelected}</p><div class="gbcf-avatar-wrap"><img class="gbcf-avatar" alt="Your current profile photo" src="${avatar.replace(/&/g,'&amp;').replace(/"/g,'&quot;')}"><img class="gbcf-art" alt="Exclusive frame" src="${frame.src}"></div><div class="gbcf-choices">${gbcfFrames.map(x=>`<button type="button" class="gbcf-choice" data-gbcf-frame="${x.number}" aria-pressed="${x.number===gbcfSelected}"><img src="${x.src}" alt="">${x.number}</button>`).join('')}<button type="button" class="gbcf-choice gbcf-unavailable" disabled aria-label="Frame 10 not supplied">10 · pending</button></div><p class="gbcf-warning">TEST ONLY: no frame ownership, coins or lives are awarded.</p><p>Avatar fits using the existing 70% circular profile layout. Check the framing before approving permanent equip support.</p></section>`;
-}
-document.addEventListener('click',e=>{if(!gbcfOverlay)return;const choice=e.target.closest('[data-gbcf-frame]');if(choice){gbcfSelected=Number(choice.dataset.gbcfFrame);gbcfDraw();return;}if(e.target.closest('#gbcfClose')||e.target===gbcfOverlay){gbcfClose();}},true);
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&gbcfOverlay){gbcfClose();e.stopImmediatePropagation();}},true);
 
 // Refresh after sign-in/reload without requiring a trip into the Collectibles tab.
 let gbcNotificationRefreshBusy=false,gbcNotificationLastRefresh=0;

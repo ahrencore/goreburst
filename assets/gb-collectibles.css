@@ -157,15 +157,25 @@
 }
 
 
-/* 2026-11-05 follow-up fix: collectibles reward dots align with Events and claimed promo labels are removed. */
-#menu .bottom-tabs #collectibles{position:absolute!important;overflow:visible!important;isolation:isolate}
-#menu .bottom-tabs #collectibles.gbc-tab-has-reward{animation:gb-events-invite 1.8s ease-in-out infinite!important;filter:drop-shadow(0 0 5px #ff79ec) drop-shadow(0 0 8px #a050ff)!important}
-#menu .bottom-tabs #collectibles .gbc-tab-red-badge{position:absolute!important;right:17%!important;top:14%!important;width:10px!important;height:10px!important;border-radius:50%!important;background:#ff163c!important;box-shadow:0 0 7px 2px #ff2d49!important;animation:gbcRewardDotPulse 1.8s ease-in-out infinite!important}
-#menu .bottom-tabs #collectibles .gbc-tab-red-badge[hidden]{display:none!important}
-#gbCollectView .gbc-album-claimed{display:none!important}
-#gbCollectView .gbc-album-reward-dot{animation:gbcRewardDotPulse 1.8s ease-in-out infinite}
-#gbCollectView .gbc-claim{position:relative}
-#gbCollectView .gbc-claim.gbc-claim-ready{padding-right:34px}
-#gbCollectView .gbc-claim-button-dot{position:absolute;right:9px;top:5px;width:10px;height:10px;border-radius:50%;background:#ff1738;box-shadow:0 0 7px 2px #ff244f;pointer-events:none;animation:gbcRewardDotPulse 1.8s ease-in-out infinite}
-@keyframes gbcRewardDotPulse{0%,100%{transform:scale(1);opacity:1;filter:drop-shadow(0 0 0 transparent)}50%{transform:scale(1.08);opacity:.82;filter:drop-shadow(0 0 7px #ff5d89)}}
-@media(prefers-reduced-motion:reduce){#menu .bottom-tabs #collectibles.gbc-tab-has-reward{animation:none!important}#menu .bottom-tabs #collectibles .gbc-tab-red-badge,#gbCollectView .gbc-album-reward-dot,#gbCollectView .gbc-claim-button-dot{animation:none!important}}
+/* Curio Exchange: scoped only to Collectibles. */
+#gbCollectView .gbc-exchange-entry{margin:14px 0 4px;padding:14px 12px;text-align:center;border:1px solid #e39bca;border-radius:15px;background:linear-gradient(145deg,#47213d,#241432);box-shadow:0 0 14px #e044b43d}
+#gbCollectView .gbc-exchange-entry h3{margin:0 0 5px;font:700 17px Georgia,serif;color:#ffe0a4;letter-spacing:.05em}
+#gbCollectView .gbc-exchange-entry p{margin:0 0 11px;font-size:12px;color:#f4d5ef}
+#gbCollectView .gbc-exchange-launch{width:100%;padding:12px;font-size:13px;border-color:#ffe6ad;background:linear-gradient(#753e68,#56244e)}
+#gbCollectView .gbc-exchange-page h2{font:700 22px Georgia,serif;text-align:center;letter-spacing:.04em;color:#ffe0a4;margin:8px 0}
+#gbCollectView .gbc-exchange-wallet{margin:14px 0;padding:10px 12px;background:#352038;border:1px solid #aa669c;border-radius:10px;display:flex;justify-content:space-between;gap:10px;font-size:12px;color:#ffedca}
+#gbCollectView .gbc-exchange-list{display:flex;flex-direction:column;gap:9px}
+#gbCollectView .gbc-exchange-item{display:grid;grid-template-columns:68px minmax(0,1fr) 70px;align-items:center;gap:9px;background:linear-gradient(120deg,#321a3b,#20112f);border:1px solid #78457d;border-radius:12px;padding:8px}
+#gbCollectView .gbc-exchange-item>img{width:68px;height:68px;object-fit:contain;border-radius:8px;background:#10081a}
+#gbCollectView .gbc-exchange-info{min-width:0;display:flex;flex-direction:column;gap:3px}
+#gbCollectView .gbc-exchange-info strong{color:#ffe4d0;font-size:12px;overflow-wrap:anywhere}
+#gbCollectView .gbc-exchange-info small{font-size:10px;color:#d9b3e0}
+#gbCollectView .gbc-exchange-info b{font-size:11px;color:#ffe0a4}
+#gbCollectView .gbc-exchange-actions{display:flex;flex-direction:column;gap:5px;align-items:stretch;text-align:center}
+#gbCollectView .gbc-exchange-actions label{font-size:9px;letter-spacing:.08em;color:#e7c3e3}
+#gbCollectView .gbc-exchange-actions select{width:100%;font-size:13px;padding:4px;background:#2a1536;color:#fff4db;border:1px solid #ae75a5;border-radius:6px}
+#gbCollectView .gbc-exchange-actions .gbc-btn{min-height:31px;padding:6px 5px;font-size:11px;border-radius:8px}
+#gbCollectView .gbc-exchange-total{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin:14px 0;color:#ffe3ac;font-size:12px}
+#gbCollectView .gbc-exchange-all{width:100%;background:linear-gradient(#8a506e,#57243c);border-color:#ffe4a4;padding:12px}
+#gbCollectView .gbc-exchange-return{display:block;margin:17px auto 8px}
+#gbCollectView .gbc-exchange-empty{padding:24px 10px;text-align:center;color:#e5c5e1}
