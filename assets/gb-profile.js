@@ -1187,26 +1187,13 @@ window.gbLeaderboardAddFrames=async function(rows){
   return {...r,equipped_frame:selected};
  });
 };
-// Fixed custom visual assets for six elite simulated challengers. These are game assets,
-// not Supabase Auth users, and do not affect verification, prizes or scores.
-const gbEliteBotAppearance=Object.freeze({
-  "🎀 vivian 🎀":{stem:"bot_13_vivian",left:28.788,top:23.445,d:42.424},
-  "𝚊𝚙𝚙𝚕𝚎":{stem:"bot_20_apple",left:26.475,top:27.034,d:41.786},
-  "Luna":{stem:"bot_28_luna",left:23.366,top:18.101,d:52.951},
-  "M A R C U S":{stem:"bot_05_marcus",left:28.23,top:31.499,d:38.756},
-  "Oliver James":{stem:"bot_09_oliver",left:23.365,top:30.782,d:47.368},
-  "Ryan":{stem:"bot_24_ryan",left:27.193,top:29.984,d:42.584},
-});
+// All simulated challengers use the same built-in avatar and free-frame renderer
+// as real players. Avatar keys and frame IDs are supplied by Supabase.
 window.gbLeaderboardAvatarHtml=function(r,avatarClass,escapeFn){
   const escape=typeof escapeFn==='function'?escapeFn:(v=>String(v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'));
-  const elite=r?.is_bot?gbEliteBotAppearance[r.display_name]:null;
-  if(elite){
-    const root='assets/bot-custom/'+elite.stem;
-    return '<span class="gbpf-rank-avatar gbpf-elite-avatar"><img class="gbpf-elite-combined" src="'+root+'_combined.webp" alt="" loading="lazy"></span>';
-  }
   const src=window.gbGhostAvatarUrl?.(r)||fallbackAvatar;
   const frame=gbpfFile(gbpfNormalize(r?.equipped_frame));
-  return '<span class="gbpf-rank-avatar"><img class="'+avatarClass+'" src="'+escape(src)+'" alt="" loading="lazy">'+(frame?'<img class="gbpf-rank-overlay" src="'+escape(frame)+'" alt="" loading="lazy">':'')+'</span>';
+  return '<span class="gbpf-rank-avatar"><img class="'+escape(avatarClass)+'" src="'+escape(src)+'" alt="" loading="lazy">'+(frame?'<img class="gbpf-rank-overlay" src="'+escape(frame)+'" alt="" loading="lazy">':'')+'</span>';
 };
 window.gbGhostAvatarUrl=function(record){
   if(record?.avatar_path){
