@@ -179,3 +179,14 @@
 #gbCollectView .gbc-exchange-all{width:100%;background:linear-gradient(#8a506e,#57243c);border-color:#ffe4a4;padding:12px}
 #gbCollectView .gbc-exchange-return{display:block;margin:17px auto 8px}
 #gbCollectView .gbc-exchange-empty{padding:24px 10px;text-align:center;color:#e5c5e1}
+
+/* Curio Exchange polish and bulk pack opening (Nov 2026). */
+#gbCollectView .gbc-notice-panel:has([data-decision-yes]){border-color:#ffd69b;box-shadow:0 0 12px #f3a0da,0 0 33px #c74dea88,inset 0 0 23px #f3a1fa25}
+#gbCollectView .gbc-notice-panel:has([data-decision-yes]) .gbc-notice-primary{background:linear-gradient(180deg,#a94f9a,#6d2877);border-color:#ffe4a4;box-shadow:0 0 16px #d56ac7b0}
+#gbCollectView .gbc-notice-panel:has([data-notice-close]) .gbc-notice-primary{border-color:#ffe5ae;box-shadow:0 0 14px #d668caae}
+#gbCollectView .gbc-pack-reveal{width:min(100%,460px);max-height:89dvh;overflow-y:auto;overscroll-behavior:contain}
+#gbCollectView .gbc-pack-reveal .gbc-reveal-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+#gbCollectView .gbc-reveal-summary{color:#fbe1ad;font-weight:800}
+#gbCollectView .gbc-reveal-warning{padding:9px;border:1px solid #e4ad80;border-radius:9px;background:#402335;color:#ffe2af;font-weight:700}
+#gbCollectView .gbc-reveal-card img{max-height:none;aspect-ratio:3/4.2;width:100%;object-fit:contain}
+#gbCollectView .gbc-open-max{margin:9px auto 0;display:block;padding:8px 13px;color:#ffe0af;border-color:#e6a9e0;box-shadow:0 0 9px #b757ac77}
