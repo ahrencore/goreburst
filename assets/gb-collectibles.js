@@ -156,6 +156,19 @@ document.getElementById('app').appendChild(screen);
 const SUPABASE_URL='https://harqhhpobaepfkfeitmw.supabase.co';
 const SUPABASE_KEY='sb_publishable_K9F36jgWZaMWywln6Wwaiw_4zJ7523C';
 const $=id=>document.getElementById(id);let page=-1;
+// Share the authenticated public Supabase client with Daily Missions.
+// This never exposes a service-role key. Rewards are written only via RPC.
+let gbDailyClientPromise;
+window.gbDailyMissionRpc=async(functionName,args)=>{
+ if(!gbDailyClientPromise)gbDailyClientPromise=import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm').then(({createClient})=>createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}));
+ const client=await gbDailyClientPromise;
+ const {data:authData,error:authError}=await client.auth.getUser();
+ if(authError||!authData?.user)throw Error('Sign in required');
+ const {data,error}=await client.rpc(functionName,args);
+ if(error)throw error;
+ return data;
+};
+
 // Read-only ownership integration. Only trusted server jobs may mutate inventory.
 let rewardClaims=new Set(), rewardStatusReady=false, rewardBusy=false, grandNextPosition=1, grandClaimedPosition=null, grandClaimedFrameId=null;
 let collectionRound=1, legacyResetPending=false, grandConfirmOpen=false;

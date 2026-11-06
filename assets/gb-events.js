@@ -20,16 +20,16 @@ const evClashKey=()=>Math.floor((Date.now()-EV_EPOCH)/172800000);
 function evRefresh(){const day=evDay(),week=evWeek(),clash=evClashKey();if(evData.dailyDay!==day){evData.dailyDay=day;evData.missions={};evData.claims=[]}if(evData.spinDay!==day){evData.spinDay=day;evData.spins=0}if(evData.weeklyKey!==week){evData.weeklyKey=week;evData.weeklyStage=1;evData.weeklyBest=0}if(evData.clashKey!==clash){evData.clashKey=clash;evData.clashPoints=0;evData.clashSudoku=0;evData.clashLines=0}evSave()}
 evRefresh();
 const evMissions=[
- ['Welcome to the Freakshow','attempts',2,'100 coins',{coins:100}],
- ['Heartbreaker','hearts',30,'100 coins',{coins:100}],
- ['Star Collector','matches',10,'1 Rocket',{RV:1}],
- ['Rocket Science','rockets',1,'1 Clownbomb',{CB:1}],
- ['Clowning Around','matches',15,'150 coins',{coins:150}],
+ ['Welcome to the Freakshow','attempts',2,'1 Carnival Pack',{pack_carnival:1}],
+ ['Heartbreaker','hearts',30,'1 Rocket',{RV:1}],
+ ['Star Collector','matches',10,'1 Clownbomb',{CB:1}],
+ ['Rocket Science','rockets',1,'1 Freakshow Pack',{pack_freakshow:1}],
+ ['Clowning Around','matches',15,'1 Carnival Pack',{pack_carnival:1}],
  ['Spin Me Around','pieces',25,'1 Ferris Wheel',{FW:1}],
- ['The Chain Reaction','swaps',10,'150 coins',{coins:150}],
- ['Ghostbusters','ghosts',2,'1 Circus Hammer',{hammer:1}],
+ ['The Chain Reaction','swaps',10,'1 Circus Hammer',{hammer:1}],
+ ['Ghostbusters','ghosts',2,'1 Carnival Pack',{pack_carnival:1}],
  ['Special Treatment','specials',1,'1 Art of Distraction',{cards:1}],
- ["Mr. Walker's Favorite",'attempts',5,'1 Surprise Music Box',{musicbox:1}]
+ ["Mr. Walker's Favorite",'attempts',5,'1 Nightmare Pack',{pack_nightmare:1}]
 ];
 function evMission(i){let [name,key,target,reward]=evMissions[i];if(i===7&&save.current<4){key='pieces';target=15;name='Freakshow Collector'}return {name,key,target,reward}}
 // Compact, plain-language instructions for the existing ten mission objectives.
@@ -59,9 +59,45 @@ function evUpdateRewardDots(){
  const button=document.getElementById('events');if(button){button.classList.toggle('ev-tab-has-reward',any);button.setAttribute('aria-label','Events'+(any?' — rewards ready':''));}
 }
 const evRewardIcon={coins:'assets/coin-skull-new.png',RV:'assets/rocket-h.png',CB:'assets/clownbomb.png',FW:'assets/ferris.png',hammer:'assets/booster-hammer.webp',cards:'assets/booster-cards.webp',musicbox:'assets/booster-musicbox.webp',watch:'assets/booster-watch.webp'};
-function evRewardArt(i){const reward=evMissions[i][4];return Object.entries(reward).map(([key,n])=>`<span class="ev-daily-reward" title="${key==='coins'?'Skull Coins':key==='RV'?'Rocket':key==='CB'?'Clownbomb':key==='FW'?'Ferris Wheel':key==='hammer'?'Circus Hammer':key==='cards'?'Art of Distraction':key==='musicbox'?'Surprise Music Box':key}"><img src="${evRewardIcon[key]||evRewardIcon.coins}" alt="" draggable="false"><b>×${n}</b></span>`).join('')}
+function evRewardArt(i){const reward=evMissions[i][4];return Object.entries(reward).map(([key,n])=>{
+ if(key.startsWith('pack_')){const type=key.slice(5);const names={carnival:'Green Carnival Pack',freakshow:'Purple Freakshow Pack',nightmare:'Red/Gold Nightmare Pack'};return `<span class="ev-daily-reward ev-daily-pack" title="${names[type]}"><span class="ev-pack-icon ev-pack-${type}" aria-label="${names[type]}"><span>★</span></span><b>×${n}</b></span>`;}
+ const titles={RV:'Rocket',CB:'Clownbomb',FW:'Ferris Wheel',hammer:'Circus Hammer',cards:'Art of Distraction',musicbox:'Surprise Music Box'};
+ return `<span class="ev-daily-reward" title="${titles[key]||key}"><img src="${evRewardIcon[key]||evRewardIcon.coins}" alt="" draggable="false"><b>×${n}</b></span>`;
+ }).join('')}
+
 function dailyRecord(key,num=1){evRefresh();evData.missions[key]=Math.max(0,(evData.missions[key]||0)+num);evSave();evUpdateRewardDots()}
 function evAward(reward){for(const [key,n] of Object.entries(reward)){if(key==='coins')save.coins=Math.max(0,save.coins+n);else if(['RV','CB','FW'].includes(key))save.preSpecials[key]=(save.preSpecials[key]||0)+n;else save.boosterInventory[key]=(save.boosterInventory[key]||0)+n}persist();}
+
+// Daily claims are committed to Supabase; local gameplay counters remain provisional.
+let evDailyCloudBusy=false, evDailyCloudReady=false, evDailyCloudClaimed=new Set(), evDailyCloudDay="";
+async function evDailyCloudStatus(){
+ try{
+  if(typeof window.gbDailyMissionRpc!=='function')throw Error('Collectibles cloud integration is not loaded');
+  const out=await window.gbDailyMissionRpc('gb_daily_mission_status',{});
+  evDailyCloudClaimed=new Set(Array.isArray(out?.claimed)?out.claimed.map(Number):[]);
+  evDailyCloudReady=true;
+  return true;
+ }catch(err){evDailyCloudReady=false;console.warn('[Daily Missions] Cloud status:',err?.message||err);return false;}
+}
+async function evDailyCloudClaim(i){
+ if(evDailyCloudBusy)return;
+ const q=evMission(i);
+ if(evDailyCloudClaimed.has(i)||!Number.isInteger(i)||(evData.missions[q.key]||0)<q.target)return;
+ if(!evDailyCloudReady){if(!await evDailyCloudStatus()){alert('Sign in to claim Daily Missions. Cloud rewards are currently unavailable.');return;}}
+ evDailyCloudBusy=true;
+ try{
+  const result=await window.gbDailyMissionRpc('gb_claim_daily_mission',{p_mission_id:i,p_reported_progress:Math.floor(evData.missions[q.key]||0),p_early_fallback:i===7&&q.key==='pieces'});
+  if(result?.already_claimed){evDailyCloudClaimed.add(i);evData.claims=[...new Set([...evData.claims,i])];evSave();evDaily();return;}
+  if(!result?.claimed)throw Error('The server did not confirm the reward');
+  evDailyCloudClaimed.add(i);evData.claims=[...new Set([...evData.claims,i])];
+  // Mirror server-granted boosters into the existing local game UI.
+  if(!Object.keys(evMissions[i][4]).some(k=>k.startsWith('pack_')))evAward(evMissions[i][4]);
+  evSave();evUpdateRewardDots();playSfx('victory');
+  try{await window.gbShopApi?.sync?.();}catch(e){console.warn('[Daily Missions] Inventory refresh pending',e);}
+  evDaily();
+ }catch(err){alert('Reward not claimed: '+(err?.message||'Please try again.'));}
+ finally{evDailyCloudBusy=false;}
+}
 function evBtn(text,fn,cls=''){const b=document.createElement('button');b.className='ev-btn '+cls;b.textContent=text;b.addEventListener('click',fn);return b}
 function evHeader(title,back){return `<div class="ev-head"><button class="ev-btn ev-btn-alt" data-ev-back>‹ BACK</button><strong>${title}</strong><span>✦</span></div>`}
 function evDisplay(html,back=evHome){evRoot.innerHTML=html;evRoot.hidden=false;evRoot.scrollTop=0;evRoot.querySelector('[data-ev-back]')?.addEventListener('click',back);}
@@ -70,12 +106,16 @@ function evHome(){evRefresh();let stats=`${evData.weeklyBest} stages cleared`;ev
 document.getElementById('events').onclick=()=>{ensureAudioGesture?.();evHome()};
 function evDaily(){
  evRefresh();
- const claimedCount=evData.claims.length;
- const sorted=evMissions.map((_,i)=>{const q=evMission(i),done=Math.min(q.target,evData.missions[q.key]||0),claimed=evData.claims.includes(i);return {i,q,done,claimed,ready:!claimed&&done>=q.target}}).sort((a,b)=>Number(b.ready)-Number(a.ready)||Number(a.claimed)-Number(b.claimed)||a.i-b.i);
- const items=sorted.map(({i,q,done,claimed,ready})=>`<div class="ev-daily-item ${claimed?'ev-daily-claimed':ready?'ev-daily-ready':'ev-daily-pending'}"><div class="ev-daily-content"><div class="ev-daily-info"><b>${q.name}</b><span class="ev-daily-objective">${evMissionDescription(i,q)}</span><small>${done}/${q.target}</small><div class="ev-meter"><span style="width:${done/q.target*100}%"></span></div></div><div class="ev-daily-art">${evRewardArt(i)}</div></div><button class="ev-daily-claim" type="button" data-claim="${i}" ${claimed||!ready?'disabled':''}>${claimed?'CLAIMED':ready?'CLAIM':'IN PROGRESS'}</button></div>`).join('');
+ if(evDailyCloudDay!==evDay()){evDailyCloudDay=evDay();evDailyCloudReady=false;evDailyCloudClaimed=new Set();}
+ if(!evDailyCloudReady){void evDailyCloudStatus().then(ok=>{if(ok&&evRoot.querySelector('.ev-daily-panel'))evDaily();});}
+ const effectiveClaims=new Set([...evData.claims,...evDailyCloudClaimed]);
+ const claimedCount=effectiveClaims.size;
+ const sorted=evMissions.map((_,i)=>{const q=evMission(i),done=Math.min(q.target,evData.missions[q.key]||0),claimed=effectiveClaims.has(i);return {i,q,done,claimed,ready:!claimed&&done>=q.target}}).sort((a,b)=>Number(b.ready)-Number(a.ready)||Number(a.claimed)-Number(b.claimed)||a.i-b.i);
+ const items=sorted.map(({i,q,done,claimed,ready})=>`<div class="ev-daily-item ${claimed?'ev-daily-claimed':ready?'ev-daily-ready':'ev-daily-pending'}"><div class="ev-daily-content"><div class="ev-daily-info"><b>${q.name}</b><span class="ev-daily-objective">${evMissionDescription(i,q)}</span><small>${done}/${q.target}</small><div class="ev-meter"><span style="width:${done/q.target*100}%"></span></div></div><div class="ev-daily-art">${evRewardArt(i)}</div></div><button class="ev-daily-claim" type="button" data-claim="${i}" ${claimed||!ready||!evDailyCloudReady?'disabled':''}>${claimed?'CLAIMED':!evDailyCloudReady?'CONNECTING':ready?'CLAIM':'IN PROGRESS'}</button></div>`).join('');
  evDisplay(`${evHeader('DAILY MISSIONS')}<section class="ev-daily-panel"><h2>TEN TICKETS TO TROUBLE</h2><p class="ev-daily-counter">${claimedCount} / 10 CLAIMED · RESETS DAILY</p><div class="ev-daily-list">${items}</div></section>`);
- evRoot.querySelectorAll('[data-claim]').forEach(b=>b.onclick=()=>{const i=+b.dataset.claim,q=evMission(i);if(evData.claims.includes(i)||(evData.missions[q.key]||0)<q.target)return;evData.claims.push(i);evAward(evMissions[i][4]);evSave();evUpdateRewardDots();playSfx('victory');evDaily()});evUpdateRewardDots();
+ evRoot.querySelectorAll('[data-claim]').forEach(b=>b.onclick=()=>{void evDailyCloudClaim(+b.dataset.claim);});evUpdateRewardDots();
 }
+
 const evWheelPrizes=[{label:'ROCKET',reward:{RV:1}},{label:'CLOWNBOMB',reward:{CB:1}},{label:'FERRIS WHEEL',reward:{FW:1}},{label:'HAMMER',reward:{hammer:1}},{label:'WATCH',reward:{watch:1}},{label:'500 COINS',reward:{coins:500}},{label:'300 COINS',reward:{coins:300}},{label:'100 COINS',reward:{coins:100}},{label:'MYSTERY BOOSTER',reward:null},{label:'LOSE 1 LIFE',negative:'life'},{label:'−100 COINS',negative:'coins'},{label:'LOSER!',negative:'loser'}];
 // Wheel of Misfortune spin only: W2 Enchanted Misfortune.
 // Separate from the Ferris Wheel special's `playSfx('wheel')` cue.
