@@ -1171,7 +1171,7 @@ async function gbpfPublicFrames(rows){
 }
 window.gbLeaderboardAddFrames=async function(rows){
  if(!Array.isArray(rows)||!rows.length)return rows||[];
- const candidates=await gbpfPublicFrames(rows);
+ const candidates=await gbpfPublicFrames(rows.filter(r=>!r.is_bot));
  const idOf=r=>String(r.user_id||r.player_id||r.profile_id||r.account_id||r.id||'');
  const findUnique=(key,val)=>{
   if(!val)return null;
@@ -1179,6 +1179,7 @@ window.gbLeaderboardAddFrames=async function(rows){
   return matches.length===1?matches[0]:null;
  };
  return rows.map(r=>{
+  if(r.is_bot)return {...r,equipped_frame:gbpfNormalize(r.equipped_frame)};
   const id=idOf(r);
   const matched=findUnique('id',id)||findUnique('username',String(r.username||'').replace(/^@/,''))||findUnique('avatar_path',r.avatar_path)||findUnique('display_name',r.display_name);
   let selected=gbpfNormalize(matched?.equipped_frame??r.equipped_frame);
@@ -1204,7 +1205,8 @@ window.gbGhostAvatarUrl=function(record){
 // Carnival Clash beta: browser-submitted scores are NOT server-verified; do not award prizes from them.
 window.gbClashLeaderboardFetch=async function(){
   if(!sb)return {error:'Supabase connection is starting. Try Refresh Rankings.'};
-  const {data,error}=await sb.rpc('carnival_clash_top10');
+  let {data,error}=await sb.rpc('gb_bot_clash_leaderboard');
+  if(error&&/could not find|does not exist|404|PGRST202/i.test(error.message||''))({data,error}=await sb.rpc('carnival_clash_top10'));
   return error?{error:'Carnival Clash database setup required: '+error.message}:{rows:data||[]};
 };
 window.gbClashSubmit=async function(game,points){
@@ -1229,7 +1231,7 @@ window.gbWeeklyVerifiedComplete=async function(session,stage){
  if(error)throw new Error(error.message);
  return {ok:true};
 };
-window.gbWeeklyTop10=async function(){if(!sb)return {rows:[],error:'Offline'};const {data,error}=await sb.rpc('weekly_nightmare_top10');return {rows:data||[],error:error?.message||null}};
+window.gbWeeklyTop10=async function(){if(!sb)return {rows:[],error:'Offline'};let {data,error}=await sb.rpc('gb_bot_weekly_leaderboard');if(error&&/could not find|does not exist|404|PGRST202/i.test(error.message||''))({data,error}=await sb.rpc('weekly_nightmare_top10'));return {rows:data||[],error:error?.message||null}};
 
 
 // Server-issued Creepy Sudoku sessions (independent of visual Events UI).

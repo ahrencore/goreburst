@@ -551,3 +551,6 @@
 .ev-root .ev-cards .ev-card .ev-promo-art {
   background: #170d25 !important;
 }
+
+/* Transparent label for simulated leaderboard challengers. */
+.gb-simulated-tag{display:inline-block;margin-inline-start:4px;padding:1px 4px;border:1px solid currentColor;border-radius:4px;font:600 9px/1.4 system-ui,sans-serif;opacity:.7;vertical-align:middle;letter-spacing:.04em;}
