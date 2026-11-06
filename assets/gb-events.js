@@ -150,7 +150,7 @@ async function evFetchGhostParade(){
     rows.innerHTML=frameRows.map(r=>{
       const rank=Number(r.rank_position)||0;
       const rankClass=rank===1?' is-top1':rank===2?' is-top2':rank===3?' is-top3':'';
-      return `<div class="ev-ghost-row${rankClass}"><div class="ev-ghost-rankwrap"><span class="ev-ghost-rank">#${rank}</span>${window.gbLeaderboardAvatarHtml?.(r,'ev-ghost-avatar',evGhostEscape)||'<img class="ev-ghost-avatar" src="assets/avatars/01_Mr_Walker.png" alt="">'}<span class="ev-ghost-name">${evGhostEscape(r.display_name||'Carnival Guest')}${r.is_bot?' <small class="gb-simulated-tag">BOT</small>':''}</span></div><strong class="ev-ghost-score">${Number(r.total_stars||0).toLocaleString()} ★</strong></div>`;
+      return `<div class="ev-ghost-row${rankClass}"><div class="ev-ghost-rankwrap"><span class="ev-ghost-rank">#${rank}</span>${window.gbLeaderboardAvatarHtml?.(r,'ev-ghost-avatar',evGhostEscape)||'<img class="ev-ghost-avatar" src="assets/avatars/01_Mr_Walker.png" alt="">'}<span class="ev-ghost-name">${evGhostEscape(r.display_name||'Carnival Guest')}</span></div><strong class="ev-ghost-score">${Number(r.total_stars||0).toLocaleString()} ★</strong></div>`;
     }).join('');
   }catch(e){if(rows.isConnected)rows.innerHTML=`<div class="ev-ghost-message">Could not load leaderboard: ${evGhostEscape(e?.message||'Network error')}</div>`}
 }
@@ -191,7 +191,7 @@ async function evFetchClash(){
     rows.innerHTML=frameRows.map(r=>{
       const rank=Number(r.rank_position)||0;
       const rankClass=rank===1?' is-top1':rank===2?' is-top2':rank===3?' is-top3':'';
-      return `<div class="ev-clash-row${rankClass}"><div class="ev-clash-rankwrap"><span class="ev-clash-rank">#${rank}</span>${window.gbLeaderboardAvatarHtml?.(r,'ev-clash-avatar',evGhostEscape)||'<img class="ev-clash-avatar" src="assets/avatars/01_Mr_Walker.png" alt="">'}<span class="ev-clash-name">${evGhostEscape(r.display_name||'Carnival Guest')}${r.is_bot?' <small class="gb-simulated-tag">BOT</small>':''}</span></div><strong class="ev-clash-score">${Number(r.points||0).toLocaleString()} pts</strong></div>`;
+      return `<div class="ev-clash-row${rankClass}"><div class="ev-clash-rankwrap"><span class="ev-clash-rank">#${rank}</span>${window.gbLeaderboardAvatarHtml?.(r,'ev-clash-avatar',evGhostEscape)||'<img class="ev-clash-avatar" src="assets/avatars/01_Mr_Walker.png" alt="">'}<span class="ev-clash-name">${evGhostEscape(r.display_name||'Carnival Guest')}</span></div><strong class="ev-clash-score">${Number(r.points||0).toLocaleString()} pts</strong></div>`;
     }).join('');
   }catch(error){if(status.isConnected)status.textContent='Could not load rankings: '+(error.message||'Network error')}
 }
@@ -243,7 +243,7 @@ async function evLoadWeeklyRankings(){const host=evRoot.querySelector('#evNightm
  if(typeof window.gbWeeklyTop10!=='function'){host.textContent='Rankings unavailable';return}
  try{const result=await window.gbWeeklyTop10();if(!host.isConnected)return;if(result.error){host.textContent='Rankings unavailable';return}
  const rows=await window.gbLeaderboardAddFrames?.((result.rows||[]).slice(0,15))||(result.rows||[]).slice(0,15);if(!host.isConnected)return;if(!rows.length){host.textContent='No scores yet';return}
- host.replaceChildren();for(const r of rows){const line=document.createElement('div');line.className='ev-nightmare-rank-row';const rank=document.createElement('b');rank.textContent='#'+r.rank_position;const avatarHolder=document.createElement('span');avatarHolder.innerHTML=window.gbLeaderboardAvatarHtml?.(r,'ev-nightmare-avatar',evGhostEscape)||'<span class="gbpf-rank-avatar"><img class="ev-nightmare-avatar" src="assets/avatars/01_Mr_Walker.png" alt=""></span>';const avatar=avatarHolder.firstElementChild;const name=document.createElement('span');name.textContent=r.display_name||'Carnival Guest';if(r.is_bot){const tag=document.createElement('small');tag.className='gb-simulated-tag';tag.textContent='BOT';name.append(' ',tag)}const stage=document.createElement('strong');stage.textContent=Number(r.stages_cleared||0)+' stages';line.append(rank,avatar,name,stage);host.append(line)}
+ host.replaceChildren();for(const r of rows){const line=document.createElement('div');line.className='ev-nightmare-rank-row';const rank=document.createElement('b');rank.textContent='#'+r.rank_position;const avatarHolder=document.createElement('span');avatarHolder.innerHTML=window.gbLeaderboardAvatarHtml?.(r,'ev-nightmare-avatar',evGhostEscape)||'<span class="gbpf-rank-avatar"><img class="ev-nightmare-avatar" src="assets/avatars/01_Mr_Walker.png" alt=""></span>';const avatar=avatarHolder.firstElementChild;const name=document.createElement('span');name.textContent=r.display_name||'Carnival Guest';const stage=document.createElement('strong');stage.textContent=Number(r.stages_cleared||0)+' stages';line.append(rank,avatar,name,stage);host.append(line)}
  }catch(e){if(host.isConnected)host.textContent='Rankings unavailable';}}
 function evWeeklyMask(stage){
  // Repeatable family of distinct, connected board silhouettes, minimum six columns/rows of play.

@@ -1202,8 +1202,7 @@ window.gbLeaderboardAvatarHtml=function(r,avatarClass,escapeFn){
   const elite=r?.is_bot?gbEliteBotAppearance[r.display_name]:null;
   if(elite){
     const root='assets/bot-custom/'+elite.stem;
-    const style='--gb-elite-left:'+elite.left+'%;--gb-elite-top:'+elite.top+'%;--gb-elite-d:'+elite.d+'%';
-    return '<span class="gbpf-rank-avatar gbpf-elite-avatar" style="'+style+'"><img class="'+avatarClass+' gbpf-elite-photo" src="'+root+'_pfp.webp" alt="" loading="lazy"><img class="gbpf-rank-overlay" src="'+root+'_frame.webp" alt="" loading="lazy"></span>';
+    return '<span class="gbpf-rank-avatar gbpf-elite-avatar"><img class="gbpf-elite-combined" src="'+root+'_combined.webp" alt="" loading="lazy"></span>';
   }
   const src=window.gbGhostAvatarUrl?.(r)||fallbackAvatar;
   const frame=gbpfFile(gbpfNormalize(r?.equipped_frame));
