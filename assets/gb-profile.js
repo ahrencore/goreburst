@@ -393,6 +393,32 @@ let gbShopFrameOwned=new Set();
 let gbPublishedFrameOwned=new Set();const gbPublishedFrameUrls=new Map();
 
 
+// Published artwork is public, ownership is PRIVATE. Never derive other players'
+// frame URLs from the currently signed-in player's entitlements.
+const gbPublicFrameFits=new Map();
+let gbPublicCatalogTask=null;
+async function gbpfEnsurePublicCatalog(){
+ if(!sb)return;
+ if(gbPublicCatalogTask)return gbPublicCatalogTask;
+ gbPublicCatalogTask=(async()=>{
+  const {data,error}=await sb.rpc('gb_public_published_frame_catalog');
+  if(error)throw error;
+  for(const row of data||[]){
+   const id=String(row.frame_id||'');
+   if(!/^custom_[a-f0-9]{12}$/.test(id)||!row.storage_path)continue;
+   const url=sb.storage.from('gb-published-frames').getPublicUrl(row.storage_path).data.publicUrl;
+   gbPublishedFrameUrls.set(id,url);
+   if(Number(row.opening_size)>0){const fit={x:Number(row.opening_x),y:Number(row.opening_y),size:Number(row.opening_size)};
+    gbPublicFrameFits.set(id,fit);gbpfAutoHoleCache.set(id,fit);}
+  }
+ })().catch(e=>{console.warn('Published frame catalog unavailable:',e.message);gbPublicCatalogTask=null;});
+ return gbPublicCatalogTask;
+}
+function gbpfFrameFit(id){
+ const t=gbpfShopHole[id];if(t)return {size:t[0],x:t[1],y:t[2]};
+ return gbPublicFrameFits.get(id)||gbpfAutoHoleCache.get(id)||{size:70,x:50,y:50};
+}
+function gbpfFrameVars(id){const f=gbpfFrameFit(id);return `--gbpf-view-size:${f.size}%;--gbpf-view-x:${f.x}%;--gbpf-view-y:${f.y}%;`;}
 const gbpfFile=id=>gbPublishedFrameUrls.has(String(id))?gbPublishedFrameUrls.get(String(id)):gbShopFrameIds.includes(String(id))?'assets/shop-frames/'+String(id).slice(6)+'.webp':id==='hungry_gate'?GBPF_PATH+'hungry_gate.png':/^album_completion_0[2-9]$/.test(String(id))?'assets/collectibles/completion-frames/completion_'+String(id).slice(-2)+'.webp':/^[1-5]$/.test(String(id))?GBPF_PATH+'frame_0'+id+'.png':/^gift_(0[1-9]|1[0-9])$/.test(String(id))?GBPF_PATH+id+'.png':'';
 const gbpfNormalize=id=>/^custom_[a-f0-9]{12}$/.test(String(id))?String(id):gbShopFrameIds.includes(String(id))?String(id):id==='hungry_gate'?'hungry_gate':/^album_completion_0[2-9]$/.test(String(id))?String(id):/^[1-5]$/.test(String(id))?String(id):/^gift_(0[1-9]|1[0-9])$/.test(String(id))?String(id):'none';
 let gbAlbumFrameOwned=new Set();
@@ -421,10 +447,10 @@ window.gbAlbumFrameRefresh=async()=>{
 };
 let gbGiftOwned=new Set();
 window.gbPublishedFrameRefresh=async()=>{
- if(!sb||!user||user.is_anonymous){gbPublishedFrameOwned.clear();gbPublishedFrameUrls.clear();gbpfPaint();return;}
+ if(!sb||!user||user.is_anonymous){gbPublishedFrameOwned.clear();gbpfPaint();return;}
  const {data,error}=await sb.rpc('gb_owned_published_frames');
  if(error){console.warn('Published frame lookup:',error.message);return;}
- gbPublishedFrameOwned=new Set();gbPublishedFrameUrls.clear();
+ gbPublishedFrameOwned=new Set();
  for(const row of data||[]){gbPublishedFrameOwned.add(row.frame_id);gbPublishedFrameUrls.set(row.frame_id,sb.storage.from('gb-published-frames').getPublicUrl(row.storage_path).data.publicUrl);}
  gbpfPaint();
 };
@@ -506,6 +532,7 @@ function gbpfDecorate(el,id){
  if(!wrap){wrap=document.createElement('span');wrap.className='gbpf-hero-avatar-wrap';el.parentNode.insertBefore(wrap,el);wrap.appendChild(el)}
  wrap.querySelectorAll('.gbpf-overlay').forEach(x=>x.remove());
  gbpfFit(wrap,id);
+ const viewFit=gbpfFrameFit(id); gbpfApplyAutoHole(wrap,viewFit);
  el.classList.add('gbpf-avatar-img');
  const src=gbpfFile(id);
  if(!src)return;
@@ -518,7 +545,7 @@ function gbpfDecorate(el,id){
 
 let gbpfHudResizeHook=false;
 let gbpfHudFitVersion=0;
-function gbpfHudPositionPhoto(frame,_fit){
+function gbpfHudPositionPhoto(frame,fit){
  // Match the shop's proven 70%-photo / 100%-overlay geometry.
  // Measure the actual *contained* artwork, not the larger HUD canvas.
  const avatar=document.getElementById('gbMenuAvatar');
@@ -529,8 +556,9 @@ function gbpfHudPositionPhoto(frame,_fit){
  const scale=Math.min(r.width/frame.naturalWidth,r.height/frame.naturalHeight);
  const w=frame.naturalWidth*scale,h=frame.naturalHeight*scale;
  const x=r.left+(r.width-w)/2-parent.left,y=r.top+(r.height-h)/2-parent.top;
- const size=Math.min(w,h)*.70;
- const left=x+(w-size)/2,top=y+(h-size)/2;
+ const hole=fit||{x:50,y:50,size:70};
+ const size=Math.min(w,h)*Math.max(0.1,Math.min(0.85,Number(hole.size)/100));
+ const left=x+w*(Number(hole.x)/100)-size/2,top=y+h*(Number(hole.y)/100)-size/2;
  const rules={left:left+'px',top:top+'px',width:size+'px',height:size+'px',
    'border-radius':'50%','clip-path':'circle(49% at 50% 50%)',
    '-webkit-clip-path':'circle(49% at 50% 50%)','object-fit':'cover',
@@ -565,7 +593,7 @@ function gbpfHudBindFrame(frame,id){
    const f=document.getElementById('gbpf-hud-frame');if(f?.naturalWidth){let fit;try{fit=JSON.parse(f.dataset.gbpfFit||'null')}catch{}if(fit)gbpfHudPositionPhoto(f,fit);}
  },{passive:true});}
 }
-function gbpfPaint(){const selected=gbpfCurrent();gbpfFit(prFramePanel.querySelector('.gbpf-preview'),selected);const hero=$p('gbpr-current-avatar');gbpfDecorate(hero,selected);const avatar=$p('gbpf-preview-avatar');if(avatar)avatar.src=avatarUrl();const border=$p('gbpf-preview-border');if(border){border.src=gbpfFile(selected)||'';border.hidden=!gbpfFile(selected)};
+function gbpfPaint(){const selected=gbpfCurrent();gbpfFit(prFramePanel.querySelector('.gbpf-preview'),selected);gbpfApplyAutoHole(prFramePanel.querySelector('.gbpf-preview'),gbpfFrameFit(selected));const hero=$p('gbpr-current-avatar');gbpfDecorate(hero,selected);const avatar=$p('gbpf-preview-avatar');if(avatar)avatar.src=avatarUrl();const border=$p('gbpf-preview-border');if(border){border.src=gbpfFile(selected)||'';border.hidden=!gbpfFile(selected)};
  const hud=document.getElementById('gbMenuAvatar');if(hud){const old=document.getElementById('gbpf-hud-frame');if(old)old.remove();if(gbpfFile(selected)){const overlay=document.createElement('img');overlay.id='gbpf-hud-frame';overlay.src=gbpfFile(selected);overlay.alt='';overlay.setAttribute('aria-hidden','true');hud.insertAdjacentElement('afterend',overlay);gbpfHudBindFrame(overlay,selected)}else{gbpfHudFitVersion++;gbpfHudResetPhoto()}}
  const choices=$p('gbpf-options');if(choices){choices.innerHTML=['none','1','2','3','4','5',...Array.from(gbAlbumFrameOwned),...Array.from({length:19},(_,i)=>'gift_'+String(i+1).padStart(2,'0')).filter(id=>gbGiftOwned.has(id)),...gbShopFrameIds.filter(id=>gbShopFrameOwned.has(id)),...Array.from(gbPublishedFrameOwned)].map(id=>{const locked=((id==='hungry_gate'||id.startsWith('album_completion_'))&&!gbAlbumFrameOwned.has(id))||(id.startsWith('gift_')&&!gbGiftOwned.has(id))||(id.startsWith('frame_')&&!gbShopFrameOwned.has(id));const chosen=id===selected;const inner=gbpfFile(id)?'<img src="'+gbpfFile(id)+'" alt="">':'<span class="gbpf-empty">○</span>';return '<button type="button" data-gbpf-frame="'+id+'" class="gbpf-choice '+(chosen?'selected ':'')+(locked?'locked':'')+'" aria-label="'+(locked?'Locked frame':id==='none'?'No frame':'Profile frame '+id)+'" aria-pressed="'+chosen+'">'+inner+(locked?'<span class="gbpf-lock">🔒</span>':'')+(chosen?'<span class="gbpf-tick">✓</span>':'')+'</button>'}).join('')}
 }
@@ -586,7 +614,7 @@ function setMessage(id,txt,success=false){const el=$p(id);el.textContent=txt;el.
 function avatarUrl(){if(avatarPreview!==null)return avatarFile(avatarPreview);if(!user){const ix=Number(localStorage.getItem('gb-guest-avatar'));if(Number.isInteger(ix)&&ix>=0&&ix<15)return avatarFile(ix)}if(profile?.avatar_path){return SUPABASE_URL+'/storage/v1/object/public/avatars/'+profile.avatar_path.split('/').map(encodeURIComponent).join('/')}return avatarFile(avatarIndex(profile?.avatar_key))}
 function syncMenuAvatar(){const el=document.getElementById('gbMenuAvatar');if(el){el.src=avatarUrl();el.onerror=()=>{el.onerror=null;el.src=fallbackAvatar}}}
 function refresh(){syncMenuAvatar();queueMicrotask(gbpfPaint);const signed=gbprRegistered();$p('gbpr-auth-panel').classList.toggle('gbpr-hide',signed);$p('gbpr-account-panel').classList.toggle('gbpr-hide',!signed);$p('gbpr-signout').classList.toggle('gbpr-hide',!signed);$p('gbpr-display').textContent=profile?.display_name||'Carnival Guest';$p('gbpr-handle').textContent=profile?.username?'@'+profile.username:(signed?'Choose a unique username':'Guest player');$p('gbpr-level').textContent='LEVEL '+localLevel()+' · Cloud progress';$p('gbpr-current-avatar').src=avatarUrl();$p('gbpr-new-name').value=profile?.display_name||'Carnival Guest';$p('gbpr-new-handle').value=profile?.username||'';$p('gbpr-avatar-help').textContent=signed?'Tap any character to save it. You can also upload your own photo.':'Sign in to save a PFP to your account. Tap to preview characters.';document.querySelectorAll('.gbpr-avatar').forEach((b,i)=>b.classList.toggle('chosen',(avatarPreview!==null?avatarPreview:avatarIndex(profile?.avatar_key))===i));}
-function view(open){layer.classList.toggle('open',open);if(open){avatarPreview=null;refresh();prUpdateHub();void gbprRefreshMailDot();prNavigate('hub');void gbprRefreshRequestDot();$p('gbpr-close').focus()}}
+function view(open){layer.classList.toggle('open',open);if(open){avatarPreview=null;void gbpfEnsurePublicCatalog();refresh();prUpdateHub();void gbprRefreshMailDot();prNavigate('hub');void gbprRefreshRequestDot();$p('gbpr-close').focus()}}
 $p('gbpr-close').onclick=()=>view(false);
 document.getElementById('profile').addEventListener('click',()=>view(true));
 layer.addEventListener('pointerdown',e=>e.stopPropagation());
@@ -761,7 +789,7 @@ $p('gb-admin-refresh').onclick=()=>gbAdminRefresh();
 // Their eligibility is checked in Supabase using recipient creation time.
 async function gbLoadGlobalAnnouncements(){return gbprLoadMail();}
 
-async function fetchProfile(){if(!sb||!user)return;const {data,error}=await sb.from('profiles').select('id,username,display_name,avatar_key,avatar_path,equipped_frame').eq('id',user.id).maybeSingle();if(error){setMessage('gbpr-edit-status',error.message);return}profile=data||null;refresh();void gbAdminCheck();void window.gbGiftOwnershipRefresh?.();void window.gbPublishedFrameRefresh?.();void window.gbAlbumFrameRefresh?.();void window.gbShopApi?.sync().catch(()=>{});void gbprRefreshRequestDot();if(gbprRegistered())window.gbCloudReady?.()}
+async function fetchProfile(){if(!sb||!user)return;const {data,error}=await sb.from('profiles').select('id,username,display_name,avatar_key,avatar_path,equipped_frame').eq('id',user.id).maybeSingle();if(error){setMessage('gbpr-edit-status',error.message);return}profile=data||null;refresh();void gbAdminCheck();void window.gbGiftOwnershipRefresh?.();void window.gbPublishedFrameRefresh?.();void gbpfEnsurePublicCatalog().then(()=>gbpfPaint());void window.gbAlbumFrameRefresh?.();void window.gbShopApi?.sync().catch(()=>{});void gbprRefreshRequestDot();if(gbprRegistered())window.gbCloudReady?.()}
 for(const el of document.querySelectorAll('.gbpr-avatar'))el.onclick=async()=>{const i=Number(el.dataset.index);avatarPreview=i;refresh();if(!gbprRegistered()||!sb){try{localStorage.setItem('gb-guest-avatar',String(i))}catch(e){};return;}setMessage('gbpr-upload-status','Saving avatar…');const {error}=await sb.from('profiles').update({avatar_key:avatarKey(i),avatar_path:null}).eq('id',user.id);if(error){setMessage('gbpr-upload-status',error.message);return}profile={...profile,avatar_key:avatarKey(i),avatar_path:null};avatarPreview=null;setMessage('gbpr-upload-status','Avatar saved!',true);refresh()};
 function setAuthMode(isSignup){signup=isSignup;document.querySelectorAll('.gbpr-signup-field').forEach(el=>el.classList.toggle('gbpr-hide',!signup));$p('gbpr-signup-name').required=signup;$p('gbpr-signup-username').required=signup;$p('gbpr-auth-submit').textContent=signup?'CREATE ACCOUNT':'SIGN IN';$p('gbpr-login-tab').classList.toggle('secondary',signup);$p('gbpr-signup-tab').classList.toggle('secondary',!signup);$p('gbpr-password').autocomplete=signup?'new-password':'current-password';setMessage('gbpr-auth-status','')}
 $p('gbpr-login-tab').onclick=()=>setAuthMode(false);$p('gbpr-signup-tab').onclick=()=>setAuthMode(true);
@@ -1018,10 +1046,10 @@ async function gbprOpenPublicProfile(targetId){
  const [matchedFrame]=await gbpfPublicFrames([{user_id:targetId}]);
  if(matchedFrame)r.equipped_frame=matchedFrame.equipped_frame;
  if(prCurrent!=='public')return;
- host.innerHTML=`<span class="gbpf-public-wrap"><img class="gbpr-public-avatar" src="${gbprSocialAvatar(r)}" alt="Player avatar">${gbpfFile(gbpfNormalize(r.equipped_frame))?'<img class="gbpf-overlay" src="'+gbpfFile(gbpfNormalize(r.equipped_frame))+'" alt="">':''}</span><h3>${safe(r.display_name||'Carnival Guest')}</h3><p class="gbpr-public-handle">@${safe(r.username||'unknown')}</p><div class="gbpr-public-stats"><div><small>LEVEL</small><strong>${Math.max(1,Math.min(100000,Number(r.player_level)||1))}</strong></div><div><small>STARS</small><strong>${Math.max(0,Math.min(300000,Number(r.total_stars)||0))} ★</strong></div></div>`;
+ host.innerHTML=`<span class="gbpf-public-wrap" style="${gbpfFrameVars(gbpfNormalize(r.equipped_frame))}"><img class="gbpr-public-avatar" src="${gbprSocialAvatar(r)}" alt="Player avatar">${gbpfFile(gbpfNormalize(r.equipped_frame))?'<img class="gbpf-overlay" src="'+gbpfFile(gbpfNormalize(r.equipped_frame))+'" alt="">':''}</span><h3>${safe(r.display_name||'Carnival Guest')}</h3><p class="gbpr-public-handle">@${safe(r.username||'unknown')}</p><div class="gbpr-public-stats"><div><small>LEVEL</small><strong>${Math.max(1,Math.min(100000,Number(r.player_level)||1))}</strong></div><div><small>STARS</small><strong>${Math.max(0,Math.min(300000,Number(r.total_stars)||0))} ★</strong></div></div>`;
 }
 prPublicScreen.querySelector('#gbpr-public-back').onclick=()=>prNavigate('friends');
-const gbprFriendCard=(r,actions)=>`<div class="gbpr-social-card"><span class="gbpf-social-avatar"><img src="${gbprSocialAvatar(r)}" alt="">${gbpfFile(gbpfNormalize(r.equipped_frame))?`<img class="gbpf-social-frame" src="${gbpfFile(gbpfNormalize(r.equipped_frame))}" alt="">`:``}</span><span><b>${safe(r.display_name||'Carnival Guest')}</b><small>@${safe(r.username||'unknown')}</small></span><div class="gbpr-social-card-actions">${actions}</div></div>`;
+const gbprFriendCard=(r,actions)=>`<div class="gbpr-social-card"><span class="gbpf-social-avatar" style="${gbpfFrameVars(gbpfNormalize(r.equipped_frame))}"><img src="${gbprSocialAvatar(r)}" alt="">${gbpfFile(gbpfNormalize(r.equipped_frame))?`<img class="gbpf-social-frame" src="${gbpfFile(gbpfNormalize(r.equipped_frame))}" alt="">`:``}</span><span><b>${safe(r.display_name||'Carnival Guest')}</b><small>@${safe(r.username||'unknown')}</small></span><div class="gbpr-social-card-actions">${actions}</div></div>`;
 // Welcome gift: one-time, per-account local inventory application.
 // The SQL RPC owns the claim; this receipt prevents replay on the same game save.
 window.gbWelcomeApplyGift=function(accountId,mailId,grant,claimedAt){
@@ -1761,6 +1789,7 @@ window.gbGhostParadeFetch=async function(){
 // then unique avatar storage paths; nonunique display names are never guessed.
 async function gbpfPublicFrames(rows){
  if(!sb||!Array.isArray(rows)||!rows.length)return [];
+ await gbpfEnsurePublicCatalog();
  const idOf=r=>String(r.user_id||r.player_id||r.profile_id||r.account_id||r.id||'');
  const valid=s=>/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(s);
  const uniq=arr=>[...new Set(arr.filter(Boolean))];
@@ -1797,7 +1826,7 @@ window.gbLeaderboardAvatarHtml=function(r,avatarClass,escapeFn){
   const escape=typeof escapeFn==='function'?escapeFn:(v=>String(v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'));
   const src=window.gbGhostAvatarUrl?.(r)||fallbackAvatar;
   const frame=gbpfFile(gbpfNormalize(r?.equipped_frame));
-  return '<span class="gbpf-rank-avatar"><img class="'+avatarClass+'" src="'+escape(src)+'" alt="" loading="lazy">'+(frame?'<img class="gbpf-rank-overlay" src="'+escape(frame)+'" alt="" loading="lazy">':'')+'</span>';
+  return '<span class="gbpf-rank-avatar" style="'+gbpfFrameVars(gbpfNormalize(r?.equipped_frame))+'"><img class="'+avatarClass+'" src="'+escape(src)+'" alt="" loading="lazy">'+(frame?'<img class="gbpf-rank-overlay" src="'+escape(frame)+'" alt="" loading="lazy">':'')+'</span>';
 };
 window.gbGhostAvatarUrl=function(record){
   if(record?.avatar_path){

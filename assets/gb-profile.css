@@ -537,3 +537,45 @@ img.gbpf-rank-overlay {
 #gb-profile-layer .gb-admin-section[hidden],
 #gb-profile-layer .gb-admin-home[hidden],
 #gb-profile-layer .gb-admin-subnav[hidden]{display:none!important}
+
+/* Unified frame geometry, based on the actual Carnival Shop's fit array.
+   All percentages are relative to the same square artwork canvas.
+   A transparent artwork opening is not necessarily 70% or centered. */
+#gb-profile-layer .gbpf-hero-avatar-wrap,
+#gb-profile-layer .gbpf-preview,
+#gb-profile-layer .gbpf-public-wrap,
+#gb-profile-layer .gbpf-social-avatar,
+.gbpf-rank-avatar {position:relative;isolation:isolate;}
+#gb-profile-layer .gbpr-hero .gbpf-hero-avatar-wrap > img.gbpf-avatar-img,
+#gb-profile-layer .gbpr-hub-identity .gbpr-hero .gbpf-hero-avatar-wrap > img.gbpf-avatar-img,
+#gb-profile-layer .gb-admin-frame-preview.gbpr-hero .gbpf-hero-avatar-wrap > img.gbpf-avatar-img,
+#gb-profile-layer .gbpf-hero-avatar-wrap.gbpf-auto-fit > img.gbpf-avatar-img,
+#gb-profile-layer .gbpf-preview > img#gbpf-preview-avatar,
+#gb-profile-layer .gbpf-public-wrap > img.gbpr-public-avatar,
+#gb-profile-layer .gbpf-social-avatar > img:first-child,
+.gbpf-rank-avatar > img:first-child {
+  position:absolute!important;
+  left:var(--gbpf-view-x,50%)!important;
+  top:var(--gbpf-view-y,50%)!important;
+  width:var(--gbpf-view-size,70%)!important;
+  height:var(--gbpf-view-size,70%)!important;
+  right:auto!important;bottom:auto!important;
+  transform:translate(-50%,-50%)!important;
+  object-fit:cover!important;border-radius:50%!important;
+  clip-path:circle(49% at 50% 50%)!important;
+  -webkit-clip-path:circle(49% at 50% 50%)!important;
+  z-index:1!important;
+}
+#gb-profile-layer .gbpf-hero-avatar-wrap.gbpf-auto-fit,
+#gb-profile-layer .gbpf-preview.gbpf-auto-fit {
+ --gbpf-view-x:var(--gbpf-auto-x,50%);
+ --gbpf-view-y:var(--gbpf-auto-y,50%);
+ --gbpf-view-size:var(--gbpf-auto-size,70%);
+}
+#gb-profile-layer .gbpf-public-wrap > img.gbpf-overlay,
+#gb-profile-layer .gbpf-social-avatar > img.gbpf-social-frame,
+.gbpf-rank-avatar > img.gbpf-rank-overlay {
+ position:absolute!important;left:0!important;top:0!important;
+ width:100%!important;height:100%!important;object-fit:contain!important;
+ z-index:2!important;pointer-events:none!important;
+}
