@@ -790,14 +790,25 @@ let gbCloudDisplayToken=0;
 async function gbRefreshMenuCloudBalance(){
  const token=++gbCloudDisplayToken;
  const el=$('money');if(!el)return;
- if(typeof window.gbWalletGetCloudBalance!=='function'){el.title='Local coins; cloud wallet loading';return;}
+ const cached=window.gbWalletCache?.get?.();
+ if(cached!==null && cached!==undefined){el.textContent=String(cached);el.title='Last verified Skull Coins balance (refreshing)';}
+ if(typeof window.gbWalletGetCloudBalance!=='function'){if(cached===null||cached===undefined)el.title='Local coins; cloud wallet loading';return;}
  try{
   const balance=await window.gbWalletGetCloudBalance();
   if(token!==gbCloudDisplayToken||!document.getElementById('menu')?.classList.contains('active'))return;
-  el.textContent=String(balance);el.title='Supabase Skull Coins (cloud balance)';
+  el.textContent=String(balance);el.title='Verified Skull Coins balance';
  }catch(e){if(token===gbCloudDisplayToken)el.title='Local coin display: '+(e?.message||'cloud unavailable');}
 }
-window.addEventListener('gb-wallet-balance-changed',()=>{void gbRefreshMenuCloudBalance()});
+window.addEventListener('gb-wallet-cache-updated',e=>{
+ const menu=document.getElementById('menu');if(menu?.classList.contains('active')){
+   const el=document.getElementById('money');if(el&&Number.isSafeInteger(e.detail?.balance)){
+     el.textContent=String(e.detail.balance);el.title='Verified Skull Coins balance';
+   }
+ }
+});
+window.addEventListener('gb-wallet-balance-changed',()=>{
+ if(document.getElementById('menu')?.classList.contains('active'))void gbRefreshMenuCloudBalance();
+});
 function setlevel(n){if(n>save.current){alert('Complete Level '+save.current+' to unlock Level '+n+'.');return}chosen=n;conf=levelConfig(n);$('setupTitle').textContent='LEVEL '+n; $('setupTitle').className='digits-'+Math.min(String(n).length,4);$('setupDifficulty').textContent=n===4?'HAUNTED GHOSTS':conf.difficulty||'NORMAL'; $('setupgoals').innerHTML=Object.entries(conf.goals).map(([t,num])=>`<div class="goal"><img src="${goalIcon(t)}">× ${num}</div>`).join('');grantPreSpecials();selectedPre.clear();$('setuptricks').innerHTML=['RV','CB','FW'].map(t=>{const locked=n<5,qty=save.preSpecials[t]||0,label={RV:'ROCKET',CB:'CLOWNBOMB',FW:'FERRIS'}[t];return `<button type="button" class="trick pre-select ${locked||qty===0?'pre-locked':''}" aria-label="${label}: ${locked?'unlocks at level 5':qty+' available'}" data-pre="${t}" ${locked||qty===0?'disabled':''} aria-pressed="false"><img src="${asset(t)}" alt=""><span aria-hidden="true">${locked?'🔒':'×'+qty}</span></button>`}).join('');document.querySelectorAll('[data-pre]').forEach(button=>button.onclick=()=>{const t=button.dataset.pre;if(selectedPre.has(t))selectedPre.delete(t);else selectedPre.add(t);document.querySelectorAll('[data-pre]').forEach(b=>{const active=selectedPre.has(b.dataset.pre);b.classList.toggle('pre-selected',active);b.setAttribute('aria-pressed',String(active))})});show('setup')}
 $('livesaction').onclick=()=>{lifeText();const seconds=Math.ceil(Math.max(0,LIFE_MS-(Date.now()-save.lifeTick))/1000);alert(save.lives===5?'Lives full (5/5).':'Lives: '+save.lives+'/5. Next life in '+Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0')+'. One life regenerates every 5 minutes.');};$('openplay').onclick=()=>setlevel(save.current);$('menuplay').onclick=menu;$('setupclose').onclick=menu;$('start').onclick=()=>start(chosen);$('ticketsopen').onclick=()=>{page=0;renderTickets();show('tickets')};$('ticketback').onclick=menu; $('prev').onclick=()=>{page=Math.max(0,page-1);renderTickets()};$('next').onclick=()=>{page=Math.min(Math.max(0,Math.ceil(save.current/12)-1),page+1);renderTickets()};
 function renderTickets(){ $('ticketgrid').innerHTML=Array.from({length:12},(_,i)=>{const n=i+1+page*12,locked=n>save.current;return `<button class="ticket ${locked?'locked':''}" data-level="${n}" ${locked?'disabled':''}>${n}<small>${locked?'🔒':('★'.repeat(save.best[n]||0)+'☆'.repeat(3-(save.best[n]||0)))}</small></button>`}).join('');$('pagenum').textContent=`${page+1} / ${Math.max(1,Math.ceil(save.current/12))}`;document.querySelectorAll('.ticket:not(.locked)').forEach(b=>b.onclick=()=>setlevel(Number(b.dataset.level)));}
@@ -1230,7 +1241,7 @@ function finish(win){if(eventRun){weeklyFinish(win);return}if(mode==='ended'||mo
        save.coins=receipt.balance_after;persist();
        window.dispatchEvent(new Event('gb-wallet-balance-changed'));
        if(rewardBox.isConnected){
-         rewardBox.innerHTML='<img class="reward-coin" src="assets/coin-skull-new.png" alt="Skull coin"><strong>+'+receipt.credited+'</strong><span>CLOUD COINS</span>';
+         rewardBox.innerHTML='<img class="reward-coin" src="assets/coin-skull-new.png" alt="Skull coin"><strong>+'+receipt.credited+'</strong><span>SKULL COINS</span>';
          rewardNote.textContent=receipt.credited?'Reward saved to Supabase':'Reward already claimed or not eligible';
        }
      }catch(e){
@@ -1335,7 +1346,7 @@ document.getElementById('gamepause').onclick=openGbSettings;
 document.getElementById('gbSettingsClose').onclick=closeGbSettings;
 document.getElementById('gbSettings').addEventListener('click',e=>{if(e.target.id==='gbSettings')closeGbSettings()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeGbSettings()});
-</script><link rel="stylesheet" href="assets/gb-giftcodes.css"><script defer src="assets/gb-giftcodes.js"></script><script src="assets/gb-events.js?v=sudoku-square-20261103"></script><script type="module" src="assets/gb-profile.js?v=shop-receipt-reconcile-20261103b"></script><script defer src="assets/gb-collectibles.js"></script><script defer src="assets/gb-shop.js?v=shop-receipt-reconcile-20261103b"></script><style id="gb-events-badge-final-position">
+</script><link rel="stylesheet" href="assets/gb-giftcodes.css"><script defer src="assets/gb-giftcodes.js"></script><script src="assets/gb-events.js?v=gb-wallet-speed-20261107"></script><script type="module" src="assets/gb-profile.js?v=gb-wallet-speed-20261107"></script><script defer src="assets/gb-collectibles.js?v=gb-wallet-speed-20261107"></script><script defer src="assets/gb-shop.js?v=gb-wallet-speed-20261107"></script><style id="gb-events-badge-final-position">
 /* Fixed badge: a child of the actual EVENTS tap area, not a pseudo-element. */
 #menu .bottom-tabs #events.ev-tab-has-reward::after{content:none!important;display:none!important}
 #menu .bottom-tabs #events{position:absolute!important;overflow:hidden!important}

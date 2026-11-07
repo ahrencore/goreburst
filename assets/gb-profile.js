@@ -157,19 +157,30 @@ window.gbWalletContinueSpend = async (requestId) => {
     .select('request_id,balance_after').eq('user_id',authData.user.id).eq('request_id',requestId).maybeSingle();
   if (ledgerError) throw Error('Cannot verify payment receipt: '+ledgerError.message);
   if (!ledger || Number(ledger.balance_after)!==value) throw Error('Payment could not be verified. Do not retry until cloud balance is checked.');
+  window.gbWalletCache?.set(value);
   return value;
 };
 
+// Fast wallet display: cache only a balance verified by the server, scoped to the signed-in user.
+// Never use a cached value to authorize an actual purchase; Supabase remains authoritative.
+const gbWalletCacheKey=uid=>'gb-verified-wallet-v1:'+uid;
+let gbWalletGeneration=0;
+window.gbWalletCache={
+ get(){if(!user||user.is_anonymous)return null;try{const row=JSON.parse(sessionStorage.getItem(gbWalletCacheKey(user.id))||'null');return row&&Number.isSafeInteger(row.balance)&&row.balance>=0?row.balance:null}catch{return null}},
+ set(value){if(!user||user.is_anonymous)return;const b=Number(value);if(!Number.isSafeInteger(b)||b<0)return;gbWalletGeneration++;try{sessionStorage.setItem(gbWalletCacheKey(user.id),JSON.stringify({balance:b,time:Date.now()}))}catch{};window.dispatchEvent(new CustomEvent('gb-wallet-cache-updated',{detail:{balance:b,uid:user.id}}));},
+ clear(){gbWalletGeneration++;}
+};
 // Read-only cloud balance, never credits or spends coins.
 window.gbWalletGetCloudBalance = async () => {
   if (!sb) throw Error('Cloud wallet not connected.');
-  const {data: auth, error: authError} = await sb.auth.getUser();
-  if (authError || !auth?.user || auth.user.is_anonymous) throw Error('Sign in to see your cloud balance.');
-  const {data, error}=await sb.from('player_inventory').select('skull_coins').eq('player_id',auth.user.id).maybeSingle();
+  if (!user || user.is_anonymous) throw Error('Sign in to see your cloud balance.');
+  const uid=user.id, generation=gbWalletGeneration;
+  const {data, error}=await sb.from('player_inventory').select('skull_coins').eq('player_id',uid).maybeSingle();
   if(error) throw Error(error.message);
   if(!data) throw Error('No cloud inventory for this account.');
   const amount=Number(data.skull_coins);
   if(!Number.isSafeInteger(amount)||amount<0) throw Error('Invalid cloud balance.');
+  if(user?.id===uid && generation===gbWalletGeneration)window.gbWalletCache.set(amount);
   return amount;
 };
 
@@ -187,6 +198,7 @@ window.gbWalletClaimLevelCoins=async(level,stars,points)=>{
   const result=Array.isArray(data)?data[0]:data;
   const balance_after=Number(result?.balance_after),credited=Number(result?.credited);
   if(!Number.isSafeInteger(balance_after)||balance_after<0||!Number.isInteger(credited)||credited<0||credited>1000)throw Error('Invalid cloud reward receipt');
+  window.gbWalletCache?.set(balance_after);
   return {balance_after,credited};
 };
 
@@ -243,15 +255,15 @@ window.gbShopApi={
     // Keeping receipts on the server makes a purchase safe even if local progress
     // is still being restored; later sync applies each receipt at most once.
     const consumables=(orders||[]).filter(x=>!String(x.item_id).startsWith('frame_'));
-    const deliveryReady=await gbShopCanDeliverToLocal(who.id);
+    const deliveryReady=consumables.length>0 ? await gbShopCanDeliverToLocal(who.id) : true;
     const deliveryPending=!deliveryReady && consumables.length>0;
     if(deliveryReady){
       if(typeof window.gbShopApplyOrder!=='function')
         throw Error('Gameplay inventory is not ready; your paid receipt remains saved.');
+      const locallyApplied=readLocalGameSave().gbShopAppliedOrders||{};
       for(const receipt of consumables){
-        // Re-check the authenticated user before modifying this browser's save.
-        const {data:check}=await sb.auth.getUser();
-        if(check?.user?.id!==who.id)throw Error('Account changed during shop sync.');
+        if(locallyApplied[receipt.id])continue;
+        if(user?.id!==who.id)throw Error('Account changed during shop sync.');
         window.gbShopApplyOrder(receipt,who.id);
       }
     } else if(deliveryPending){
@@ -266,12 +278,12 @@ window.gbShopApi={
     // the browser's local save state. Consumables can be purchased even while
     // a device is restoring; sync() defers local delivery until account binding
     // is verified, protecting other accounts' saves.
-    const {data:auth,error:ae}=await sb.auth.getUser();
-    if(ae||!auth?.user||auth.user.is_anonymous)throw Error('Sign in with a registered account.');
+    if(!user||user.is_anonymous)throw Error('Sign in with a registered account.');
     const {data,error}=await sb.rpc('gb_shop_purchase',{p_item_id:itemId,p_request_id:requestId});
     if(error)throw Error(error.message);
     const row=Array.isArray(data)?data[0]:data;
     if(!row||!Number.isSafeInteger(Number(row.balance_after)))throw Error('Invalid shop purchase receipt.');
+    window.gbWalletCache?.set(Number(row.balance_after));
     window.dispatchEvent(new Event('gb-wallet-balance-changed'));
     return row;
   }
@@ -396,7 +408,7 @@ $p('gbpr-auth-form').onsubmit=async e=>{
  finally{working=false;$p('gbpr-auth-submit').disabled=false}
 };
 $p('gbpr-edit-form').onsubmit=async e=>{e.preventDefault();if(!sb||!gbprRegistered())return;const username=$p('gbpr-new-handle').value.trim().toLowerCase();const display_name=$p('gbpr-new-name').value.trim();if(username&&!/^[a-z0-9_]{3,20}$/.test(username)){setMessage('gbpr-edit-status','Username must be 3–20 letters, numbers or underscores.');return}if(!display_name){setMessage('gbpr-edit-status','Choose a display name.');return}setMessage('gbpr-edit-status','Saving…');const {error}=await sb.from('profiles').update({username:username||null,display_name}).eq('id',user.id);if(error){setMessage('gbpr-edit-status',error.code==='23505'?'This username is already taken.':error.message);return}profile={...profile,username:username||null,display_name};setMessage('gbpr-edit-status','Profile updated!',true);refresh()};
-$p('gbpr-signout').onclick=async()=>{if(!sb)return;const {error}=await sb.auth.signOut();if(error){setMessage('gbpr-edit-status',error.message);return}user=null;profile=null;avatarPreview=null;gbShopFrameOwned=new Set();$p('gbpr-wallet-balance').textContent='Sign in to check your migrated balance.';cloudReset();refresh();void gbprRefreshRequestDot();void gbprRefreshMailDot()};
+$p('gbpr-signout').onclick=async()=>{if(!sb)return;const {error}=await sb.auth.signOut();if(error){setMessage('gbpr-edit-status',error.message);return}window.gbWalletCache?.clear();user=null;profile=null;avatarPreview=null;gbShopFrameOwned=new Set();$p('gbpr-wallet-balance').textContent='Sign in to check your migrated balance.';cloudReset();refresh();void gbprRefreshRequestDot();void gbprRefreshMailDot()};
 $p('gbpr-upload').onchange=async e=>{const file=e.target.files?.[0];e.target.value='';if(!file)return;if(!user||!sb){setMessage('gbpr-upload-status','Please sign in before uploading a photo.');return}if(!['image/jpeg','image/png','image/webp'].includes(file.type)){setMessage('gbpr-upload-status','Choose a JPG, PNG or WebP image.');return}if(file.size>8*1024*1024){setMessage('gbpr-upload-status','Choose an image smaller than 8 MB.');return}
  setMessage('gbpr-upload-status','Preparing photo…');try{const bmp=await createImageBitmap(file);const canvas=document.createElement('canvas');canvas.width=512;canvas.height=512;const ctx=canvas.getContext('2d');if(!ctx)throw Error('Image processing unavailable');const d=Math.min(bmp.width,bmp.height);ctx.drawImage(bmp,(bmp.width-d)/2,(bmp.height-d)/2,d,d,0,0,512,512);bmp.close?.();const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/webp',.84));if(!blob)throw Error('Could not prepare photo');const path=user.id+'/profile-'+Date.now()+'.webp';setMessage('gbpr-upload-status','Uploading photo…');const upload=await sb.storage.from('avatars').upload(path,blob,{contentType:'image/webp',upsert:false});if(upload.error)throw upload.error;const updated=await sb.from('profiles').update({avatar_path:path}).eq('id',user.id);if(updated.error)throw updated.error;profile={...profile,avatar_path:path};avatarPreview=null;setMessage('gbpr-upload-status','Photo uploaded!',true);refresh()}catch(err){setMessage('gbpr-upload-status',err.message||'Upload failed')}};
 async function connect(){
@@ -1136,16 +1148,11 @@ window.gbGhostParadeFetch=async function(){
   const {data:{session},error:authError}=await sb.auth.getSession();
   if(authError||!session)return {error:'Online player identity is starting. Try Refresh.'};
   if(gbprIsGuest())await gbUploadGuestStars();
-  const [registered,guests,featuredBots]=await Promise.all([
-    sb.rpc('ghost_parade_top10'),
-    sb.rpc('gb_guest_stars_top10'),
-    sb.rpc('gb_bot_ghost_parade')
-  ]);
+  const [registered,guests]=await Promise.all([sb.rpc('ghost_parade_top10'),sb.rpc('gb_guest_stars_top10')]);
   if(registered.error)return {error:'Leaderboard query failed: '+registered.error.message};
   if(guests.error)return {error:'Guest leaderboard setup required: '+guests.error.message};
-  if(featuredBots.error)return {error:'Ghost Parade bot setup required: '+featuredBots.error.message};
   const combined=new Map();
-  for(const r of [...(registered.data||[]),...(guests.data||[]),...(featuredBots.data||[])]){
+  for(const r of [...(registered.data||[]),...(guests.data||[])]){
     const id=String(r.user_id||r.player_id||r.id||('guest-'+r.display_name));
     const prev=combined.get(id);
     if(!prev||Number(r.total_stars||0)>Number(prev.total_stars||0))combined.set(id,r);
@@ -1176,7 +1183,7 @@ async function gbpfPublicFrames(rows){
 }
 window.gbLeaderboardAddFrames=async function(rows){
  if(!Array.isArray(rows)||!rows.length)return rows||[];
- const candidates=await gbpfPublicFrames(rows.filter(r=>!r.is_bot));
+ const candidates=await gbpfPublicFrames(rows);
  const idOf=r=>String(r.user_id||r.player_id||r.profile_id||r.account_id||r.id||'');
  const findUnique=(key,val)=>{
   if(!val)return null;
@@ -1184,7 +1191,6 @@ window.gbLeaderboardAddFrames=async function(rows){
   return matches.length===1?matches[0]:null;
  };
  return rows.map(r=>{
-  if(r.is_bot)return {...r,equipped_frame:gbpfNormalize(r.equipped_frame)};
   const id=idOf(r);
   const matched=findUnique('id',id)||findUnique('username',String(r.username||'').replace(/^@/,''))||findUnique('avatar_path',r.avatar_path)||findUnique('display_name',r.display_name);
   let selected=gbpfNormalize(matched?.equipped_frame??r.equipped_frame);
@@ -1192,13 +1198,11 @@ window.gbLeaderboardAddFrames=async function(rows){
   return {...r,equipped_frame:selected};
  });
 };
-// All simulated challengers use the same built-in avatar and free-frame renderer
-// as real players. Avatar keys and frame IDs are supplied by Supabase.
 window.gbLeaderboardAvatarHtml=function(r,avatarClass,escapeFn){
   const escape=typeof escapeFn==='function'?escapeFn:(v=>String(v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'));
   const src=window.gbGhostAvatarUrl?.(r)||fallbackAvatar;
   const frame=gbpfFile(gbpfNormalize(r?.equipped_frame));
-  return '<span class="gbpf-rank-avatar"><img class="'+escape(avatarClass)+'" src="'+escape(src)+'" alt="" loading="lazy">'+(frame?'<img class="gbpf-rank-overlay" src="'+escape(frame)+'" alt="" loading="lazy">':'')+'</span>';
+  return '<span class="gbpf-rank-avatar"><img class="'+avatarClass+'" src="'+escape(src)+'" alt="" loading="lazy">'+(frame?'<img class="gbpf-rank-overlay" src="'+escape(frame)+'" alt="" loading="lazy">':'')+'</span>';
 };
 window.gbGhostAvatarUrl=function(record){
   if(record?.avatar_path){
@@ -1212,8 +1216,7 @@ window.gbGhostAvatarUrl=function(record){
 // Carnival Clash beta: browser-submitted scores are NOT server-verified; do not award prizes from them.
 window.gbClashLeaderboardFetch=async function(){
   if(!sb)return {error:'Supabase connection is starting. Try Refresh Rankings.'};
-  let {data,error}=await sb.rpc('gb_bot_clash_leaderboard');
-  if(error&&/could not find|does not exist|404|PGRST202/i.test(error.message||''))({data,error}=await sb.rpc('carnival_clash_top10'));
+  const {data,error}=await sb.rpc('carnival_clash_top10');
   return error?{error:'Carnival Clash database setup required: '+error.message}:{rows:data||[]};
 };
 window.gbClashSubmit=async function(game,points){
@@ -1238,7 +1241,7 @@ window.gbWeeklyVerifiedComplete=async function(session,stage){
  if(error)throw new Error(error.message);
  return {ok:true};
 };
-window.gbWeeklyTop10=async function(){if(!sb)return {rows:[],error:'Offline'};let {data,error}=await sb.rpc('gb_bot_weekly_leaderboard');if(error&&/could not find|does not exist|404|PGRST202/i.test(error.message||''))({data,error}=await sb.rpc('weekly_nightmare_top10'));return {rows:data||[],error:error?.message||null}};
+window.gbWeeklyTop10=async function(){if(!sb)return {rows:[],error:'Offline'};const {data,error}=await sb.rpc('weekly_nightmare_top10');return {rows:data||[],error:error?.message||null}};
 
 
 // Server-issued Creepy Sudoku sessions (independent of visual Events UI).

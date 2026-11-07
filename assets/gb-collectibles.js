@@ -201,21 +201,26 @@ async function loadOwnership(){
   const db=createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
   const {data:auth,error:authErr}=await db.auth.getUser();
   if(authErr||!auth?.user)throw Error('Sign in to load your collection');
-  const {data,error}=await db.from('gb_card_inventory').select('card_id,quantity').eq('user_id',auth.user.id).gt('quantity',0);
-  if(error)throw error;
-  for(const row of data||[])if(/^\d{2}_\d{2}$/.test(row.card_id))owned.set(row.card_id,Math.max(0,Number(row.quantity)||0));
   packDb=db;packUser=auth.user.id;
-  const {data:wallet,error:walletErr}=await db.from('player_inventory').select('skull_coins').eq('player_id',auth.user.id).maybeSingle();
-  if(walletErr)throw walletErr;
+  const [cardsRes,walletRes,packsRes,rewardsRes]=await Promise.all([
+   db.from('gb_card_inventory').select('card_id,quantity').eq('user_id',auth.user.id).gt('quantity',0),
+   db.from('player_inventory').select('skull_coins').eq('player_id',auth.user.id).maybeSingle(),
+   db.from('gb_card_pack_balances').select('pack_type,quantity').eq('user_id',auth.user.id),
+   db.rpc('gb_album_reward_status')
+  ]);
+  if(cardsRes.error)throw cardsRes.error;
+  if(walletRes.error)throw walletRes.error;
+  if(packsRes.error)throw packsRes.error;
+  for(const row of cardsRes.data||[])if(/^\d{2}_\d{2}$/.test(row.card_id))owned.set(row.card_id,Math.max(0,Number(row.quantity)||0));
+  const wallet=walletRes.data;
   cloudCoins=wallet&&Number.isSafeInteger(Number(wallet.skull_coins))?Number(wallet.skull_coins):null;
-  const {data:balance,error:balanceErr}=await db.from('gb_card_pack_balances').select('pack_type,quantity').eq('user_id',auth.user.id);
-  if(balanceErr)throw balanceErr;
-  for(const b of balance||[])if(Object.hasOwn(packs,b.pack_type))packs[b.pack_type]=Math.max(0,Number(b.quantity)||0);
-   rewardClaims=new Set();rewardStatusReady=false;
-   const {data:rewardData,error:rewardErr}=await db.rpc('gb_album_reward_status');
-   if(!rewardErr && rewardData && Array.isArray(rewardData.claimed)){
-     rewardClaims=new Set(rewardData.claimed.map(Number));rewardStatusReady=true;grandNextPosition=Math.max(1,Number(rewardData.next_grand_position)||1);grandClaimedPosition=rewardData.grand_position??null;grandClaimedFrameId=rewardData.grand_frame_id??null;collectionRound=Math.max(1,Number(rewardData.current_round)||1);legacyResetPending=Boolean(rewardData.pending_legacy_reset);
-   }else {rewardStatusError=rewardErr?.message||'Reward status unavailable';console.warn('Album reward status:',rewardStatusError);}
+  if(cloudCoins!==null)window.gbWalletCache?.set?.(cloudCoins);
+  for(const b of packsRes.data||[])if(Object.hasOwn(packs,b.pack_type))packs[b.pack_type]=Math.max(0,Number(b.quantity)||0);
+  rewardClaims=new Set();rewardStatusReady=false;
+  const rewardData=rewardsRes.data,rewardErr=rewardsRes.error;
+  if(!rewardErr && rewardData && Array.isArray(rewardData.claimed)){
+   rewardClaims=new Set(rewardData.claimed.map(Number));rewardStatusReady=true;grandNextPosition=Math.max(1,Number(rewardData.next_grand_position)||1);grandClaimedPosition=rewardData.grand_position??null;grandClaimedFrameId=rewardData.grand_frame_id??null;collectionRound=Math.max(1,Number(rewardData.current_round)||1);legacyResetPending=Boolean(rewardData.pending_legacy_reset);
+  }else {rewardStatusError=rewardErr?.message||'Reward status unavailable';console.warn('Album reward status:',rewardStatusError);}
   inventoryReady=true;
  }catch(e){inventoryError=e?.message||'Collection unavailable';}
  updateCollectRewardNotification();
@@ -260,10 +265,10 @@ function sellCurio(id){
    const {data,error}=await packDb.rpc('gb_sell_extra_curios',{p_card_id:id,p_quantity:amount});
    if(error)throw error;
    if(!data||data.success!==true)throw Error('Sale was not confirmed. Refresh before retrying.');
-   await loadOwnership();try{await window.gbShopApi?.sync?.();}catch{}
+   if(Number.isSafeInteger(Number(data.balance_after)))window.gbWalletCache?.set?.(Number(data.balance_after));
    showNotice('CURIOS SOLD!',`You sold ${Number(data.curios_sold||amount)} duplicate ${Number(data.curios_sold||amount)===1?'Curio':'Curios'} and received ${money(data.coins_earned)} Skull Coins!`,'WONDERFUL!');
   }catch(e){await loadOwnership();showNotice('SALE NOT CONFIRMED',`${e?.message||'Unknown error'}. Refresh your inventory before retrying.`);}
-  finally{exchangeBusy=false;if(page===-2)showCurioExchange();}
+  finally{exchangeBusy=false;if(page===-2)showCurioExchange();void loadOwnership().catch(e=>console.warn('Curio refresh:',e));}
  });
 }
 function sellAllExtraCurios(){
@@ -276,10 +281,10 @@ function sellAllExtraCurios(){
   try{
    const {data,error}=await packDb.rpc('gb_sell_all_extra_curios');if(error)throw error;
    if(!data||data.success!==true)throw Error('Sale was not confirmed. Refresh before retrying.');
-   await loadOwnership();try{await window.gbShopApi?.sync?.();}catch{}
+   if(Number.isSafeInteger(Number(data.balance_after)))window.gbWalletCache?.set?.(Number(data.balance_after));
    showNotice('EXTRAS SOLD!',`You sold ${money(data.curios_sold)} extra Curios and received ${money(data.coins_earned)} Skull Coins!`,'WONDERFUL!');
   }catch(e){await loadOwnership();showNotice('SALE NOT CONFIRMED',`${e?.message||'Unknown error'}. Refresh your inventory before retrying.`);}
-  finally{exchangeBusy=false;if(page===-2)showCurioExchange();}
+  finally{exchangeBusy=false;if(page===-2)showCurioExchange();void loadOwnership().catch(e=>console.warn('Curio refresh:',e));}
  });
 }
 const packView=()=>`<section class="gbc-pack-zone"><h2>CURIO PACKS</h2><p class="gbc-note">Skull Coins: ${cloudCoins===null?'—':cloudCoins.toLocaleString()}</p><div class="gbc-packs">${packTypes.map(([key,count,max])=>`<div class="gbc-pack gbc-pack-${key}"><button class="gbc-pack-pick" type="button" data-open-pack="${key}" aria-label="Open ${key} pack, ${count} cards, up to ${max} stars" ${(!inventoryReady||!packs[key]||packBusy||buyBusy)?'disabled':''}>${packWrapper(key,max)}</button><span class="gbc-pack-owned">×${inventoryReady?packs[key]:'—'}</span><button type="button" data-open-pack="${key}" ${(!inventoryReady||!packs[key]||packBusy||buyBusy)?'disabled':''}>OPEN</button><button type="button" data-buy-pack="${key}" ${(!inventoryReady||!packDb||buyBusy||cloudCoins===null)?'disabled':''}>BUY · ${packPrices[key].toLocaleString()} COINS</button></div>`).join('')}</div><div class="gbc-exchange-entry"><h3>THE CURIO EXCHANGE</h3><p>Too many strange things? Turn your extra Curios into Skull Coins!</p><button type="button" class="gbc-btn gbc-exchange-launch" id="gbcExchangeOpen">SELL CURIOS HERE</button></div></section>`;
@@ -338,6 +343,7 @@ async function refreshWallet(){
   const {data,error}=await packDb.from('player_inventory').select('skull_coins').eq('player_id',packUser).maybeSingle();
   if(error)throw error;
   cloudCoins=data&&Number.isSafeInteger(Number(data.skull_coins))?Number(data.skull_coins):null;
+  if(cloudCoins!==null)window.gbWalletCache?.set?.(cloudCoins);
   if(page<0&&screen.classList.contains('active'))lobby(true);
   if(buySelection)drawPurchase();
  }catch(e){cloudCoins=null;if(buySelection)drawPurchase();showNotice('BALANCE UNAVAILABLE','Could not verify your Skull Coins. Please try again.');}
@@ -351,32 +357,31 @@ async function buyPack(type,count){
  const cost=count*packPrices[type];
  if(cloudCoins===null||cloudCoins<cost){showNotice('NOT ENOUGH SKULL COINS','Choose fewer packs or collect more Skull Coins.');return;}
  buyBusy=true;notice.hidden=true;
- // Keep the existing screen and its scroll offset throughout the transaction.
- let successful=0,failed=null;
- for(let i=0;i<count;i++){
-  try{
+ // Single server transaction for 1–10 packs; protects wallet and pack quantity atomically.
+ // The SQL included in this ZIP must be installed before this client version.
+ try{
    const purchaseId=pendingPurchases[type]||(pendingPurchases[type]=crypto.randomUUID());
-   const {data,error}=await packDb.rpc('gb_buy_card_pack',{p_pack_type:type,p_purchase_id:purchaseId});
+   const {data,error}=await packDb.rpc('gb_buy_card_packs_batch',{
+     p_pack_type:type,p_quantity:count,p_purchase_id:purchaseId
+   });
    if(error)throw error;
-   const result=Array.isArray(data)?data[0]:data;
-   if(!result||!Number.isSafeInteger(Number(result.balance_after)))throw Error('Purchase response could not be verified.');
+   const receipt=Array.isArray(data)?data[0]:data;
+   if(!receipt||Number(receipt.quantity_purchased)!==count||!Number.isSafeInteger(Number(receipt.balance_after)))throw Error('Unexpected pack purchase receipt; refresh before retrying.');
+   cloudCoins=Number(receipt.balance_after);
+   packs[type]=Number(receipt.pack_balance);
+   window.gbWalletCache?.set?.(cloudCoins);
    delete pendingPurchases[type];
-   successful++;
-   cloudCoins=Number(result.balance_after);
-   packs[type]=(packs[type]||0)+1;
-  }catch(err){failed=err;break;}
+   buyBusy=false;
+   if(screen.classList.contains('active'))page===-2?showCurioExchange():page<0?lobby(true):album(page,true);
+   showNotice('PURCHASE SUCCESSFUL',`${count} ${count===1?'Curio Pack':'Curio Packs'} added! Your Skull Coins and pack totals are updated. Tap OPEN below to reveal them.`);
+   void loadOwnership().catch(e=>console.warn('Curio sync:',e));
+ }catch(err){
+   buyBusy=false;
+   if(screen.classList.contains('active'))page===-2?showCurioExchange():page<0?lobby(true):album(page,true);
+   showNotice('CHECK YOUR PURCHASE',`${err.message||'Network error'}. Your purchase ID was kept for a safe retry. Check your pack count before retrying.`);
+   void loadOwnership().catch(e=>console.warn('Curio sync:',e));
  }
- // Refresh from the server. Do not assume failed or timed-out transactions were rolled back.
- await loadOwnership();
- buyBusy=false;
- // loadOwnership() rendered the pack buttons while buyBusy was true.
- // Re-render after clearing the flag so BUY and OPEN become usable again.
- if(screen.classList.contains('active'))page===-2?showCurioExchange():page<0?lobby(true):album(page,true);
- if(failed){
-  showNotice('CHECK YOUR PURCHASE',`${successful} of ${count} packs confirmed. ${failed.message||'Network error'}. Please check your balance and pack count before retrying.`);
- }else{
-  showNotice('PURCHASE SUCCESSFUL',`${count} ${count===1?'Curio Pack':'Curio Packs'} added! Your Skull Coins and pack totals are updated. Tap OPEN below to reveal them.`);
- }
+
 }
 notice.addEventListener('click',e=>{
  if(e.target.closest('[data-grand-reset-no]')){closeNotice();return;}
