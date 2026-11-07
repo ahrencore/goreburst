@@ -504,7 +504,10 @@ html,body{overscroll-behavior:none;height:100%;height:100dvh}
 
 /* Prevent native text selection / long-press on gameplay controls only. */
 #board,#board *,#gbEventsView .ev-sudoku-grid,#gbEventsView .ev-sudoku-grid *,#gbEventsView .ev-sudoku-tray,#gbEventsView .ev-sudoku-tray *,#gbEventsView .ev-controls,#gbEventsView .ev-controls *{user-select:none!important;-webkit-user-select:none!important;-webkit-touch-callout:none!important;}
-</style><link rel="stylesheet" href="assets/gb-profile.css?v=carnival-control-20261107"><link rel="stylesheet" href="assets/gb-events.css?v=sudoku-square-20261103"><link rel="stylesheet" href="assets/gb-collectibles.css?v=iphone-safari-20261103"><link rel="stylesheet" href="assets/gb-shop.css?v=shop-old-avatar-fit-20261103"></head><body><div id="app">
+
+/* Soft-focus menu artwork only. Does not blur buttons, text, or other screens. */
+#menu .scenery{filter:blur(15px) brightness(.48) saturate(.77)!important;transform:scale(1.085);transform-origin:center center;pointer-events:none}
+</style><link rel="stylesheet" href="assets/gb-profile.css?v=inbox-delete-menu-blur-20261107"><link rel="stylesheet" href="assets/gb-events.css?v=sudoku-square-20261103"><link rel="stylesheet" href="assets/gb-collectibles.css?v=iphone-safari-20261103"><link rel="stylesheet" href="assets/gb-shop.css?v=shop-old-avatar-fit-20261103"></head><body><div id="app">
 <section class="view active" id="loading" aria-label="Loading Gore Burst"><img src="assets/loading-clean.webp" alt="Gore Burst carnival entrance"></section>
 <section class="view" id="menu"><div class="scenery"></div><div class="vignette"></div>
 <div class="top art-hud"><img id="gbMenuAvatar" src="assets/avatars/01_Mr_Walker.png" alt="Your avatar"><img class="hud-art" src="assets/art-hud.webp" alt=""/><button class="hud-profile" id="profile" aria-label="Open player profile"></button><button class="hud-lives" id="livesaction" aria-label="Lives"><span id="lives">5/5</span><small id="lifeCountdown" aria-live="off"></small></button><button class="hud-coins" id="coinsaction" aria-label="Skull Coins"><span id="money">0</span></button><button class="hud-settings" id="settings" aria-label="Settings"></button></div>
@@ -1349,7 +1352,7 @@ document.getElementById('gamepause').onclick=openGbSettings;
 document.getElementById('gbSettingsClose').onclick=closeGbSettings;
 document.getElementById('gbSettings').addEventListener('click',e=>{if(e.target.id==='gbSettings')closeGbSettings()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeGbSettings()});
-</script><link rel="stylesheet" href="assets/gb-giftcodes.css"><script defer src="assets/gb-giftcodes.js"></script><script src="assets/gb-events.js?v=gb-wallet-speed-20261107"></script><script type="module" src="assets/gb-profile.js?v=carnival-control-20261107"></script><script defer src="assets/gb-collectibles.js?v=gb-wallet-speed-20261107"></script><script defer src="assets/gb-shop.js?v=gb-wallet-speed-20261107"></script><style id="gb-events-badge-final-position">
+</script><link rel="stylesheet" href="assets/gb-giftcodes.css"><script defer src="assets/gb-giftcodes.js"></script><script src="assets/gb-events.js?v=gb-wallet-speed-20261107"></script><script type="module" src="assets/gb-profile.js?v=inbox-delete-menu-blur-20261107"></script><script defer src="assets/gb-collectibles.js?v=gb-wallet-speed-20261107"></script><script defer src="assets/gb-shop.js?v=gb-wallet-speed-20261107"></script><style id="gb-events-badge-final-position">
 /* Fixed badge: a child of the actual EVENTS tap area, not a pseudo-element. */
 #menu .bottom-tabs #events.ev-tab-has-reward::after{content:none!important;display:none!important}
 #menu .bottom-tabs #events{position:absolute!important;overflow:hidden!important}

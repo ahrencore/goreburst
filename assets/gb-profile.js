@@ -754,16 +754,32 @@ if(typeof consumeFailedLife==='function' && typeof canAttempt==='function' && ty
   }};
 }
 let gbprMailItems=[];
+let gbprHiddenMailIds=new Set();
+async function gbprHideMail(id){
+ const m=gbprMailItems.find(x=>x.id===id);
+ if(!m||!sb||!user)return;
+ if((m.category==='event_reward'||m.source_event==='welcome_gift'||m.source_event==='reward_claim_test')&&!m.claimed_at){
+  alert('Claim your reward before deleting this letter.');return;
+ }
+ if(!confirm('Delete this letter from your inbox? This cannot be undone.'))return;
+ const result=await sb.rpc('gb_hide_my_mail',{p_id:id,p_broadcast:m.category==='admin_broadcast'});
+ if(result.error){alert('Could not delete: '+result.error.message);return;}
+ gbprHiddenMailIds.add(id);
+ gbprMailItems=gbprMailItems.filter(x=>x.id!==id);
+ gbprDrawMailList();
+ void gbprRefreshMailDot();
+}
 function gbprMailPendingCheck(m){return (m.category==='event_reward'&&!m.claimed_at)||!m.read_at;}
 async function gbprRefreshMailDot(){
  const button=prHub?.querySelector('[data-gbpr-nav="mail"]');
  if(!sb||!user){gbprMailPending=false;button?.classList.remove('gbpr-mail-pending');gbprUpdatePfpNotice();return;}
- const {data,error}=await sb.from('gb_inbox').select('id,category,claimed_at,read_at').eq('recipient',user.id).limit(100);
+ const [{data,error},hidden]=await Promise.all([sb.from('gb_inbox').select('id,category,claimed_at,read_at').eq('recipient',user.id).limit(100),sb.rpc('gb_get_hidden_mail')]);
+ if(!hidden.error)gbprHiddenMailIds=new Set(hidden.data||[]);
  if(error)return;
- gbprMailPending=!!data?.some(gbprMailPendingCheck);
+ gbprMailPending=!!data?.filter(x=>!gbprHiddenMailIds.has(x.id)).some(gbprMailPendingCheck);
  if(gbprRegistered()){
   const announcements=await sb.rpc('gb_read_announcements');
-  if(!announcements.error&&announcements.data?.some(a=>!a.read_at))gbprMailPending=true;
+  if(!announcements.error&&announcements.data?.some(a=>!a.read_at&&!gbprHiddenMailIds.has(a.id)))gbprMailPending=true;
  }
  button?.classList.toggle('gbpr-mail-pending',gbprMailPending);
  gbprUpdatePfpNotice();
@@ -773,18 +789,20 @@ async function gbprLoadMail(){
  if(!user){host.innerHTML=gbprSocialMessage('Sign in to see official mail.');return}
  if(!sb){host.innerHTML=gbprSocialMessage('Connecting…');return}
  host.textContent='Loading mail…';
- const [mail,announcements]=await Promise.all([
+ const [mail,announcements,hidden]=await Promise.all([
   sb.from('gb_inbox').select('id,title,body,category,created_at,claimed_at,read_at,source_event,reward').eq('recipient',user.id).order('created_at',{ascending:false}).limit(60),
-  gbprRegistered()?sb.rpc('gb_read_announcements'):Promise.resolve({data:[],error:null})
+  gbprRegistered()?sb.rpc('gb_read_announcements'):Promise.resolve({data:[],error:null}),
+  sb.rpc('gb_get_hidden_mail')
  ]);
  if(!host.isConnected)return;
  if(mail.error){host.innerHTML=gbprSocialMessage('Mailbox unavailable: '+mail.error.message);return;}
  if(announcements.error){console.warn('Broadcast mailbox:',announcements.error.message);}
+ if(!hidden.error)gbprHiddenMailIds=new Set(hidden.data||[]);
  const broadcasts=(announcements.error?[]:announcements.data||[]).map(a=>({
   id:a.id,title:a.title,body:a.body,created_at:a.created_at,read_at:a.read_at,
   category:'admin_broadcast',source_event:'admin_broadcast',claimed_at:null,reward:null
  }));
- gbprMailItems=[...(mail.data||[]),...broadcasts].sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at)).slice(0,100);
+ gbprMailItems=[...(mail.data||[]),...broadcasts].filter(m=>!gbprHiddenMailIds.has(m.id)).sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at)).slice(0,100);
  void gbprRefreshMailDot();
  gbprDrawMailList();
 }
@@ -810,8 +828,9 @@ function gbprEventRewardIcons(reward){
 function gbprDrawMailList(){
  const host=$p('gbpr-mail-list');if(!host)return;
  if(!gbprMailItems.length){host.innerHTML=gbprSocialMessage('No mail yet.');return}
- host.innerHTML=gbprMailItems.map(m=>`<button type="button" class="gbpr-inbox-row ${gbprMailPendingCheck(m)?'gbpr-inbox-unread':''}" data-mail-open="${m.id}"><span class="gbpr-inbox-envelope">✉</span><span class="gbpr-inbox-title"><b>${safe(m.title)}</b><small>${m.source_event==='welcome_gift'||m.category==='admin_broadcast'?'A letter from Mr. Walker':'Official Carnival Mail'}</small></span><span class="gbpr-inbox-status">${m.category==='event_reward'&&!m.claimed_at?'<i class="gbpr-mail-dot"></i>':!m.read_at?'<i class="gbpr-mail-dot"></i>':'›'}</span></button>`).join('');
+ host.innerHTML=gbprMailItems.map(m=>`<div class="gbpr-inbox-entry"><button type="button" class="gbpr-inbox-row ${gbprMailPendingCheck(m)?'gbpr-inbox-unread':''}" data-mail-open="${m.id}"><span class="gbpr-inbox-envelope">✉</span><span class="gbpr-inbox-title"><b>${safe(m.title)}</b><small>${m.source_event==='welcome_gift'||m.category==='admin_broadcast'?'A letter from Mr. Walker':'Official Carnival Mail'}</small></span><span class="gbpr-inbox-status">${m.category==='event_reward'&&!m.claimed_at?'<i class="gbpr-mail-dot"></i>':!m.read_at?'<i class="gbpr-mail-dot"></i>':'›'}</span></button><button type="button" class="gbpr-mail-delete" data-mail-delete="${m.id}" aria-label="Delete ${safe(m.title)}" title="Delete letter" ${((m.category==='event_reward'||m.source_event==='welcome_gift'||m.source_event==='reward_claim_test')&&!m.claimed_at)?'disabled title="Claim reward first"':''}>✕</button></div>`).join('');
  host.querySelectorAll('[data-mail-open]').forEach(b=>b.onclick=()=>gbprOpenMail(b.dataset.mailOpen));
+ host.querySelectorAll('[data-mail-delete]').forEach(b=>b.onclick=()=>gbprHideMail(b.dataset.mailDelete));
 }
 async function gbprOpenMail(id){
  const m=gbprMailItems.find(x=>x.id===id);if(!m)return;

@@ -448,3 +448,9 @@ img.gbpf-rank-overlay {
   inset:0!important;width:100%!important;height:100%!important;z-index:2!important;
   object-fit:contain!important;
 }
+
+/* Inbox delete control: individual hide, never a global deletion. */
+#gb-profile-layer .gbpr-inbox-entry{display:flex;align-items:stretch;gap:5px;margin:8px 0}
+#gb-profile-layer .gbpr-inbox-entry .gbpr-inbox-row{flex:1;min-width:0;margin:0}
+#gb-profile-layer .gbpr-mail-delete{flex:0 0 34px;border:1px solid #8f557d;border-radius:12px;background:#35182f;color:#f6bad7;font:700 18px system-ui;cursor:pointer}
+#gb-profile-layer .gbpr-mail-delete:disabled{opacity:.26;cursor:not-allowed}
