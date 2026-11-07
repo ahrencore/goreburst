@@ -633,8 +633,17 @@ $p('gb-admin-frame-form').onsubmit=async e=>{
    const scale=Math.min(512/bmp.width,512/bmp.height);
    const w=bmp.width*scale,h=bmp.height*scale;
    ctx.drawImage(bmp,(512-w)/2,(512-h)/2,w,h);
-   optimized=await new Promise(resolve=>canvas.toBlob(resolve,'image/webp',.93));
-   if(!optimized||optimized.type!=='image/webp')throw Error('WebP optimization is unavailable on this device');
+   // Optimize the encoded file, not the visual frame dimensions or PFP opening.
+   // Try high-quality settings first, stepping down only for unusually heavy art.
+   // Never modify published files, shop frames, or previously uploaded artwork.
+   const targetBytes=350*1024;
+   for(const quality of [0.93,0.90,0.87,0.84,0.81]){
+    const attempt=await new Promise(resolve=>canvas.toBlob(resolve,'image/webp',quality));
+    if(!attempt||attempt.type!=='image/webp')throw Error('WebP optimization is unavailable on this device');
+    optimized=attempt;
+    if(attempt.size<=targetBytes)break;
+   }
+   if(!optimized||optimized.size>5242880)throw Error('Optimized frame exceeds the Storage size limit');
   }finally{bmp.close?.();}
  }catch(err){gbAdminNote(err.message||'Frame optimization failed');return;}
  const path=user.id+'/'+crypto.randomUUID()+'.webp';
@@ -643,7 +652,7 @@ $p('gb-admin-frame-form').onsubmit=async e=>{
  if(upload.error){gbAdminNote(upload.error.message);return;}
  const saved=await sb.from('gb_admin_test_frames').insert({title,storage_path:path,created_by:user.id});
  if(saved.error){await sb.storage.from('gb-admin-test-frames').remove([path]);gbAdminNote(saved.error.message);return;}
- gbAdminNote('Optimized private test frame uploaded!',true);e.target.reset();void gbAdminRefresh();
+ gbAdminNote('Optimized frame uploaded: '+(optimized.size/1024).toFixed(1)+' KB (original '+(f.size/1024).toFixed(1)+' KB).',true);e.target.reset();void gbAdminRefresh();
 };
 $p('gb-admin-refresh').onclick=()=>gbAdminRefresh();
 
