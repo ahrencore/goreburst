@@ -397,9 +397,33 @@ img.gbpf-rank-overlay {
 #gb-profile-layer .gb-admin-frame-item>img{width:68px;height:68px;object-fit:contain;background:#301831;border-radius:9px}
 #gb-profile-layer .gb-admin-frame-item>div:nth-child(2){flex:1;min-width:140px}
 #gb-profile-layer .gb-admin-frame-item p{margin:3px 0;font-size:11px;color:#e6a9d3}
-#gb-profile-layer .gb-admin-frame-preview{position:relative;width:160px;height:160px;flex-basis:100%;margin:auto}
-#gb-profile-layer .gb-admin-preview-avatar{position:absolute;inset:25%;width:50%;height:50%;object-fit:cover;border-radius:50%}
-#gb-profile-layer .gb-admin-preview-frame{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+/* Admin frame testing: mirror the live profile hero renderer and its 70% round PFP.
+   No independent oval-prone sizing rules, and no changes to public frames. */
+#gb-profile-layer .gb-admin-frame-preview.gbpr-hero{
+ display:flex!important;justify-content:center!important;align-items:center!important;
+ flex:1 0 100%;width:100%;min-height:140px;padding:12px 0!important;
+ margin:0 auto!important;background:transparent!important;box-shadow:none!important;border:0!important;
+}
+#gb-profile-layer .gb-admin-frame-preview.gbpr-hero .gbpf-hero-avatar-wrap{
+ position:relative!important;display:block!important;flex:0 0 108px!important;
+ width:108px!important;height:108px!important;min-width:108px!important;
+ margin:0 auto!important;isolation:isolate!important;background:transparent!important;
+}
+#gb-profile-layer .gb-admin-frame-preview.gbpr-hero .gbpf-hero-avatar-wrap > img.gbpf-avatar-img{
+ position:absolute!important;z-index:1!important;left:15%!important;top:15%!important;
+ width:70%!important;height:70%!important;max-width:none!important;
+ margin:0!important;padding:0!important;display:block!important;
+ aspect-ratio:1/1!important;object-fit:cover!important;border-radius:50%!important;
+ background:transparent!important;border:0!important;box-shadow:none!important;
+}
+#gb-profile-layer .gb-admin-frame-preview.gbpr-hero .gbpf-hero-avatar-wrap > img.gbpf-overlay{
+ position:absolute!important;z-index:2!important;inset:0!important;
+ width:100%!important;height:100%!important;max-width:none!important;
+ display:block!important;object-fit:contain!important;margin:0!important;
+ padding:0!important;background:transparent!important;border:0!important;
+ border-radius:0!important;box-shadow:none!important;filter:none!important;
+ animation:none!important;pointer-events:none!important;
+}
 #gb-profile-layer .gb-admin-announcement{margin:10px 0;padding:12px;border:1px solid #7c436d;border-radius:10px;background:#28132d;white-space:pre-wrap}
 #gb-profile-layer .gb-admin-announcement small{display:block;color:#d6a8ca;margin:5px 0}
 #gb-profile-layer .gb-admin-announcement p{white-space:pre-wrap;overflow-wrap:anywhere}

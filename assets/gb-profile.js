@@ -421,7 +421,16 @@ async function gbAdminRefresh(){
   const details=document.createElement('div');const title=document.createElement('strong');title.textContent=f.title;
   const line=document.createElement('p');line.textContent=f.status.toUpperCase();details.append(title,line);
   const test=document.createElement('button');test.type='button';test.className='gbpr-btn secondary';test.textContent='PREVIEW';
-  test.onclick=()=>{const viewer=$p('gb-admin-frame-preview');viewer?.remove();const wrap=document.createElement('div');wrap.id='gb-admin-frame-preview';wrap.className='gb-admin-frame-preview';const avatar=document.createElement('img');avatar.src=avatarUrl();avatar.alt='Your profile photo';avatar.className='gb-admin-preview-avatar';const overlay=document.createElement('img');overlay.alt='Test frame';overlay.src=image.src;overlay.className='gb-admin-preview-frame';wrap.append(avatar,overlay);item.append(wrap);};
+  test.onclick=()=>{
+   const previous=$p('gb-admin-frame-preview');previous?.remove();
+   // Use the same circle/frame geometry as the player's real profile.
+   const preview=document.createElement('div');preview.id='gb-admin-frame-preview';preview.className='gb-admin-frame-preview gbpr-hero';
+   const wrap=document.createElement('span');wrap.className='gbpf-hero-avatar-wrap';
+   const avatar=document.createElement('img');avatar.src=avatarUrl();avatar.alt='Your profile photo';avatar.className='gbpf-avatar-img';
+   const overlay=document.createElement('img');overlay.alt='Test frame';overlay.src=image.src;overlay.className='gbpf-overlay';overlay.setAttribute('aria-hidden','true');
+   wrap.append(avatar,overlay);preview.append(wrap);item.append(preview);
+   gbpfFit(wrap,'none'); // Universal 70% circle used by normal profile and completion frames.
+  };
   details.append(test);
   if(gbAdminRole==='owner'){
    const sel=document.createElement('select');['draft','testing','approved'].forEach(x=>{const o=document.createElement('option');o.value=x;o.textContent=x.toUpperCase();o.selected=x===f.status;sel.append(o)});
