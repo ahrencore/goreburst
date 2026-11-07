@@ -142,31 +142,39 @@ prAdminScreen.insertAdjacentHTML('beforeend',`<section class="gbpr-panel gb-admi
 <h3>⚿ Username protection</h3><form id="gb-admin-username-form" class="gbpr-form"><label>Username<input id="gb-admin-username" maxlength="20" placeholder="username" required></label><div class="gbpr-actions"><button class="gbpr-btn" type="submit" data-mode="reserve">PROTECT</button><button class="gbpr-btn secondary" type="button" id="gb-admin-unreserve">RELEASE</button></div></form><div id="gb-admin-reserved-list" class="gb-admin-items"></div>
 <p id="gb-admin-status" class="gbpr-error" aria-live="polite"></p><button type="button" id="gb-admin-refresh" class="gbpr-btn secondary">REFRESH CONTROL ROOM</button></section>`);
 
-// ADMIN NAVIGATION: split existing controls into three subpages without replacing handlers.
+// ADMIN NAVIGATION: partition ORIGINAL sibling nodes before inserting any wrappers.
+// Prior code appended first/second sections next to the status node, then swept
+// those wrappers into the third section, leaving the first buttons empty.
 (function gbAdminBuildSections(){
  const panel=prAdminScreen.querySelector('.gb-admin-panel');
- const headings=Array.from(panel.querySelectorAll(':scope > h3'));
+ if(!panel)return;
+ const labels=[['broadcast','Broadcast Messages'],['frames','Frames & Gift Codes'],['usernames','Usernames']];
+ const headings=Array.from(panel.children).filter(n=>n.tagName==='H3');
  if(headings.length!==3)return;
- const sections=[['broadcast','Broadcast Messages'],['frames','Frames & Gift Codes'],['usernames','Usernames']];
+ const status=panel.querySelector('#gb-admin-status');
+ const originalChildren=Array.from(panel.children);
+ const groups=labels.map(([key],i)=>{
+  const start=originalChildren.indexOf(headings[i]);
+  const end=i+1<headings.length?originalChildren.indexOf(headings[i+1]):originalChildren.indexOf(status);
+  const section=document.createElement('div');section.className='gb-admin-section';section.dataset.section=key;section.hidden=true;
+  originalChildren.slice(start,end).forEach(node=>section.append(node));
+  return section;
+ });
  const home=document.createElement('div');home.className='gb-admin-home';
  const nav=document.createElement('div');nav.className='gb-admin-subnav';nav.hidden=true;
  const back=document.createElement('button');back.type='button';back.className='gbpr-btn secondary';back.textContent='‹ CONTROL ROOM';nav.append(back);
- const front=panel.querySelector('#gb-admin-role');front.after(home,nav);
- const segmentNodes=sections.map((s,i)=>{
-  const box=document.createElement('div');box.className='gb-admin-section';box.dataset.section=s[0];box.hidden=true;
-  const first=headings[i],last=headings[i+1];let node=first;
-  while(node&&node!==last){const next=node.nextElementSibling;if(node.id!=='gb-admin-status'&&node.id!=='gb-admin-refresh')box.append(node);node=next;}
-  panel.insertBefore(box,panel.querySelector('#gb-admin-status'));return box;
- });
- // Move publishing controls and frame items are already in the frame segment.
- sections.forEach(([key,label])=>{
+ const role=panel.querySelector('#gb-admin-role');role.after(home,nav,...groups);
+ function open(key){
+  home.hidden=Boolean(key);nav.hidden=!key;
+  groups.forEach(group=>{group.hidden=group.dataset.section!==key;});
+ }
+ labels.forEach(([key,label])=>{
   const btn=document.createElement('button');btn.type='button';btn.className='gbpr-btn gb-admin-section-tile';
-  btn.textContent=label;btn.onclick=()=>open(key);home.append(btn);
+  btn.textContent=label;btn.addEventListener('click',()=>open(key));home.append(btn);
  });
- function open(key){home.hidden=!!key;nav.hidden=!key;segmentNodes.forEach((box,i)=>box.hidden=sections[i][0]!==key);}
- back.onclick=()=>open(null);open(null);
+ back.addEventListener('click',()=>open(null));open(null);
  window.gbAdminOpenSection=open;
- window.gbAdminFramesSection=segmentNodes[1];
+ window.gbAdminFramesSection=groups[1];
 })();
 
 // MULTI-REWARD CODES: coins and published frames; Curio Packs wait for a real inventory API.
@@ -510,25 +518,29 @@ function gbpfDecorate(el,id){
 
 let gbpfHudResizeHook=false;
 let gbpfHudFitVersion=0;
-function gbpfHudPositionPhoto(frame,fit){
+function gbpfHudPositionPhoto(frame,_fit){
+ // Match the shop's proven 70%-photo / 100%-overlay geometry.
+ // Measure the actual *contained* artwork, not the larger HUD canvas.
  const avatar=document.getElementById('gbMenuAvatar');
- const hud=frame?.parentElement;if(!avatar||!hud||!frame?.naturalWidth)return;
+ const hud=frame?.parentElement;
+ if(!avatar||!hud||!frame?.naturalWidth||!frame?.naturalHeight)return;
  const parent=hud.getBoundingClientRect(),r=frame.getBoundingClientRect();
  if(!r.width||!r.height||!parent.width||!parent.height)return;
- // object-fit: contain creates letterboxing; use actual rendered image box.
  const scale=Math.min(r.width/frame.naturalWidth,r.height/frame.naturalHeight);
  const w=frame.naturalWidth*scale,h=frame.naturalHeight*scale;
  const x=r.left+(r.width-w)/2-parent.left,y=r.top+(r.height-h)/2-parent.top;
- const diameter=Math.max(8,Math.min(w,h)*fit.size/100);
- const left=x+w*fit.x/100-diameter/2,top=y+h*fit.y/100-diameter/2;
- [['left',left+'px'],['top',top+'px'],['width',diameter+'px'],['height',diameter+'px'],['border-radius','50%'],['clip-path','circle(49% at 50% 50%)'],['object-fit','cover'],['object-position','center']]
- .forEach(([k,v])=>avatar.style.setProperty(k,v,'important'));
- avatar.style.setProperty('z-index','2','important');
+ const size=Math.min(w,h)*.70;
+ const left=x+(w-size)/2,top=y+(h-size)/2;
+ const rules={left:left+'px',top:top+'px',width:size+'px',height:size+'px',
+   'border-radius':'50%','clip-path':'circle(49% at 50% 50%)',
+   '-webkit-clip-path':'circle(49% at 50% 50%)','object-fit':'cover',
+   'object-position':'center','z-index':'2',transform:'none'};
+ Object.entries(rules).forEach(([k,v])=>avatar.style.setProperty(k,v,'important'));
  frame.style.setProperty('z-index','3','important');
 }
 function gbpfHudResetPhoto(){
  const avatar=document.getElementById('gbMenuAvatar');if(!avatar)return;
- for(const k of ['left','top','width','height','border-radius','clip-path','object-fit','object-position','z-index'])avatar.style.removeProperty(k);
+ for(const k of ['left','top','width','height','border-radius','clip-path','object-fit','object-position','z-index','-webkit-clip-path','transform'])avatar.style.removeProperty(k);
 }
 function gbpfHudBindFrame(frame,id){
  const version=++gbpfHudFitVersion;

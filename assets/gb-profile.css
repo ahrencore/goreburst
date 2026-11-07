@@ -507,3 +507,33 @@ img.gbpf-rank-overlay {
 #gb-profile-layer .gb-admin-calibrate button{font-size:11px}
 #menu .top.art-hud > #gbMenuAvatar{clip-path:circle(49% at 50% 50%)!important;-webkit-clip-path:circle(49% at 50% 50%)!important}
 #gb-profile-layer .gbpf-hero-avatar-wrap.gbpf-auto-fit > img.gbpf-avatar-img{clip-path:circle(49% at 50% 50%)!important;-webkit-clip-path:circle(49% at 50% 50%)!important}
+
+
+/* REGRESSION FIX: use the exact working shop 70/100 avatar/frame geometry
+   consistently in edit preview, profile hero, and Admin frame preview.
+   Override prior auto-fit and narrow clip rules. */
+#gb-profile-layer .gbpf-preview > img#gbpf-preview-avatar,
+#gb-profile-layer .gbpr-hero .gbpf-hero-avatar-wrap > img.gbpf-avatar-img,
+#gb-profile-layer .gbpr-hub-identity .gbpr-hero .gbpf-hero-avatar-wrap > img.gbpf-avatar-img,
+#gb-profile-layer .gb-admin-frame-preview.gbpr-hero .gbpf-hero-avatar-wrap > img.gbpf-avatar-img,
+#gb-profile-layer .gbpf-hero-avatar-wrap.gbpf-auto-fit > img.gbpf-avatar-img {
+ position:absolute!important;inset:auto!important;top:15%!important;left:15%!important;
+ right:auto!important;bottom:auto!important;width:70%!important;height:70%!important;
+ min-width:0!important;min-height:0!important;max-width:none!important;max-height:none!important;
+ transform:none!important;aspect-ratio:1 / 1!important;object-fit:cover!important;
+ object-position:center!important;border-radius:50%!important;
+ clip-path:circle(49% at 50% 50%)!important;
+ -webkit-clip-path:circle(49% at 50% 50%)!important;
+ margin:0!important;padding:0!important;background:transparent!important;
+ z-index:1!important;
+}
+#gb-profile-layer .gbpf-preview > img#gbpf-preview-border,
+#gb-profile-layer .gbpr-hero .gbpf-hero-avatar-wrap > img.gbpf-overlay,
+#gb-profile-layer .gb-admin-frame-preview.gbpr-hero .gbpf-hero-avatar-wrap > img.gbpf-overlay{
+ position:absolute!important;top:0!important;left:0!important;right:auto!important;bottom:auto!important;
+ width:100%!important;height:100%!important;max-width:none!important;
+ object-fit:contain!important;z-index:2!important;pointer-events:none!important;
+}
+#gb-profile-layer .gb-admin-section[hidden],
+#gb-profile-layer .gb-admin-home[hidden],
+#gb-profile-layer .gb-admin-subnav[hidden]{display:none!important}
