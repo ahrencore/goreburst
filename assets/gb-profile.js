@@ -1148,12 +1148,13 @@ window.gbGhostParadeFetch=async function(){
   const {data:{session},error:authError}=await sb.auth.getSession();
   if(authError||!session)return {error:'Online player identity is starting. Try Refresh.'};
   if(gbprIsGuest())await gbUploadGuestStars();
-  const [registered,guests]=await Promise.all([sb.rpc('ghost_parade_top10'),sb.rpc('gb_guest_stars_top10')]);
+  const [registered,guests,simulated]=await Promise.all([sb.rpc('ghost_parade_top10'),sb.rpc('gb_guest_stars_top10'),sb.rpc('gb_bot_ghost_parade')]);
   if(registered.error)return {error:'Leaderboard query failed: '+registered.error.message};
   if(guests.error)return {error:'Guest leaderboard setup required: '+guests.error.message};
+  if(simulated.error)return {error:'Ghost Parade participants unavailable: '+simulated.error.message};
   const combined=new Map();
-  for(const r of [...(registered.data||[]),...(guests.data||[])]){
-    const id=String(r.user_id||r.player_id||r.id||('guest-'+r.display_name));
+  for(const r of [...(registered.data||[]),...(guests.data||[]),...(simulated.data||[])]){
+    const id=String(r.user_id||r.player_id||r.id||(r.is_bot?'bot-'+r.display_name:'guest-'+r.display_name));
     const prev=combined.get(id);
     if(!prev||Number(r.total_stars||0)>Number(prev.total_stars||0))combined.set(id,r);
   }
@@ -1191,6 +1192,7 @@ window.gbLeaderboardAddFrames=async function(rows){
   return matches.length===1?matches[0]:null;
  };
  return rows.map(r=>{
+  if(r.is_bot)return {...r,equipped_frame:gbpfNormalize(r.equipped_frame)};
   const id=idOf(r);
   const matched=findUnique('id',id)||findUnique('username',String(r.username||'').replace(/^@/,''))||findUnique('avatar_path',r.avatar_path)||findUnique('display_name',r.display_name);
   let selected=gbpfNormalize(matched?.equipped_frame??r.equipped_frame);
@@ -1216,7 +1218,7 @@ window.gbGhostAvatarUrl=function(record){
 // Carnival Clash beta: browser-submitted scores are NOT server-verified; do not award prizes from them.
 window.gbClashLeaderboardFetch=async function(){
   if(!sb)return {error:'Supabase connection is starting. Try Refresh Rankings.'};
-  const {data,error}=await sb.rpc('carnival_clash_top10');
+  const {data,error}=await sb.rpc('gb_bot_clash_leaderboard');
   return error?{error:'Carnival Clash database setup required: '+error.message}:{rows:data||[]};
 };
 window.gbClashSubmit=async function(game,points){
@@ -1241,7 +1243,7 @@ window.gbWeeklyVerifiedComplete=async function(session,stage){
  if(error)throw new Error(error.message);
  return {ok:true};
 };
-window.gbWeeklyTop10=async function(){if(!sb)return {rows:[],error:'Offline'};const {data,error}=await sb.rpc('weekly_nightmare_top10');return {rows:data||[],error:error?.message||null}};
+window.gbWeeklyTop10=async function(){if(!sb)return {rows:[],error:'Offline'};const {data,error}=await sb.rpc('gb_bot_weekly_leaderboard');return {rows:data||[],error:error?.message||null}};
 
 
 // Server-issued Creepy Sudoku sessions (independent of visual Events UI).
