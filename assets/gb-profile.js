@@ -531,7 +531,12 @@ async function gbAdminRefresh(){
   const image=document.createElement('img');image.alt=f.title;image.loading='lazy';image.crossOrigin='anonymous';
   const signed=await sb.storage.from('gb-admin-test-frames').createSignedUrl(f.storage_path,120);
   if(!signed.error)image.src=signed.data.signedUrl;
-  const details=document.createElement('div');const title=document.createElement('strong');title.textContent=f.title;
+  const details=document.createElement('div');const title=document.createElement('strong');
+  const storedBytes=Number(f.file_size_bytes);
+  const storedSize=f.file_size_bytes!=null&&Number.isFinite(storedBytes)&&storedBytes>=0
+   ?(storedBytes>=1024*1024?(storedBytes/(1024*1024)).toFixed(2)+' MB':(storedBytes/1024).toFixed(1)+' KB')
+   :'size unavailable';
+  title.textContent=f.title+' · '+storedSize;
   const line=document.createElement('p');line.textContent=f.status.toUpperCase();
   details.append(title,line);
   const test=document.createElement('button');test.type='button';test.className='gbpr-btn secondary';test.textContent='PREVIEW';
