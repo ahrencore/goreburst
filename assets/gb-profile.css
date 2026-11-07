@@ -478,3 +478,32 @@ img.gbpf-rank-overlay {
 .gbpr-dialog-box p {white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;line-height:1.5;color:#f8d8f0;margin:9px 0 18px}
 .gbpr-dialog-actions {display:flex;justify-content:center;flex-wrap:wrap;gap:11px}
 .gbpr-dialog-actions .gbpr-btn {min-width:110px;border:1.5px solid #ffc4e9;border-radius:999px;box-shadow:0 0 12px #ff65d1aa;cursor:pointer}
+
+/* Automatic transparent-hole fitting for uploaded custom frames. */
+#gb-profile-layer .gb-admin-frame-preview .gbpf-hero-avatar-wrap.gbpf-auto-fit > img.gbpf-avatar-img,
+#gb-profile-layer .gbpr-hero .gbpf-hero-avatar-wrap.gbpf-auto-fit > img.gbpf-avatar-img,
+#gb-profile-layer .gbpr-hub-identity .gbpr-hero .gbpf-hero-avatar-wrap.gbpf-auto-fit > img.gbpf-avatar-img {
+ left:var(--gbpf-auto-x,50%)!important;top:var(--gbpf-auto-y,50%)!important;
+ width:var(--gbpf-auto-size,70%)!important;height:var(--gbpf-auto-size,70%)!important;
+ transform:translate(-50%,-50%)!important;clip-path:circle(49% at 50% 50%)!important;
+ -webkit-clip-path:circle(49% at 50% 50%)!important;
+ border-radius:50%!important;object-fit:cover!important;
+}
+#gb-profile-layer .gb-admin-file-size{font-size:10px;color:#d9b2d1;font-weight:500;white-space:nowrap}
+#gb-profile-layer .gb-admin-remove{margin:5px 0;border-color:#d98eab;color:#ffd6e8;background:#51233e}
+
+/* Combined v2: admin subpages and universal avatar clipping. */
+#gb-profile-layer .gb-admin-section[hidden],#gb-profile-layer .gb-admin-home[hidden],#gb-profile-layer .gb-admin-subnav[hidden]{display:none!important}
+#gb-profile-layer .gb-admin-home{display:grid;gap:12px;margin:16px 0}
+#gb-profile-layer .gb-admin-section-tile{width:100%;min-height:64px;text-align:left;padding:15px 18px;font-size:15px}
+#gb-profile-layer .gb-admin-subnav{margin:12px 0}
+#gb-profile-layer .gb-admin-bundle-box{border-top:1px solid #bb65a4;padding-top:16px;margin-top:22px}
+#gb-profile-layer .gb-admin-bundle-box .gb-admin-disabled{opacity:.55}
+#gb-profile-layer .gb-admin-bundle-box select{width:100%;box-sizing:border-box}
+#gb-profile-layer .gb-admin-calibrate{width:100%;display:flex;gap:6px;flex-wrap:wrap;margin:10px auto;justify-content:center;color:#ffdaf1;font:600 11px system-ui}
+#gb-profile-layer .gb-admin-calibrate small{display:block;flex-basis:100%;text-align:center}
+#gb-profile-layer .gb-admin-calibrate label{display:flex;align-items:center;gap:4px}
+#gb-profile-layer .gb-admin-calibrate input{width:53px;padding:5px;color:#fff;background:#30172e;border:1px solid #b76cb1;border-radius:6px}
+#gb-profile-layer .gb-admin-calibrate button{font-size:11px}
+#menu .top.art-hud > #gbMenuAvatar{clip-path:circle(49% at 50% 50%)!important;-webkit-clip-path:circle(49% at 50% 50%)!important}
+#gb-profile-layer .gbpf-hero-avatar-wrap.gbpf-auto-fit > img.gbpf-avatar-img{clip-path:circle(49% at 50% 50%)!important;-webkit-clip-path:circle(49% at 50% 50%)!important}

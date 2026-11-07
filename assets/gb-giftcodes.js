@@ -16,6 +16,17 @@ submit.disabled=true;msg.textContent='Checking your code…';img.hidden=true;
 try{
  const client=window.gbGiftSupabaseClient || await (async()=>{const m=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');return m.createClient('https://harqhhpobaepfkfeitmw.supabase.co','sb_publishable_K9F36jgWZaMWywln6Wwaiw_4zJ7523C',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}})})();
  const {data:{user},error:authError}=await client.auth.getUser();if(authError||!user||user.is_anonymous){msg.textContent='Log in to your account to claim gift codes.';return;}
+ // Try newer multi-reward codes first (atomic coins + optional frame).
+ const bundle=await client.rpc('gb_redeem_bundle_code',{p_code:code});
+ if(!bundle.error && bundle.data?.success){
+  msg.textContent='GIFT CLAIMED! '+(Number(bundle.data.coins)>0?Number(bundle.data.coins).toLocaleString()+' Skull Coins added. ':'')+(bundle.data.frame_id?'Your frame is in Edit Profile → Frames.':'');
+  if(bundle.data.frame_id&&bundle.data.storage_path){img.src=client.storage.from('gb-published-frames').getPublicUrl(bundle.data.storage_path).data.publicUrl;img.hidden=false;}
+  await window.gbGiftOwnershipRefresh?.();await window.gbPublishedFrameRefresh?.();
+  return;
+ }
+ if(bundle.error && !/function.*does not exist|could not find the function/i.test(bundle.error.message||'')){
+  msg.textContent=bundle.error.message;return;
+ }
  // Existing codes retain their original RPC; new Control Room codes use a separate secured RPC.
  let {data,error}=await client.rpc('gb_redeem_frame_code',{p_code:code});
  let published=false;

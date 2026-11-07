@@ -141,6 +141,65 @@ prAdminScreen.insertAdjacentHTML('beforeend',`<section class="gbpr-panel gb-admi
 <div class="gb-admin-publish-controls"><div class="gbpr-tag">OWNER-ONLY GIFT CODE RELEASE</div><p class="gbpr-muted">Approve a test frame, enter a new code and claim limit here, then choose PUBLISH AS GIFT CODE beside that approved frame. Publishing is irreversible without a separate revocation action.</p><label>Gift code<input id="gb-admin-publish-code" maxlength="32" placeholder="WALKERSGIFT2026" autocomplete="off"></label><label>Maximum redemptions<input id="gb-admin-publish-limit" type="number" min="1" max="100000" value="500"></label></div><div id="gb-admin-test-frames" class="gb-admin-items"></div>
 <h3>⚿ Username protection</h3><form id="gb-admin-username-form" class="gbpr-form"><label>Username<input id="gb-admin-username" maxlength="20" placeholder="username" required></label><div class="gbpr-actions"><button class="gbpr-btn" type="submit" data-mode="reserve">PROTECT</button><button class="gbpr-btn secondary" type="button" id="gb-admin-unreserve">RELEASE</button></div></form><div id="gb-admin-reserved-list" class="gb-admin-items"></div>
 <p id="gb-admin-status" class="gbpr-error" aria-live="polite"></p><button type="button" id="gb-admin-refresh" class="gbpr-btn secondary">REFRESH CONTROL ROOM</button></section>`);
+
+// ADMIN NAVIGATION: split existing controls into three subpages without replacing handlers.
+(function gbAdminBuildSections(){
+ const panel=prAdminScreen.querySelector('.gb-admin-panel');
+ const headings=Array.from(panel.querySelectorAll(':scope > h3'));
+ if(headings.length!==3)return;
+ const sections=[['broadcast','Broadcast Messages'],['frames','Frames & Gift Codes'],['usernames','Usernames']];
+ const home=document.createElement('div');home.className='gb-admin-home';
+ const nav=document.createElement('div');nav.className='gb-admin-subnav';nav.hidden=true;
+ const back=document.createElement('button');back.type='button';back.className='gbpr-btn secondary';back.textContent='‹ CONTROL ROOM';nav.append(back);
+ const front=panel.querySelector('#gb-admin-role');front.after(home,nav);
+ const segmentNodes=sections.map((s,i)=>{
+  const box=document.createElement('div');box.className='gb-admin-section';box.dataset.section=s[0];box.hidden=true;
+  const first=headings[i],last=headings[i+1];let node=first;
+  while(node&&node!==last){const next=node.nextElementSibling;if(node.id!=='gb-admin-status'&&node.id!=='gb-admin-refresh')box.append(node);node=next;}
+  panel.insertBefore(box,panel.querySelector('#gb-admin-status'));return box;
+ });
+ // Move publishing controls and frame items are already in the frame segment.
+ sections.forEach(([key,label])=>{
+  const btn=document.createElement('button');btn.type='button';btn.className='gbpr-btn gb-admin-section-tile';
+  btn.textContent=label;btn.onclick=()=>open(key);home.append(btn);
+ });
+ function open(key){home.hidden=!!key;nav.hidden=!key;segmentNodes.forEach((box,i)=>box.hidden=sections[i][0]!==key);}
+ back.onclick=()=>open(null);open(null);
+ window.gbAdminOpenSection=open;
+ window.gbAdminFramesSection=segmentNodes[1];
+})();
+
+// MULTI-REWARD CODES: coins and published frames; Curio Packs wait for a real inventory API.
+(function gbAdminGiftBundleCreator(){
+ const section=window.gbAdminFramesSection;if(!section)return;
+ const box=document.createElement('section');box.className='gb-admin-bundle-box';
+ box.innerHTML=`<h3>✦ Gift Code Creator</h3><p class="gbpr-muted">Combine coins with a previously published frame. One claim per player. Curio Packs are not yet enabled in the inventory backend.</p>
+ <form id="gb-admin-bundle-form" class="gbpr-form">
+ <label>Code<input id="gb-admin-bundle-code" required maxlength="32" placeholder="CARNIVALGIFT"></label>
+ <label>Maximum claims<input id="gb-admin-bundle-limit" required type="number" min="1" max="100000" value="500"></label>
+ <label>Coins (0 for none)<input id="gb-admin-bundle-coins" required type="number" min="0" max="1000000" value="0"></label>
+ <label>Published frame (optional)<select id="gb-admin-bundle-frame"><option value="">No frame</option></select></label>
+ <label class="gb-admin-disabled">Curio Packs <input disabled value="Not yet supported" aria-label="Curio packs not yet supported"></label>
+ <button type="submit" class="gbpr-btn">CREATE GIFT CODE</button></form>`;
+ section.append(box);
+ const select=box.querySelector('#gb-admin-bundle-frame');
+ window.gbAdminRefreshBundleFrames=async()=>{
+  if(gbAdminRole!=='owner'){box.hidden=true;return;}box.hidden=false;
+  const {data,error}=await sb.rpc('gb_admin_list_published_frames');
+  select.replaceChildren(new Option('No frame',''));
+  if(!error)(data||[]).forEach(f=>select.add(new Option(f.title+' ('+f.frame_id+')',f.frame_id)));
+ };
+ box.querySelector('form').onsubmit=async e=>{
+  e.preventDefault();if(gbAdminRole!=='owner')return;
+  const code=box.querySelector('#gb-admin-bundle-code').value.trim().toUpperCase();
+  const max=Number(box.querySelector('#gb-admin-bundle-limit').value),coins=Number(box.querySelector('#gb-admin-bundle-coins').value),frame=select.value||null;
+  if(!/^[A-Z0-9-]{4,32}$/.test(code)||!Number.isInteger(max)||max<1||max>100000||!Number.isInteger(coins)||coins<0||coins>1000000||(!frame&&coins===0)){gbAdminNote('Enter a valid code and at least one reward.');return;}
+  if(!await gbprConfirm('Create gift code '+code+' for '+max+' claims?'))return;
+  const {error}=await sb.rpc('gb_admin_create_bundle_code',{p_code:code,p_limit:max,p_coins:coins,p_frame_id:frame});
+  gbAdminNote(error?error.message:'Gift code created. Players can redeem it in Settings → Gift Code.',!error);
+  if(!error){e.target.reset();await gbprAlert('Gift code '+code+' created successfully.');}
+ };
+})();
 let prCurrent='hub';
 function prNavigate(name){
  if(name==='admin'&&!gbAdminRole)return;
@@ -373,6 +432,57 @@ const gbpfShopHole={
  frame_purplefluffy:[47.4,48.3,47.0],frame_poseidon:[46.1,47.0,48.2],
  frame_greek:[42.1,46.5,47.3]
 };
+// Detect the largest safe central circular opening from transparency.
+// Works with centered and slightly offset openings; if the artwork has no
+// enclosed transparent center, fall back to the established profile circle.
+const gbpfAutoHoleCache=new Map();
+const gbpfManualHoleOverrides=new Map();
+function gbpfHoleFromPixels(img){
+ const n=192,c=document.createElement('canvas');c.width=c.height=n;
+ const ctx=c.getContext('2d',{willReadFrequently:true});ctx.clearRect(0,0,n,n);
+ ctx.drawImage(img,0,0,n,n);const data=ctx.getImageData(0,0,n,n).data;
+ const clear=(x,y)=> x>=1&&y>=1&&x<n-1&&y<n-1&&data[(Math.floor(y)*n+Math.floor(x))*4+3]<45;
+ let sx=-1,sy=-1,dist=Infinity;
+ for(let y=52;y<140;y++)for(let x=52;x<140;x++)if(clear(x,y)){
+  const d=(x-96)**2+(y-96)**2;
+  if(d<dist){dist=d;sx=x;sy=y;}
+ }
+ if(sx<0||dist>35**2)return null;
+ // Contiguous transparent central region must not reach outside the frame.
+ const seen=new Uint8Array(n*n),queue=new Int32Array(n*n);let head=0,tail=0;
+ const start=sy*n+sx;seen[start]=1;queue[tail++]=start;
+ let minX=sx,maxX=sx,minY=sy,maxY=sy,touchesEdge=false;
+ while(head<tail){const idx=queue[head++],x=idx%n,y=(idx/n)|0;
+  minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);
+  if(x<2||y<2||x>n-3||y>n-3){touchesEdge=true;break;}
+  for(const j of [idx-1,idx+1,idx-n,idx+n]){if(!seen[j]&&clear(j%n,(j/n)|0)){seen[j]=1;queue[tail++]=j;}}
+ }
+ if(touchesEdge||tail<120)return null;
+ const cx=(minX+maxX)/2,cy=(minY+maxY)/2;
+ let radius=75;
+ for(let a=0;a<48;a++){
+  const rad=2*Math.PI*a/48;let r=0;
+  for(;r<75;r+=.75){const x=Math.round(cx+Math.cos(rad)*r),y=Math.round(cy+Math.sin(rad)*r);if(!clear(x,y))break;}
+  radius=Math.min(radius,r);
+ }
+ radius-=2.2; if(radius<12)return null;
+ return {x:cx/n*100,y:cy/n*100,size:Math.min(70,radius*2/n*100)};
+}
+function gbpfApplyAutoHole(el,fit){
+ if(!el||!fit)return;
+ el.classList.add('gbpf-auto-fit');
+ el.style.setProperty('--gbpf-auto-x',fit.x+'%');
+ el.style.setProperty('--gbpf-auto-y',fit.y+'%');
+ el.style.setProperty('--gbpf-auto-size',fit.size+'%');
+}
+function gbpfLoadAutoHole(img,wrap,key,afterFit){
+ if(!img||!wrap)return;
+ if(gbpfAutoHoleCache.has(key)){const fit=gbpfAutoHoleCache.get(key);gbpfApplyAutoHole(wrap,fit);afterFit?.(fit);return;}
+ const analyze=()=>{try{const result=gbpfHoleFromPixels(img);
+  if(result){gbpfAutoHoleCache.set(key,result);gbpfApplyAutoHole(wrap,result);afterFit?.(result);}
+ }catch(e){console.warn('Frame opening scan unavailable:',e.message);}};
+ if(img.complete&&img.naturalWidth)analyze();else img.addEventListener('load',analyze,{once:true});
+}
 const gbpfFit=(el,id)=>{
  if(!el)return;
  const fit=gbpfShopHole[id];
@@ -392,9 +502,59 @@ function gbpfDecorate(el,id){
  const src=gbpfFile(id);
  if(!src)return;
  const frame=document.createElement('img');frame.src=src;frame.className='gbpf-overlay';frame.alt='';frame.setAttribute('aria-hidden','true');wrap.appendChild(frame);
+ if(String(id).startsWith('custom_')){frame.crossOrigin='anonymous';gbpfLoadAutoHole(frame,wrap,id);
+  if(sb)void sb.rpc('gb_public_frame_opening',{p_frame_id:id}).then(({data,error})=>{
+   if(!error&&data&&Number(data.size)>0&&frame.isConnected){const fit={x:Number(data.x),y:Number(data.y),size:Number(data.size)};gbpfAutoHoleCache.set(id,fit);gbpfApplyAutoHole(wrap,fit);}
+  });}
+}
+
+let gbpfHudResizeHook=false;
+let gbpfHudFitVersion=0;
+function gbpfHudPositionPhoto(frame,fit){
+ const avatar=document.getElementById('gbMenuAvatar');
+ const hud=frame?.parentElement;if(!avatar||!hud||!frame?.naturalWidth)return;
+ const parent=hud.getBoundingClientRect(),r=frame.getBoundingClientRect();
+ if(!r.width||!r.height||!parent.width||!parent.height)return;
+ // object-fit: contain creates letterboxing; use actual rendered image box.
+ const scale=Math.min(r.width/frame.naturalWidth,r.height/frame.naturalHeight);
+ const w=frame.naturalWidth*scale,h=frame.naturalHeight*scale;
+ const x=r.left+(r.width-w)/2-parent.left,y=r.top+(r.height-h)/2-parent.top;
+ const diameter=Math.max(8,Math.min(w,h)*fit.size/100);
+ const left=x+w*fit.x/100-diameter/2,top=y+h*fit.y/100-diameter/2;
+ [['left',left+'px'],['top',top+'px'],['width',diameter+'px'],['height',diameter+'px'],['border-radius','50%'],['clip-path','circle(49% at 50% 50%)'],['object-fit','cover'],['object-position','center']]
+ .forEach(([k,v])=>avatar.style.setProperty(k,v,'important'));
+ avatar.style.setProperty('z-index','2','important');
+ frame.style.setProperty('z-index','3','important');
+}
+function gbpfHudResetPhoto(){
+ const avatar=document.getElementById('gbMenuAvatar');if(!avatar)return;
+ for(const k of ['left','top','width','height','border-radius','clip-path','object-fit','object-position','z-index'])avatar.style.removeProperty(k);
+}
+function gbpfHudBindFrame(frame,id){
+ const version=++gbpfHudFitVersion;
+ const fitFrame=async()=>{
+  if(version!==gbpfHudFitVersion)return;
+  let fit={x:50,y:50,size:70};
+  const shop=gbpfShopHole[id];if(shop)fit={x:shop[1],y:shop[2],size:shop[0]};
+  if(id.startsWith('custom_')){
+   // Metadata stored by the owner takes precedence over heuristic detection.
+   try{const client=sb;if(client){const res=await client.rpc('gb_public_frame_opening',{p_frame_id:id});
+    if(!res.error&&res.data&&Number(res.data.size)>0)fit=res.data;
+   }}catch{}
+   if(version!==gbpfHudFitVersion)return;
+   if(fit.size===70){const cached=gbpfAutoHoleCache.get(id);if(cached)fit=cached;
+    else try{const detected=gbpfHoleFromPixels(frame);if(detected){fit=detected;gbpfAutoHoleCache.set(id,detected)}}catch{}}
+  }
+  if(version!==gbpfHudFitVersion)return;
+  gbpfHudPositionPhoto(frame,fit);frame.dataset.gbpfFit=JSON.stringify(fit);
+ };
+ if(frame.complete&&frame.naturalWidth)void fitFrame();else frame.addEventListener('load',()=>void fitFrame(),{once:true});
+ if(!gbpfHudResizeHook){gbpfHudResizeHook=true;window.addEventListener('resize',()=>{
+   const f=document.getElementById('gbpf-hud-frame');if(f?.naturalWidth){let fit;try{fit=JSON.parse(f.dataset.gbpfFit||'null')}catch{}if(fit)gbpfHudPositionPhoto(f,fit);}
+ },{passive:true});}
 }
 function gbpfPaint(){const selected=gbpfCurrent();gbpfFit(prFramePanel.querySelector('.gbpf-preview'),selected);const hero=$p('gbpr-current-avatar');gbpfDecorate(hero,selected);const avatar=$p('gbpf-preview-avatar');if(avatar)avatar.src=avatarUrl();const border=$p('gbpf-preview-border');if(border){border.src=gbpfFile(selected)||'';border.hidden=!gbpfFile(selected)};
- const hud=document.getElementById('gbMenuAvatar');if(hud){const old=document.getElementById('gbpf-hud-frame');if(old)old.remove();if(gbpfFile(selected)){const overlay=document.createElement('img');overlay.id='gbpf-hud-frame';overlay.src=gbpfFile(selected);overlay.alt='';overlay.setAttribute('aria-hidden','true');hud.insertAdjacentElement('afterend',overlay)}}
+ const hud=document.getElementById('gbMenuAvatar');if(hud){const old=document.getElementById('gbpf-hud-frame');if(old)old.remove();if(gbpfFile(selected)){const overlay=document.createElement('img');overlay.id='gbpf-hud-frame';overlay.src=gbpfFile(selected);overlay.alt='';overlay.setAttribute('aria-hidden','true');hud.insertAdjacentElement('afterend',overlay);gbpfHudBindFrame(overlay,selected)}else{gbpfHudFitVersion++;gbpfHudResetPhoto()}}
  const choices=$p('gbpf-options');if(choices){choices.innerHTML=['none','1','2','3','4','5',...Array.from(gbAlbumFrameOwned),...Array.from({length:19},(_,i)=>'gift_'+String(i+1).padStart(2,'0')).filter(id=>gbGiftOwned.has(id)),...gbShopFrameIds.filter(id=>gbShopFrameOwned.has(id)),...Array.from(gbPublishedFrameOwned)].map(id=>{const locked=((id==='hungry_gate'||id.startsWith('album_completion_'))&&!gbAlbumFrameOwned.has(id))||(id.startsWith('gift_')&&!gbGiftOwned.has(id))||(id.startsWith('frame_')&&!gbShopFrameOwned.has(id));const chosen=id===selected;const inner=gbpfFile(id)?'<img src="'+gbpfFile(id)+'" alt="">':'<span class="gbpf-empty">○</span>';return '<button type="button" data-gbpf-frame="'+id+'" class="gbpf-choice '+(chosen?'selected ':'')+(locked?'locked':'')+'" aria-label="'+(locked?'Locked frame':id==='none'?'No frame':'Profile frame '+id)+'" aria-pressed="'+chosen+'">'+inner+(locked?'<span class="gbpf-lock">🔒</span>':'')+(chosen?'<span class="gbpf-tick">✓</span>':'')+'</button>'}).join('')}
 }
 window.gbpfRefresh=gbpfPaint;
@@ -435,6 +595,7 @@ function gbAdminNote(message,ok=false){const el=$p('gb-admin-status');if(el){el.
 async function gbAdminRefresh(){
  if(!sb||!gbAdminRole)return;
  $p('gb-admin-role').textContent=gbAdminRole==='owner'?'OWNER ACCESS':'ADMIN ACCESS';const releaseArea=prAdminScreen.querySelector('.gb-admin-publish-controls');if(releaseArea)releaseArea.hidden=gbAdminRole!=='owner';
+ void window.gbAdminRefreshBundleFrames?.();
  const [names,frames]=await Promise.all([sb.rpc('gb_admin_list_reserved'),sb.rpc('gb_admin_list_unpublished_test_frames')]);
  $p('gb-admin-reserved-list').textContent=names.error?'Unable to list usernames: '+names.error.message:(names.data||[]).map(x=>'@'+x.username).join(' · ')||'No protected usernames';
  const area=$p('gb-admin-test-frames');area.replaceChildren();
@@ -442,11 +603,14 @@ async function gbAdminRefresh(){
  if(!frames.data?.length){area.textContent='No unpublished test frames. Approved frames disappear from this list after successful gift-code publishing.';return;}
  for(const f of frames.data){
   const item=document.createElement('div');item.className='gb-admin-frame-item';
-  const image=document.createElement('img');image.alt=f.title;image.loading='lazy';
+  const image=document.createElement('img');image.alt=f.title;image.loading='lazy';image.crossOrigin='anonymous';
   const signed=await sb.storage.from('gb-admin-test-frames').createSignedUrl(f.storage_path,120);
   if(!signed.error)image.src=signed.data.signedUrl;
   const details=document.createElement('div');const title=document.createElement('strong');title.textContent=f.title;
-  const line=document.createElement('p');line.textContent=f.status.toUpperCase();details.append(title,line);
+  const line=document.createElement('p');line.textContent=f.status.toUpperCase();
+  const size=document.createElement('span');size.className='gb-admin-file-size';
+  const bytes=Number(f.file_size_bytes);size.textContent=Number.isFinite(bytes)&&bytes>0?' · '+(bytes/1024).toFixed(1)+' KB':' · size unavailable';
+  title.append(size);details.append(title,line);
   const test=document.createElement('button');test.type='button';test.className='gbpr-btn secondary';test.textContent='PREVIEW';
   test.onclick=()=>{
    const previous=$p('gb-admin-frame-preview');previous?.remove();
@@ -454,11 +618,44 @@ async function gbAdminRefresh(){
    const preview=document.createElement('div');preview.id='gb-admin-frame-preview';preview.className='gb-admin-frame-preview gbpr-hero';
    const wrap=document.createElement('span');wrap.className='gbpf-hero-avatar-wrap';
    const avatar=document.createElement('img');avatar.src=avatarUrl();avatar.alt='Your profile photo';avatar.className='gbpf-avatar-img';
-   const overlay=document.createElement('img');overlay.alt='Test frame';overlay.src=image.src;overlay.className='gbpf-overlay';overlay.setAttribute('aria-hidden','true');
+   const overlay=document.createElement('img');overlay.crossOrigin='anonymous';overlay.alt='Test frame';overlay.src=image.src;overlay.className='gbpf-overlay';overlay.setAttribute('aria-hidden','true');
    wrap.append(avatar,overlay);preview.append(wrap);item.append(preview);
-   gbpfFit(wrap,'none'); // Universal 70% circle used by normal profile and completion frames.
+   gbpfFit(wrap,'none');gbpfLoadAutoHole(overlay,wrap,'test:'+f.id); // Detect inner transparent opening.
+   const calibrate=document.createElement('div');calibrate.className='gb-admin-calibrate';
+   calibrate.innerHTML='<small>Adjust PFP opening (center X / center Y / diameter %). Save once; future viewers use the same values.</small>';
+   const fields=[['X',50],['Y',50],['Size',55]].map(([label,initial])=>{
+    const holder=document.createElement('label');holder.textContent=label+' ';
+    const input=document.createElement('input');input.type='number';input.min='10';input.max='90';input.step='.5';
+    input.value=gbpfAutoHoleCache.get('test:'+f.id)?.[label==='Size'?'size':label.toLowerCase()]||initial;
+    holder.append(input);calibrate.append(holder);return input;
+   });
+   const update=()=>{gbpfApplyAutoHole(wrap,{x:Number(fields[0].value),y:Number(fields[1].value),size:Number(fields[2].value)});};
+   fields.forEach(field=>field.addEventListener('input',update));
+   const save=document.createElement('button');save.type='button';save.className='gbpr-btn secondary';save.textContent='SAVE FIT';
+   save.onclick=async()=>{
+    const x=Number(fields[0].value),y=Number(fields[1].value),size=Number(fields[2].value);
+    if(![x,y,size].every(Number.isFinite)||size<15||size>85||x<10||x>90||y<10||y>90){gbAdminNote('Please enter valid opening settings.');return;}
+    const result=await sb.rpc('gb_admin_set_test_frame_opening',{p_id:f.id,p_x:x,p_y:y,p_size:size});
+    gbAdminNote(result.error?result.error.message:'Opening saved. Published gift frames will reuse this fit.',!result.error);
+    if(!result.error)gbpfAutoHoleCache.set('test:'+f.id,{x,y,size});
+   };calibrate.append(save);preview.append(calibrate);
+   void sb.rpc('gb_admin_get_test_frame_opening',{p_id:f.id}).then(({data,error})=>{
+     if(!error&&data&&Number(data.size)>0){fields[0].value=data.x;fields[1].value=data.y;fields[2].value=data.size;update();}
+   });
   };
   details.append(test);
+  const removeBtn=document.createElement('button');removeBtn.type='button';removeBtn.className='gbpr-btn secondary gb-admin-remove';removeBtn.textContent='DELETE TEST FRAME';
+  removeBtn.onclick=async()=>{
+   if(!await gbprConfirm('Permanently delete unpublished test frame "'+f.title+'"? This cannot be undone.'))return;
+   removeBtn.disabled=true;
+   const result=await sb.rpc('gb_admin_delete_unpublished_test_frame',{p_id:f.id});
+   if(result.error){gbAdminNote('Delete failed: '+result.error.message);removeBtn.disabled=false;return;}
+   // Delete the private storage object after the database entry is removed.
+   const path=result.data;
+   const erased=await sb.storage.from('gb-admin-test-frames').remove([path]);
+   gbAdminNote(erased.error?'Frame removed from list, but storage cleanup failed: '+erased.error.message:'Unpublished frame permanently deleted.',!erased.error);
+   await gbAdminRefresh();
+  };details.append(removeBtn);
   if(gbAdminRole==='owner'){
    const sel=document.createElement('select');['draft','testing','approved'].forEach(x=>{const o=document.createElement('option');o.value=x;o.textContent=x.toUpperCase();o.selected=x===f.status;sel.append(o)});
    sel.onchange=async()=>{const res=await sb.rpc('gb_admin_set_test_frame_status',{p_id:f.id,p_status:sel.value});gbAdminNote(res.error?res.error.message:'Status updated. Frame remains private.',!res.error);if(res.error)sel.value=f.status;else{f.status=sel.value;void gbAdminRefresh();}};details.append(sel);
