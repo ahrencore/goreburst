@@ -427,3 +427,24 @@ img.gbpf-rank-overlay {
 #gb-profile-layer .gb-admin-announcement{margin:10px 0;padding:12px;border:1px solid #7c436d;border-radius:10px;background:#28132d;white-space:pre-wrap}
 #gb-profile-layer .gb-admin-announcement small{display:block;color:#d6a8ca;margin:5px 0}
 #gb-profile-layer .gb-admin-announcement p{white-space:pre-wrap;overflow-wrap:anywhere}
+
+/* Control Room v1.2: frame test must be a TRUE circular stencil, not an
+   unconstrained avatar rectangle underneath the overlaid PNG. Keep the
+   same 108px square profile frame renderer; the photo is clipped inward
+   so no colored photo pixels can protrude through a frame's inner rim. */
+#gb-profile-layer .gb-admin-frame-preview.gbpr-hero .gbpf-hero-avatar-wrap{
+  width:108px!important;height:108px!important;aspect-ratio:1 / 1!important;
+  flex:0 0 108px!important;min-width:108px!important;max-width:108px!important;
+}
+#gb-profile-layer .gb-admin-frame-preview.gbpr-hero .gbpf-hero-avatar-wrap > img.gbpf-avatar-img{
+  position:absolute!important;left:15%!important;top:15%!important;
+  width:70%!important;height:70%!important;aspect-ratio:1 / 1!important;
+  object-fit:cover!important;object-position:center!important;
+  border-radius:50%!important;
+  clip-path:circle(43% at 50% 50%)!important;
+  -webkit-clip-path:circle(43% at 50% 50%)!important;
+}
+#gb-profile-layer .gb-admin-frame-preview.gbpr-hero .gbpf-hero-avatar-wrap > img.gbpf-overlay{
+  inset:0!important;width:100%!important;height:100%!important;z-index:2!important;
+  object-fit:contain!important;
+}

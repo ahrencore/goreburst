@@ -109,7 +109,7 @@ prRewardSync.innerHTML='<div class="gbpr-tag">CLAIMED REWARDS</div><p class="gbp
 prAccountScreen.insertBefore(prRewardSync,prCloud);
 
 const prMailScreen=prScreen('mail','MAILBOX');
-prMailScreen.insertAdjacentHTML('beforeend',`<section class="gbpr-panel"><div class="gbpr-tag">CARNIVAL MAIL</div><div class="gbpr-social-actions"><button type="button" class="gbpr-btn secondary" id="gbpr-mail-refresh">REFRESH</button></div><div class="gbpr-tag">OFFICIAL ANNOUNCEMENTS</div><div id="gbpr-global-announcements" class="gb-admin-announcements">Loading announcements…</div><div class="gbpr-tag">PERSONAL MAIL</div><div id="gbpr-mail-list" aria-live="polite" class="gbpr-social-list">Loading mail…</div></section>`);
+prMailScreen.insertAdjacentHTML('beforeend',`<section class="gbpr-panel"><div class="gbpr-tag">CARNIVAL MAIL</div><div class="gbpr-social-actions"><button type="button" class="gbpr-btn secondary" id="gbpr-mail-refresh">REFRESH</button></div><div id="gbpr-mail-list" aria-live="polite" class="gbpr-social-list">Loading mail…</div></section>`);
 const prPublicScreen=prScreen('public','CARNIVAL PLAYER');
 prPublicScreen.insertAdjacentHTML('beforeend',`<section class="gbpr-panel gbpr-public-panel"><div class="gbpr-tag">✦ CARNIVAL PLAYER ✦</div><div id="gbpr-public-content" aria-live="polite">Loading player…</div><button type="button" class="gbpr-btn secondary" id="gbpr-public-back">‹ BACK TO FRIENDS</button></section>`);
 const prFriendsScreen=prScreen('friends','FRIENDS');
@@ -118,7 +118,7 @@ const prAdminScreen=prScreen('admin','CARNIVAL CONTROL ROOM');
 prAdminScreen.insertAdjacentHTML('beforeend',`<section class="gbpr-panel gb-admin-panel">
 <div class="gbpr-tag">PRIVATE ADMINISTRATION</div><p class="gbpr-muted">Authorized staff only. Unreleased frames never enter public profile inventories.</p>
 <div id="gb-admin-role" class="gbpr-muted"></div>
-<h3>✉ Broadcast announcement</h3>
+<h3>✉ Send a letter to all current players</h3>
 <form id="gb-admin-broadcast" class="gbpr-form"><label>Title<input id="gb-admin-title" maxlength="100" required></label><label>Message<textarea id="gb-admin-body" maxlength="3000" rows="5" required></textarea></label><button class="gbpr-btn" type="submit">SEND TO ALL PLAYERS</button></form>
 <h3>✦ Private frame testing lab</h3><p class="gbpr-muted">PNG/WebP, up to 5 MB. Preview privately; approval does not automatically publish to the public store.</p>
 <form id="gb-admin-frame-form" class="gbpr-form"><label>Frame title<input id="gb-admin-frame-title" maxlength="80" required></label><label>Artwork<input id="gb-admin-frame-file" type="file" accept="image/png,image/webp" required></label><button class="gbpr-btn" type="submit">UPLOAD TEST FRAME</button></form>
@@ -134,7 +134,7 @@ function prNavigate(name){
  prFriendsScreen.querySelector('#gbpr-friends-account').classList.toggle('gbpr-hide',!!(gbprRegistered()&&profile?.username));
  prFriendsScreen.querySelector('#gbpr-friends-controls').classList.toggle('gbpr-hide',!(gbprRegistered()&&profile?.username));
  if(name==='friends'&&gbprRegistered()&&profile?.username)gbprLoadFriends();
- if(name==='mail'){gbprLoadMail();void gbLoadGlobalAnnouncements();}
+ if(name==='mail')void gbprLoadMail();
  if(name==='admin')void gbAdminRefresh();
  prScroll.scrollTop=0;
 }
@@ -442,8 +442,8 @@ async function gbAdminRefresh(){
 $p('gb-admin-broadcast').onsubmit=async e=>{
  e.preventDefault();if(!gbAdminRole)return;
  const title=$p('gb-admin-title').value.trim(),body=$p('gb-admin-body').value.trim();
- if(!confirm('Send this announcement to every signed-in player?'))return;
- const r=await sb.rpc('gb_send_announcement',{p_title:title,p_body:body});gbAdminNote(r.error?r.error.message:'Announcement sent to all registered accounts.',!r.error);
+ if(!confirm('Send this letter to players registered right now? Future signups will not receive it.'))return;
+ const r=await sb.rpc('gb_send_announcement',{p_title:title,p_body:body});gbAdminNote(r.error?r.error.message:'Letter sent to all currently registered players. Find it in the regular Mailbox.',!r.error);
  if(!r.error)e.target.reset();
 };
 $p('gb-admin-username-form').onsubmit=async e=>{e.preventDefault();await gbAdminUsernameChange(true);};
@@ -466,21 +466,9 @@ $p('gb-admin-frame-form').onsubmit=async e=>{
 };
 $p('gb-admin-refresh').onclick=()=>gbAdminRefresh();
 
-// Global announcements are blended into the existing mailbox without exposing the admin.
-async function gbLoadGlobalAnnouncements(){
- const host=$p('gbpr-global-announcements');if(!host||!sb||!gbprRegistered())return;
- const r=await sb.rpc('gb_read_announcements');
- if(r.error){host.textContent='Announcements unavailable: '+r.error.message;return;}
- host.replaceChildren();if(!r.data?.length){host.textContent='No announcements yet.';return;}
- for(const a of r.data){
-  const item=document.createElement('div');item.className='gb-admin-announcement';
-  const title=document.createElement('strong');title.textContent=a.title;
-  const from=document.createElement('small');from.textContent="FROM MR. WALKER'S CARNIVAL · "+new Date(a.created_at).toLocaleDateString();
-  const body=document.createElement('p');body.textContent=a.body;item.append(title,from,body);
-  if(!a.read_at){const mark=document.createElement('button');mark.className='gbpr-btn secondary';mark.textContent='MARK READ';mark.onclick=async()=>{const r=await sb.rpc('gb_mark_announcement_read',{p_id:a.id});if(!r.error){mark.remove();void gbprRefreshMailDot();}};item.append(mark);}
-  host.append(item);
- }
-}
+// Admin broadcasts use the SAME inbox rows and letter view as Mr. Walker's mail.
+// Their eligibility is checked in Supabase using recipient creation time.
+async function gbLoadGlobalAnnouncements(){return gbprLoadMail();}
 
 async function fetchProfile(){if(!sb||!user)return;const {data,error}=await sb.from('profiles').select('id,username,display_name,avatar_key,avatar_path,equipped_frame').eq('id',user.id).maybeSingle();if(error){setMessage('gbpr-edit-status',error.message);return}profile=data||null;refresh();void gbAdminCheck();void window.gbGiftOwnershipRefresh?.();void window.gbAlbumFrameRefresh?.();void window.gbShopApi?.sync().catch(()=>{});void gbprRefreshRequestDot();if(gbprRegistered())window.gbCloudReady?.()}
 for(const el of document.querySelectorAll('.gbpr-avatar'))el.onclick=async()=>{const i=Number(el.dataset.index);avatarPreview=i;refresh();if(!gbprRegistered()||!sb){try{localStorage.setItem('gb-guest-avatar',String(i))}catch(e){};return;}setMessage('gbpr-upload-status','Saving avatar…');const {error}=await sb.from('profiles').update({avatar_key:avatarKey(i),avatar_path:null}).eq('id',user.id);if(error){setMessage('gbpr-upload-status',error.message);return}profile={...profile,avatar_key:avatarKey(i),avatar_path:null};avatarPreview=null;setMessage('gbpr-upload-status','Avatar saved!',true);refresh()};
@@ -785,11 +773,19 @@ async function gbprLoadMail(){
  if(!user){host.innerHTML=gbprSocialMessage('Sign in to see official mail.');return}
  if(!sb){host.innerHTML=gbprSocialMessage('Connecting…');return}
  host.textContent='Loading mail…';
- const {data,error}=await sb.from('gb_inbox').select('id,title,body,category,created_at,claimed_at,read_at,source_event,reward').eq('recipient',user.id).order('created_at',{ascending:false}).limit(60);
+ const [mail,announcements]=await Promise.all([
+  sb.from('gb_inbox').select('id,title,body,category,created_at,claimed_at,read_at,source_event,reward').eq('recipient',user.id).order('created_at',{ascending:false}).limit(60),
+  gbprRegistered()?sb.rpc('gb_read_announcements'):Promise.resolve({data:[],error:null})
+ ]);
  if(!host.isConnected)return;
- if(error){host.innerHTML=gbprSocialMessage('Mailbox unavailable: '+error.message);return}
- gbprMailItems=data||[];
- gbprRefreshMailDot();
+ if(mail.error){host.innerHTML=gbprSocialMessage('Mailbox unavailable: '+mail.error.message);return;}
+ if(announcements.error){console.warn('Broadcast mailbox:',announcements.error.message);}
+ const broadcasts=(announcements.error?[]:announcements.data||[]).map(a=>({
+  id:a.id,title:a.title,body:a.body,created_at:a.created_at,read_at:a.read_at,
+  category:'admin_broadcast',source_event:'admin_broadcast',claimed_at:null,reward:null
+ }));
+ gbprMailItems=[...(mail.data||[]),...broadcasts].sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at)).slice(0,100);
+ void gbprRefreshMailDot();
  gbprDrawMailList();
 }
 // Visual-only rewards: display actual Gore Burst item icons from the attached server reward.
@@ -814,21 +810,24 @@ function gbprEventRewardIcons(reward){
 function gbprDrawMailList(){
  const host=$p('gbpr-mail-list');if(!host)return;
  if(!gbprMailItems.length){host.innerHTML=gbprSocialMessage('No mail yet.');return}
- host.innerHTML=gbprMailItems.map(m=>`<button type="button" class="gbpr-inbox-row ${gbprMailPendingCheck(m)?'gbpr-inbox-unread':''}" data-mail-open="${m.id}"><span class="gbpr-inbox-envelope">✉</span><span class="gbpr-inbox-title"><b>${safe(m.title)}</b><small>${m.source_event==='welcome_gift'?'A letter from Mr. Walker':'Official Carnival Mail'}</small></span><span class="gbpr-inbox-status">${m.category==='event_reward'&&!m.claimed_at?'<i class="gbpr-mail-dot"></i>':!m.read_at?'<i class="gbpr-mail-dot"></i>':'›'}</span></button>`).join('');
+ host.innerHTML=gbprMailItems.map(m=>`<button type="button" class="gbpr-inbox-row ${gbprMailPendingCheck(m)?'gbpr-inbox-unread':''}" data-mail-open="${m.id}"><span class="gbpr-inbox-envelope">✉</span><span class="gbpr-inbox-title"><b>${safe(m.title)}</b><small>${m.source_event==='welcome_gift'||m.category==='admin_broadcast'?'A letter from Mr. Walker':'Official Carnival Mail'}</small></span><span class="gbpr-inbox-status">${m.category==='event_reward'&&!m.claimed_at?'<i class="gbpr-mail-dot"></i>':!m.read_at?'<i class="gbpr-mail-dot"></i>':'›'}</span></button>`).join('');
  host.querySelectorAll('[data-mail-open]').forEach(b=>b.onclick=()=>gbprOpenMail(b.dataset.mailOpen));
 }
 async function gbprOpenMail(id){
  const m=gbprMailItems.find(x=>x.id===id);if(!m)return;
  const host=$p('gbpr-mail-list');
  if(!m.read_at){
-  const {error}=await sb.rpc('gb_mail_mark_read',{p_mail:m.id});
+  const {error}=m.category==='admin_broadcast'
+   ?await sb.rpc('gb_mark_announcement_read',{p_id:m.id})
+   :await sb.rpc('gb_mail_mark_read',{p_mail:m.id});
   if(!error)m.read_at=new Date().toISOString();
   void gbprRefreshMailDot();
  }
  const welcome=m.source_event==='welcome_gift';
+ const broadcast=m.category==='admin_broadcast';
  const testCoins=m.source_event==='reward_claim_test' && m.reward?.coins===100;
  const eventAward=m.category==='event_reward' && !welcome && !testCoins;
- host.innerHTML=`<div class="gbpr-open-letter ${welcome?'gbpr-welcome-mail':''}"><button type="button" class="gbpr-btn secondary gbpr-letter-back" id="gbpr-mail-back">‹ INBOX</button><div class="gbpr-tag">${welcome?'✦ AN OFFICIAL INVITATION ✦':'OFFICIAL MAIL'}</div><h3>${safe(m.title)}</h3><small>${new Date(m.created_at).toLocaleDateString()}</small><p>${safe(m.body)}</p>${welcome?`<div class="gbpr-welcome-gifts"><div><span>♥</span><b>UNLIMITED LIVES</b><small>1 HOUR</small></div><div><img src="assets/rocket-h.png" alt="Rocket"><b>ROCKET</b><small>×1</small></div><div><img src="assets/clownbomb.png" alt="Clownbomb"><b>CLOWNBOMB</b><small>×1</small></div><div><img src="assets/ferris.png" alt="Ferris Wheel"><b>FERRIS WHEEL</b><small>×1</small></div></div><button type="button" class="gbpr-btn gbpr-welcome-claim" id="gbpr-letter-claim" ${m.claimed_at?'disabled':''}>${m.claimed_at?'CLAIMED':'✦ CLAIM MY GIFTS ✦'}</button>`:testCoins?`<div class="gbpr-test-prize"><img src="assets/coin-skull-new.png" alt="Skull Coins"><strong>100 SKULL COINS</strong></div><button type="button" class="gbpr-btn gbpr-test-claim" id="gbpr-test-claim" ${m.claimed_at?'disabled':''}>${m.claimed_at?'CLAIMED':'✦ CLAIM 100 COINS ✦'}</button><button type="button" class="gbpr-btn secondary" id="gbpr-test-sync" ${!m.claimed_at?'hidden':''}>SYNC CLAIMED GIFT TO THIS DEVICE</button><p class="gbpr-muted" id="gbpr-test-status">${m.claimed_at?'CLAIMED':''}</p>`:eventAward?`${gbprEventRewardIcons(m.reward)||'<div class="gbpr-test-prize"><strong>EVENT PRIZE</strong></div>'}<button type="button" class="gbpr-btn gbpr-test-claim" id="gbpr-event-award-claim" ${m.claimed_at?'disabled':''}>${m.claimed_at?'CLAIMED':'✦ CLAIM EVENT PRIZE ✦'}</button><p class="gbpr-muted" id="gbpr-event-award-status">${m.claimed_at?'CLAIMED':''}</p>`:''}</div>`;
+ host.innerHTML=`<div class="gbpr-open-letter ${welcome?'gbpr-welcome-mail':''}"><button type="button" class="gbpr-btn secondary gbpr-letter-back" id="gbpr-mail-back">‹ INBOX</button><div class="gbpr-tag">${welcome?'✦ AN OFFICIAL INVITATION ✦':broadcast?'✦ A LETTER FROM MR. WALKER ✦':'OFFICIAL MAIL'}</div><h3>${safe(m.title)}</h3><small>${new Date(m.created_at).toLocaleDateString()}</small><p>${safe(m.body)}</p>${welcome?`<div class="gbpr-welcome-gifts"><div><span>♥</span><b>UNLIMITED LIVES</b><small>1 HOUR</small></div><div><img src="assets/rocket-h.png" alt="Rocket"><b>ROCKET</b><small>×1</small></div><div><img src="assets/clownbomb.png" alt="Clownbomb"><b>CLOWNBOMB</b><small>×1</small></div><div><img src="assets/ferris.png" alt="Ferris Wheel"><b>FERRIS WHEEL</b><small>×1</small></div></div><button type="button" class="gbpr-btn gbpr-welcome-claim" id="gbpr-letter-claim" ${m.claimed_at?'disabled':''}>${m.claimed_at?'CLAIMED':'✦ CLAIM MY GIFTS ✦'}</button>`:testCoins?`<div class="gbpr-test-prize"><img src="assets/coin-skull-new.png" alt="Skull Coins"><strong>100 SKULL COINS</strong></div><button type="button" class="gbpr-btn gbpr-test-claim" id="gbpr-test-claim" ${m.claimed_at?'disabled':''}>${m.claimed_at?'CLAIMED':'✦ CLAIM 100 COINS ✦'}</button><button type="button" class="gbpr-btn secondary" id="gbpr-test-sync" ${!m.claimed_at?'hidden':''}>SYNC CLAIMED GIFT TO THIS DEVICE</button><p class="gbpr-muted" id="gbpr-test-status">${m.claimed_at?'CLAIMED':''}</p>`:eventAward?`${gbprEventRewardIcons(m.reward)||'<div class="gbpr-test-prize"><strong>EVENT PRIZE</strong></div>'}<button type="button" class="gbpr-btn gbpr-test-claim" id="gbpr-event-award-claim" ${m.claimed_at?'disabled':''}>${m.claimed_at?'CLAIMED':'✦ CLAIM EVENT PRIZE ✦'}</button><p class="gbpr-muted" id="gbpr-event-award-status">${m.claimed_at?'CLAIMED':''}</p>`:''}</div>`;
  host.querySelector('#gbpr-mail-back').onclick=gbprDrawMailList;
  const eventClaim=host.querySelector('#gbpr-event-award-claim');
  if(eventClaim)eventClaim.onclick=async()=>{
