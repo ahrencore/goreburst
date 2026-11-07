@@ -327,7 +327,7 @@ let gbPublishedFrameOwned=new Set();const gbPublishedFrameUrls=new Map();
 
 
 const gbpfFile=id=>gbPublishedFrameUrls.has(String(id))?gbPublishedFrameUrls.get(String(id)):gbShopFrameIds.includes(String(id))?'assets/shop-frames/'+String(id).slice(6)+'.webp':id==='hungry_gate'?GBPF_PATH+'hungry_gate.png':/^album_completion_0[2-9]$/.test(String(id))?'assets/collectibles/completion-frames/completion_'+String(id).slice(-2)+'.webp':/^[1-5]$/.test(String(id))?GBPF_PATH+'frame_0'+id+'.png':/^gift_(0[1-9]|1[0-9])$/.test(String(id))?GBPF_PATH+id+'.png':'';
-const gbpfNormalize=id=>gbPublishedFrameOwned.has(String(id))?String(id):gbShopFrameIds.includes(String(id))?String(id):id==='hungry_gate'?'hungry_gate':/^album_completion_0[2-9]$/.test(String(id))?String(id):/^[1-5]$/.test(String(id))?String(id):/^gift_(0[1-9]|1[0-9])$/.test(String(id))?String(id):'none';
+const gbpfNormalize=id=>/^custom_[a-f0-9]{12}$/.test(String(id))?String(id):gbShopFrameIds.includes(String(id))?String(id):id==='hungry_gate'?'hungry_gate':/^album_completion_0[2-9]$/.test(String(id))?String(id):/^[1-5]$/.test(String(id))?String(id):/^gift_(0[1-9]|1[0-9])$/.test(String(id))?String(id):'none';
 let gbAlbumFrameOwned=new Set();
 window.gbAlbumFrameRefresh=async()=>{
  if(!sb||!user||user.is_anonymous){gbAlbumFrameOwned=new Set();gbpfPaint();return;}
@@ -399,7 +399,8 @@ function gbpfPaint(){const selected=gbpfCurrent();gbpfFit(prFramePanel.querySele
 }
 window.gbpfRefresh=gbpfPaint;
 prFramePanel.addEventListener('click',async e=>{const button=e.target.closest('[data-gbpf-frame]');if(!button)return;const id=gbpfNormalize(button.dataset.gbpfFrame);const status=$p('gbpf-status');if((id==='hungry_gate'||id.startsWith('album_completion_'))&&!gbAlbumFrameOwned.has(id)){status.textContent='This exclusive completion frame was not awarded to your account.';return}if(id.startsWith('gift_')&&!gbGiftOwned.has(id)){status.textContent='Locked: redeem its gift code in Settings.';return}if(id.startsWith('frame_')&&!gbShopFrameOwned.has(id)){status.textContent='Purchase this frame in the Carnival Shop first.';return}
- if(sb&&gbprRegistered()){status.textContent='Saving frame…';const result=await sb.from('profiles').update({equipped_frame:id}).eq('id',user.id);if(result.error){status.textContent='Could not equip frame: '+result.error.message;return}profile={...profile,equipped_frame:id}}
+ if(id.startsWith('custom_')&&!gbPublishedFrameOwned.has(id)){status.textContent='This gift frame has not been claimed by your account. Refresh your frames.';void window.gbPublishedFrameRefresh?.();return}
+ if(sb&&gbprRegistered()){status.textContent='Saving frame…';const isGift=id.startsWith('gift_')||id.startsWith('custom_');const result=isGift?await sb.rpc('gb_equip_claimed_gift_frame',{p_frame_id:id}):await sb.from('profiles').update({equipped_frame:id}).eq('id',user.id);if(result.error){status.textContent='Could not equip frame: '+result.error.message;return}profile={...profile,equipped_frame:id}}
  gbpfSetLocal(id);status.textContent='Frame equipped!';gbpfPaint();});
 
 const gbprIsGuest=()=>Boolean(user?.is_anonymous);

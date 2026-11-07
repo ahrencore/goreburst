@@ -28,7 +28,7 @@ try{
  msg.textContent='GIFT CLAIMED! Your new frame is in Edit Profile → Frames.';
  img.src=published?client.storage.from('gb-published-frames').getPublicUrl(result.storage_path).data.publicUrl:'assets/profile-frames/'+result.frame_id+'.png';
  img.hidden=false;
- await window.gbGiftOwnershipRefresh?.();await window.gbPublishedFrameRefresh?.();
+ await Promise.all([window.gbGiftOwnershipRefresh?.(),window.gbPublishedFrameRefresh?.()]);window.gbpfRefresh?.();
 }catch(err){msg.textContent='Connection error. Please try again.';console.warn(err)}finally{submit.disabled=false}
 });
 })();
