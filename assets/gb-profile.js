@@ -435,11 +435,11 @@ function gbAdminNote(message,ok=false){const el=$p('gb-admin-status');if(el){el.
 async function gbAdminRefresh(){
  if(!sb||!gbAdminRole)return;
  $p('gb-admin-role').textContent=gbAdminRole==='owner'?'OWNER ACCESS':'ADMIN ACCESS';const releaseArea=prAdminScreen.querySelector('.gb-admin-publish-controls');if(releaseArea)releaseArea.hidden=gbAdminRole!=='owner';
- const [names,frames]=await Promise.all([sb.rpc('gb_admin_list_reserved'),sb.from('gb_admin_test_frames').select('id,title,storage_path,status,created_at').order('created_at',{ascending:false}).limit(50)]);
+ const [names,frames]=await Promise.all([sb.rpc('gb_admin_list_reserved'),sb.rpc('gb_admin_list_unpublished_test_frames')]);
  $p('gb-admin-reserved-list').textContent=names.error?'Unable to list usernames: '+names.error.message:(names.data||[]).map(x=>'@'+x.username).join(' · ')||'No protected usernames';
  const area=$p('gb-admin-test-frames');area.replaceChildren();
  if(frames.error){area.textContent='Unable to load frames: '+frames.error.message;return;}
- if(!frames.data?.length){area.textContent='No test frames yet.';return;}
+ if(!frames.data?.length){area.textContent='No unpublished test frames. Approved frames disappear from this list after successful gift-code publishing.';return;}
  for(const f of frames.data){
   const item=document.createElement('div');item.className='gb-admin-frame-item';
   const image=document.createElement('img');image.alt=f.title;image.loading='lazy';
@@ -487,7 +487,8 @@ async function gbAdminPublishGift(frame,privateUrl){
   if(uploaded.error && !/already exists|duplicate/i.test(uploaded.error.message||''))throw uploaded.error;
   const result=await sb.rpc('gb_publish_test_frame_code',{p_test_id:frame.id,p_code:code,p_limit:limit,p_storage_path:publicPath});
   if(result.error)throw result.error;
-  gbAdminNote('Gift code '+code+' published! Players can redeem it in Settings → Gift Code.',true);
+  gbAdminNote('Gift code '+code+' published! The frame is now archived from Testing Lab previews. Players can redeem it in Settings → Gift Code.',true);
+  await gbAdminRefresh();
   await gbprAlert('Gift code '+code+' is live. The frame can now be redeemed by up to '+limit+' players.');
  }catch(e){gbAdminNote('Publishing failed: '+(e?.message||e));await gbprAlert('Gift-code publishing failed: '+(e?.message||e))}
 }
