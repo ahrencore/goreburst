@@ -510,12 +510,41 @@ $p('gb-admin-frame-form').onsubmit=async e=>{
  e.preventDefault();if(!gbAdminRole||!user)return;
  const f=$p('gb-admin-frame-file').files?.[0],title=$p('gb-admin-frame-title').value.trim();
  if(!f||!['image/png','image/webp'].includes(f.type)||f.size>5242880||!title){gbAdminNote('Choose a PNG or WebP under 5MB and enter a title.');return;}
- const path=user.id+'/'+crypto.randomUUID()+(f.type==='image/png'?'.png':'.webp');
- const upload=await sb.storage.from('gb-admin-test-frames').upload(path,f,{contentType:f.type,upsert:false});
+ // Optimize STATIC art only. Animation must not be silently flattened into a still frame.
+ let optimized;
+ try{
+  gbAdminNote('Optimizing frame artwork…');
+  const header=new Uint8Array(await f.slice(0,1024*1024).arrayBuffer());
+  const isWebP=f.type==='image/webp';
+  if(isWebP){
+   const riff=new TextDecoder('latin1').decode(header);
+   if(riff.slice(0,4)!=='RIFF'||riff.slice(8,12)!=='WEBP')throw Error('Invalid WebP file');
+   if(riff.includes('ANIM')||riff.includes('ANMF'))throw Error('Animated WebP frames need a separate animation workflow. Please upload a static frame.');
+  }else{
+   // APNG contains an acTL chunk before IDAT; detect it without decoding all pixels.
+   const pngHead=new TextDecoder('latin1').decode(header);
+   if(pngHead.includes('acTL'))throw Error('Animated PNG frames need a separate animation workflow. Please upload a static frame.');
+  }
+  const bmp=await createImageBitmap(f);
+  try{
+   const canvas=document.createElement('canvas');canvas.width=512;canvas.height=512;
+   const ctx=canvas.getContext('2d',{alpha:true});if(!ctx)throw Error('Image processing unavailable');
+   ctx.clearRect(0,0,512,512);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+   // Contain, never crop or stretch: preserve frame opening, art, and transparent edges.
+   const scale=Math.min(512/bmp.width,512/bmp.height);
+   const w=bmp.width*scale,h=bmp.height*scale;
+   ctx.drawImage(bmp,(512-w)/2,(512-h)/2,w,h);
+   optimized=await new Promise(resolve=>canvas.toBlob(resolve,'image/webp',.93));
+   if(!optimized||optimized.type!=='image/webp')throw Error('WebP optimization is unavailable on this device');
+  }finally{bmp.close?.();}
+ }catch(err){gbAdminNote(err.message||'Frame optimization failed');return;}
+ const path=user.id+'/'+crypto.randomUUID()+'.webp';
+ gbAdminNote('Uploading optimized frame…');
+ const upload=await sb.storage.from('gb-admin-test-frames').upload(path,optimized,{contentType:'image/webp',upsert:false});
  if(upload.error){gbAdminNote(upload.error.message);return;}
  const saved=await sb.from('gb_admin_test_frames').insert({title,storage_path:path,created_by:user.id});
  if(saved.error){await sb.storage.from('gb-admin-test-frames').remove([path]);gbAdminNote(saved.error.message);return;}
- gbAdminNote('Private test frame uploaded!',true);e.target.reset();void gbAdminRefresh();
+ gbAdminNote('Optimized private test frame uploaded!',true);e.target.reset();void gbAdminRefresh();
 };
 $p('gb-admin-refresh').onclick=()=>gbAdminRefresh();
 
