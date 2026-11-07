@@ -48,9 +48,9 @@ const layer=document.createElement('aside');layer.id='gb-profile-layer';layer.se
 <div class="gbpr-panel"><div class="gbpr-tag">CHOOSE A CARNIVAL AVATAR</div><div id="gbpr-avatar-list" class="gbpr-avatars"></div><p class="gbpr-muted" id="gbpr-avatar-help">Sign in to save your avatar to your online profile. You may preview the characters as a guest.</p><div class="gbpr-actions"><label class="gbpr-btn secondary" for="gbpr-upload">UPLOAD YOUR PHOTO</label><input id="gbpr-upload" type="file" accept="image/jpeg,image/png,image/webp" hidden></div><p class="gbpr-error" id="gbpr-upload-status" aria-live="polite"></p></div>
 <div class="gbpr-panel"><div class="gbpr-tag">SAVE STATUS</div><p class="gbpr-muted gbpr-note">Your progress is saved locally. Signed-in accounts can automatically back up changes after safely choosing which save to use. Official leaderboard scores remain separate.</p></div>
 <div class="gbpr-panel"><div class="gbpr-tag">PRIVATE CLOUD BACKUP</div>
-<p class="gbpr-muted">Safely sync your private gameplay backup. On a fresh browser, signed-in progress restores automatically. If this device already has progress, you can review both saves before replacing either. Official leaderboard stars and coins remain separate.</p>
-<div class="gbpr-actions"><button type="button" class="gbpr-btn secondary" id="gbpr-download-backup">DOWNLOAD LOCAL SAVE</button><button type="button" class="gbpr-btn" id="gbpr-cloud-enable">CHECK CLOUD SAVE</button></div>
-<div id="gbpr-cloud-choices" class="gbpr-hide" style="margin:12px 0;padding:12px;border:1px solid #aa609b;border-radius:12px;background:#281329">
+<p class="gbpr-muted">Signed-in progress loads automatically from Supabase. Local gameplay remains responsive while cloud saving is confirmed.</p>
+<div class="gbpr-actions" style="display:none"><button type="button" class="gbpr-btn secondary" id="gbpr-download-backup">DOWNLOAD LOCAL SAVE</button><button type="button" class="gbpr-btn" id="gbpr-cloud-enable">CHECK CLOUD SAVE</button></div>
+<div id="gbpr-cloud-choices" class="gbpr-hide" style="display:none;margin:12px 0;padding:12px;border:1px solid #aa609b;border-radius:12px;background:#281329">
 <p id="gbpr-cloud-comparison" class="gbpr-muted" style="white-space:pre-line"></p>
 <div class="gbpr-actions"><button type="button" class="gbpr-btn secondary" id="gbpr-cloud-restore">RESTORE CLOUD TO THIS DEVICE</button><button type="button" class="gbpr-btn secondary" id="gbpr-cloud-use-local">USE THIS DEVICE'S SAVE</button></div>
 <p class="gbpr-muted">Nothing is replaced until you choose. A safety copy is downloaded before restoring.</p>
@@ -372,7 +372,7 @@ const localLevel=()=>{try{const data=JSON.parse(localStorage.getItem('gb-playabl
 function setMessage(id,txt,success=false){const el=$p(id);el.textContent=txt;el.classList.toggle('gbpr-success',success)}
 function avatarUrl(){if(avatarPreview!==null)return avatarFile(avatarPreview);if(!user){const ix=Number(localStorage.getItem('gb-guest-avatar'));if(Number.isInteger(ix)&&ix>=0&&ix<15)return avatarFile(ix)}if(profile?.avatar_path){return SUPABASE_URL+'/storage/v1/object/public/avatars/'+profile.avatar_path.split('/').map(encodeURIComponent).join('/')}return avatarFile(avatarIndex(profile?.avatar_key))}
 function syncMenuAvatar(){const el=document.getElementById('gbMenuAvatar');if(el){el.src=avatarUrl();el.onerror=()=>{el.onerror=null;el.src=fallbackAvatar}}}
-function refresh(){syncMenuAvatar();queueMicrotask(gbpfPaint);const signed=gbprRegistered();$p('gbpr-auth-panel').classList.toggle('gbpr-hide',signed);$p('gbpr-account-panel').classList.toggle('gbpr-hide',!signed);$p('gbpr-display').textContent=profile?.display_name||'Carnival Guest';$p('gbpr-handle').textContent=profile?.username?'@'+profile.username:(signed?'Choose a unique username':'Guest player');$p('gbpr-level').textContent='LEVEL '+localLevel()+' · Local progress';$p('gbpr-current-avatar').src=avatarUrl();$p('gbpr-new-name').value=profile?.display_name||'Carnival Guest';$p('gbpr-new-handle').value=profile?.username||'';$p('gbpr-avatar-help').textContent=signed?'Tap any character to save it. You can also upload your own photo.':'Sign in to save a PFP to your account. Tap to preview characters.';document.querySelectorAll('.gbpr-avatar').forEach((b,i)=>b.classList.toggle('chosen',(avatarPreview!==null?avatarPreview:avatarIndex(profile?.avatar_key))===i));}
+function refresh(){syncMenuAvatar();queueMicrotask(gbpfPaint);const signed=gbprRegistered();$p('gbpr-auth-panel').classList.toggle('gbpr-hide',signed);$p('gbpr-account-panel').classList.toggle('gbpr-hide',!signed);$p('gbpr-display').textContent=profile?.display_name||'Carnival Guest';$p('gbpr-handle').textContent=profile?.username?'@'+profile.username:(signed?'Choose a unique username':'Guest player');$p('gbpr-level').textContent='LEVEL '+localLevel()+' · Cloud progress';$p('gbpr-current-avatar').src=avatarUrl();$p('gbpr-new-name').value=profile?.display_name||'Carnival Guest';$p('gbpr-new-handle').value=profile?.username||'';$p('gbpr-avatar-help').textContent=signed?'Tap any character to save it. You can also upload your own photo.':'Sign in to save a PFP to your account. Tap to preview characters.';document.querySelectorAll('.gbpr-avatar').forEach((b,i)=>b.classList.toggle('chosen',(avatarPreview!==null?avatarPreview:avatarIndex(profile?.avatar_key))===i));}
 function view(open){layer.classList.toggle('open',open);if(open){avatarPreview=null;refresh();prUpdateHub();void gbprRefreshMailDot();prNavigate('hub');void gbprRefreshRequestDot();$p('gbpr-close').focus()}}
 $p('gbpr-close').onclick=()=>view(false);
 document.getElementById('profile').addEventListener('click',()=>view(true));
@@ -399,39 +399,206 @@ $p('gbpr-auth-form').onsubmit=async e=>{
    result=await sb.auth.signUp({email,password});if(result.error)throw result.error;
    setMessage('gbpr-auth-status',result.data?.session?'Welcome!':'Check your email to confirm your account.',true);
   }else{
-   if(gbprIsGuest()&&!confirm('Signing into a different account will replace the current guest login on this browser. Your local level save stays here, but the guest account may be unrecoverable. Continue?'))return;
+   if(gbprIsGuest()&&!confirm('Signing into a different account will replace the current guest login on this browser. Guest progress is backed up locally, but it will not be attributed to the other account. Continue?'))return;
    result=await sb.auth.signInWithPassword({email,password});if(result.error)throw result.error;
    setMessage('gbpr-auth-status','Welcome back!',true);
   }
-  if(result?.data?.user){user=result.data.user;await fetchProfile();}
+  if(result?.data?.user){await gbSwitchIdentity(result.data.user);}
  }catch(err){setMessage('gbpr-auth-status',err.message||'Authentication failed')}
  finally{working=false;$p('gbpr-auth-submit').disabled=false}
 };
 $p('gbpr-edit-form').onsubmit=async e=>{e.preventDefault();if(!sb||!gbprRegistered())return;const username=$p('gbpr-new-handle').value.trim().toLowerCase();const display_name=$p('gbpr-new-name').value.trim();if(username&&!/^[a-z0-9_]{3,20}$/.test(username)){setMessage('gbpr-edit-status','Username must be 3–20 letters, numbers or underscores.');return}if(!display_name){setMessage('gbpr-edit-status','Choose a display name.');return}setMessage('gbpr-edit-status','Saving…');const {error}=await sb.from('profiles').update({username:username||null,display_name}).eq('id',user.id);if(error){setMessage('gbpr-edit-status',error.code==='23505'?'This username is already taken.':error.message);return}profile={...profile,username:username||null,display_name};setMessage('gbpr-edit-status','Profile updated!',true);refresh()};
-$p('gbpr-signout').onclick=async()=>{if(!sb)return;const {error}=await sb.auth.signOut();if(error){setMessage('gbpr-edit-status',error.message);return}window.gbWalletCache?.clear();user=null;profile=null;avatarPreview=null;gbShopFrameOwned=new Set();$p('gbpr-wallet-balance').textContent='Sign in to check your migrated balance.';cloudReset();refresh();void gbprRefreshRequestDot();void gbprRefreshMailDot()};
+$p('gbpr-signout').onclick=async()=>{if(!sb)return;const leaving=user?.id;if(gbprRegistered()&&canAutoBackup()){
+ try{const state=readLocalGameSave();if(cloudCursor(leaving)?.fingerprint!==saveFingerprint(state)){
+  const synced=await cloudUpload(true);
+  if(!synced||cloudCursor(leaving)?.fingerprint!==saveFingerprint(readLocalGameSave()))throw Error('Cloud save not yet confirmed');
+ }}catch(e){setMessage('gbpr-edit-status','Sign-out paused to protect unsaved progress: '+(e?.message||'Cloud unavailable'));return}
+ }const {error}=await sb.auth.signOut();if(error){setMessage('gbpr-edit-status',error.message);return}gbLocalSafetyCopy('logout',leaving);window.gbWalletCache?.clear?.();window.gbAccountReadyForPlay=false;localStorage.removeItem('gb-playable-v4');localStorage.removeItem(cloudBindingKey);localStorage.removeItem(gbInstalledOwnerKey);localStorage.removeItem(gbGuestOwnerKey);sessionStorage.removeItem(gbCloudReloadKey);cloudReset();location.reload()};
 $p('gbpr-upload').onchange=async e=>{const file=e.target.files?.[0];e.target.value='';if(!file)return;if(!user||!sb){setMessage('gbpr-upload-status','Please sign in before uploading a photo.');return}if(!['image/jpeg','image/png','image/webp'].includes(file.type)){setMessage('gbpr-upload-status','Choose a JPG, PNG or WebP image.');return}if(file.size>8*1024*1024){setMessage('gbpr-upload-status','Choose an image smaller than 8 MB.');return}
  setMessage('gbpr-upload-status','Preparing photo…');try{const bmp=await createImageBitmap(file);const canvas=document.createElement('canvas');canvas.width=512;canvas.height=512;const ctx=canvas.getContext('2d');if(!ctx)throw Error('Image processing unavailable');const d=Math.min(bmp.width,bmp.height);ctx.drawImage(bmp,(bmp.width-d)/2,(bmp.height-d)/2,d,d,0,0,512,512);bmp.close?.();const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/webp',.84));if(!blob)throw Error('Could not prepare photo');const path=user.id+'/profile-'+Date.now()+'.webp';setMessage('gbpr-upload-status','Uploading photo…');const upload=await sb.storage.from('avatars').upload(path,blob,{contentType:'image/webp',upsert:false});if(upload.error)throw upload.error;const updated=await sb.from('profiles').update({avatar_path:path}).eq('id',user.id);if(updated.error)throw updated.error;profile={...profile,avatar_path:path};avatarPreview=null;setMessage('gbpr-upload-status','Photo uploaded!',true);refresh()}catch(err){setMessage('gbpr-upload-status',err.message||'Upload failed')}};
+// A registered account is not silently converted into a guest when its token
+// cannot be restored. Startup awaits identity before gameplay is allowed.
+let gbIdentityGeneration=0;
+let gbIdentityLoadingUid=null;
+const gbInstalledOwnerKey='gb-installed-progress-owner-v1';
+const gbRememberedRegisteredKey='gb-last-registered-user-v1';
+const gbGuestOwnerKey='gb-guest-progress-owner-v1';
+const gbCloudReloadKey='gb-cloud-reload-once-v1';
+const gbBlankProgress=()=>({current:1,best:{},coins:0,lives:5,lifeTick:Date.now(),preSpecialsGranted:false,preSpecials:{RV:0,CB:0,FW:0},boosterInventory:{hammer:0,watch:0,cards:0,musicbox:0},boosterGrants:{}});
+function gbLocalSafetyCopy(reason,uid){
+ try{
+  const raw=localStorage.getItem('gb-playable-v4');
+  if(raw&&raw!=='null'){
+   const key='gb-safe-save:'+reason+':'+(uid||'unlinked')+':'+Date.now();
+   localStorage.setItem(key,raw);
+  }
+ }catch(e){console.warn('Unable to create local save backup:',e)}
+}
+function gbInstalledOwner(){return localStorage.getItem(gbInstalledOwnerKey)||localStorage.getItem(cloudBindingKey)||null}
+function gbSnapshotStarsMerge(cloud,local){
+ // Migration only. Never sum purchases, coins, boosters, lives or claimed rewards.
+ const merged={...cloud,best:{...(cloud.best||{})},bestCoins:{...(cloud.bestCoins||{})}};
+ let improved=false;
+ for(const [k,v] of Object.entries(local.best||{})){
+  if(!/^\d+$/.test(k)||Number(k)<1||Number(k)>100000)continue;
+  const stars=Number(v);
+  if(!Number.isInteger(stars)||stars<0||stars>3)continue;
+  if(stars>Number(merged.best[k]||0)){merged.best[k]=stars;improved=true}
+ }
+ for(const [k,v] of Object.entries(local.bestCoins||{})){
+  if(!/^\d+$/.test(k)||!Number.isSafeInteger(Number(v))||Number(v)<0)continue;
+  if(Number(v)>Number(merged.bestCoins[k]||0)){merged.bestCoins[k]=Number(v);improved=true}
+ }
+ const highest=Object.keys(merged.best).reduce((n,k)=>Number(merged.best[k])>0?Math.max(n,Number(k)+1):n,1);
+ const next=Math.max(1,Number(cloud.current)||1,Number(local.current)||1,highest);
+ if(next>Number(merged.current||1)){merged.current=next;improved=true}
+ return {snapshot:merged,improved};
+}
+async function gbInitializeCloudIdentity(who,generation){
+ const uid=who.id;
+ window.gbAccountReadyForPlay=false;
+ const oldOwner=gbInstalledOwner();
+ const raw=localStorage.getItem('gb-playable-v4');
+ const local=readLocalGameSave();
+ if(who.is_anonymous){
+  // An anonymous player may use only the browser save explicitly bound to that
+  // SAME anonymous id. In particular: never upload the last registered save.
+  const isOwnGuest=localStorage.getItem(gbGuestOwnerKey)===uid && !oldOwner;
+  if(!isOwnGuest){
+   gbLocalSafetyCopy('before-guest',oldOwner);
+   localStorage.setItem('gb-playable-v4',JSON.stringify(gbBlankProgress()));
+   localStorage.removeItem(cloudBindingKey);
+   localStorage.removeItem(gbInstalledOwnerKey);
+   localStorage.setItem(gbGuestOwnerKey,uid);
+   sessionStorage.setItem(gbCloudReloadKey,'guest:'+uid);
+   location.reload();return false;
+  }
+  if(generation!==gbIdentityGeneration)return false;
+  window.gbAccountReadyForPlay=true;
+  document.querySelector('#current')?.replaceChildren(document.createTextNode('Level '+local.current));
+  return true;
+ }
+ localStorage.setItem(gbRememberedRegisteredKey,uid);
+ const cloud=await fetchCloudRecord(uid);
+ if(generation!==gbIdentityGeneration||user?.id!==uid)return false;
+ let selected;
+ let baseline=null,rev=0;
+ if(cloud){
+  baseline=validSnapshot(cloud.snapshot);rev=Number(cloud.save_revision)||0;
+  // Legacy migration: only use locally earned stars if the pre-existing save
+  // is explicitly bound to this SAME account. Never copy consumable inventory.
+  if(oldOwner===uid){
+   const baselineCursor=cloudCursor(uid);
+   if(Number(baselineCursor?.revision)===rev && localDominatesCloud(local,baseline))
+     selected=local; // Account-owned pending progress not yet committed.
+   else selected=gbSnapshotStarsMerge(baseline,local).snapshot;
+  }else selected=baseline;
+ }else if(oldOwner===uid || (localStorage.getItem(gbGuestOwnerKey)===uid && !oldOwner)){
+  // No cloud record: a previously bound account can migrate its own save once.
+  selected=validSnapshot(local);
+ }else{
+  // An unowned legacy save is ambiguous: archive it, never attribute it to the
+  // newly signed-in account. A fresh account starts on its own cloud record.
+  selected=gbBlankProgress();
+ }
+ const {data:wallet,error:walletError}=await sb.from('player_inventory')
+   .select('skull_coins').eq('player_id',uid).maybeSingle();
+ if(walletError)throw walletError;
+ if(!wallet||!Number.isSafeInteger(Number(wallet.skull_coins)))throw Error('Cloud wallet not ready; gameplay paused to protect progress.');
+ selected={...selected,coins:Number(wallet.skull_coins)};
+ if(generation!==gbIdentityGeneration||user?.id!==uid)return false;
+ const marker=sessionStorage.getItem(gbCloudReloadKey);
+ const installed=marker==='account:'+uid && saveFingerprint(local)===saveFingerprint(selected);
+ if(marker==='account:'+uid)sessionStorage.removeItem(gbCloudReloadKey);
+ // Preserve the old value for recovery before modifying the boot-time save.
+ if(!installed && (raw!==JSON.stringify(selected) || oldOwner!==uid)){
+  gbLocalSafetyCopy('before-cloud-install',oldOwner||uid);
+  localStorage.setItem('gb-playable-v4',JSON.stringify(selected));
+  localStorage.setItem(gbInstalledOwnerKey,uid);
+  localStorage.setItem(cloudBindingKey,uid);
+  localStorage.removeItem(gbGuestOwnerKey);
+  // Keep server revision metadata when rebooting. Do not write an unverified
+  // local snapshot over a different account's cloud backup.
+  if(cloud)rememberCloudBaseline(uid,baseline,rev);
+  sessionStorage.setItem(gbCloudReloadKey,'account:'+uid);
+  location.reload();return false;
+ }
+ localStorage.setItem(gbInstalledOwnerKey,uid);
+ localStorage.setItem(cloudBindingKey,uid);
+ localStorage.removeItem(gbGuestOwnerKey);
+ cloudKnownRevision=cloud?rev:null;
+ if(cloud){rememberCloudBaseline(uid,baseline,rev)}
+ cloudEnableForAccount();
+ // If a legitimate legacy save contained additional verified level stars,
+ // the normal compare-and-swap cloud uploader can sync this account's merge.
+ if(!cloud || saveFingerprint(selected)!==saveFingerprint(baseline)){
+   if(!cloud)void cloudUpload(true);else queueCloudUpload();
+  }
+ if(generation!==gbIdentityGeneration||user?.id!==uid)return false;
+ window.gbAccountReadyForPlay=true;
+ const el=document.getElementById('current');if(el)el.textContent='Level '+Number(selected.current||1);
+ refresh();return true;
+}
+async function gbSwitchIdentity(next){
+ const generation=++gbIdentityGeneration;
+ gbIdentityLoadingUid=next?.id||null;
+ user=next||null;profile=null;
+ window.gbAccountReadyForPlay=false;
+ window.gbWalletCache?.clear?.();
+ if(!next){refresh();setMessage('gbpr-auth-status','Sign in to load your cloud progress.');return}
+ try{
+  const ready=await gbInitializeCloudIdentity(next,generation);
+  if(!ready ||generation!==gbIdentityGeneration || user?.id!==next.id)return;
+  await fetchProfile();
+  if(next.is_anonymous)void gbUploadGuestStars();
+ }catch(err){
+  window.gbAccountReadyForPlay=false;
+  console.warn('Cloud account initialization:',err);
+  setMessage('gbpr-auth-status','Could not load your account from Supabase. Reconnect or sign in again. '+(err?.message||''));
+ }
+}
 async function connect(){
  try{
   const {createClient}=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
   sb=createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
-  const {data,error}=await sb.auth.getUser();
-  if(error&&error.name!=='AuthSessionMissingError')setMessage('gbpr-auth-status',error.message);
-  user=data?.user||null;
-  sb.auth.onAuthStateChange((event,session)=>{
-   const next=session?.user||null;
-   if(next?.id!==user?.id||next?.is_anonymous!==user?.is_anonymous){
-    user=next;profile=null;refresh();void gbprRefreshRequestDot();void gbprRefreshMailDot();if(user)setTimeout(fetchProfile,0);
+  const {data:sessionData,error:sessionError}=await sb.auth.getSession();
+  if(sessionError)throw sessionError;
+  let startupUser=sessionData?.session?.user||null;
+  if(startupUser){
+   const {data:verified,error:verifyError}=await sb.auth.getUser();
+   if(verifyError){
+    // A temporary network/token problem is NOT a reason to create a guest.
+    setMessage('gbpr-auth-status','Account verification unavailable. Reconnect to restore your session.');
+    throw verifyError;
    }
-  });
-  if(!user){
-   // Anonymous auth is optional on the Supabase dashboard. Keep local gameplay usable if disabled.
-   const attempt=await sb.auth.signInAnonymously();
-   if(attempt.error){console.info('Gore Burst guest online identity unavailable:',attempt.error.message);}
-   else user=attempt.data.user;
+   startupUser=verified?.user||null;
   }
-  if(user){await fetchProfile();void gbprRefreshMailDot();}else {refresh();void gbprRefreshRequestDot();void gbprRefreshMailDot();} if(gbprIsGuest())void gbUploadGuestStars();
- }catch(err){setMessage('gbpr-auth-status','Cannot connect to Supabase. Local gameplay remains available.');console.warn('Gore Burst profile connection:',err)}
+  sb.auth.onAuthStateChange((event,session)=>{
+   if(event==='TOKEN_REFRESHED')return;
+   const next=session?.user||null;
+   if(next?.id===user?.id&&window.gbAccountReadyForPlay)return;
+   // Run Supabase operations outside the auth callback to avoid auth-lock deadlocks.
+   setTimeout(()=>void gbSwitchIdentity(next),0);
+  });
+  if(!startupUser){
+   // Never silently replace an existing registered account with a guest.
+   if(localStorage.getItem(gbRememberedRegisteredKey)){
+    window.gbAccountReadyForPlay=false;
+    setMessage('gbpr-auth-status','Your account needs sign-in. Existing progress is preserved.');
+    refresh();return;
+   }
+   // First-time visitors may still use isolated guest sessions.
+   const result=await sb.auth.signInAnonymously();
+   if(result.error)throw result.error;
+   startupUser=result.data?.user||null;
+  }
+  if(startupUser)await gbSwitchIdentity(startupUser);
+  else refresh();
+ }catch(err){
+  window.gbAccountReadyForPlay=false;
+  setMessage('gbpr-auth-status','Could not verify cloud identity. Your game data has not been deleted.');
+  console.warn('Gore Burst profile connection:',err);
+ }
 }
 // Social backend: registered accounts only. Guest play and game saves remain unchanged.
 const gbprSocialMessage=(text)=>`<div class="gbpr-social-empty">${safe(text)}</div>`;
@@ -1107,21 +1274,8 @@ window.addEventListener('pageshow',()=>{if(canAutoBackup())queueCloudUpload()});
 // Catch changes not dispatched by legacy code and retry interrupted uploads.
 setInterval(()=>{if(canAutoBackup()&&!cloudBusy&&!cloudChecking&&navigator.onLine)queueCloudUpload()},20000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&canAutoBackup())queueCloudUpload()});
-window.gbCloudReady=()=>{
-  try{
-    const recent=sessionStorage.getItem('gb-post-test-sync-cloud-review');
-    if(recent===user?.id){
-      sessionStorage.removeItem('gb-post-test-sync-cloud-review');
-      setTimeout(()=>{
-        if(canAutoBackup())queueCloudUpload();
-        else cloudStatus('Claim added locally. Open ACCOUNT → CHECK CLOUD SAVE to back up your updated coins and receipt.');
-      },500);
-    }
-  }catch(_){}
-  if(!gbprRegistered())return;
-  if(cloudActiveAccount!==user.id){cloudReset();cloudActiveAccount=user.id;}
-  checkCloudSave(false);
-};
+window.gbCloudSaveNow=()=>gbprRegistered()&&window.gbAccountReadyForPlay&&canAutoBackup()?cloudUpload(true):Promise.resolve(false);
+window.gbCloudReady=()=>{if(gbprRegistered()&&window.gbAccountReadyForPlay&&canAutoBackup())queueCloudUpload();};
 refresh();connect();
 
 
@@ -1131,7 +1285,7 @@ refresh();connect();
 // Kept separate from cloud saves and prizes; browser-supplied stars are not anti-cheat verified.
 let gbGuestStarsUploading=false,gbGuestStarsQueued=false;
 async function gbUploadGuestStars(){
- if(!sb||!user||!gbprIsGuest()||gbGuestStarsUploading)return;
+ if(!sb||!user||!gbprIsGuest()||gbGuestStarsUploading||!window.gbAccountReadyForPlay||localStorage.getItem(gbGuestOwnerKey)!==user.id||gbInstalledOwner())return;
  gbGuestStarsUploading=true;
  try{
   const best=readLocalGameSave().best||{};
