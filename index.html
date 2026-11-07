@@ -560,6 +560,73 @@ const ghostImages={H:'ghost-red.png',S:'ghost-yellow.png',G:'ghost-green.png',M:
 const visual=t=>t==='CC'?'assets/block-cloud1.png':t==='FI'?'assets/block-fire.png':t&&t.startsWith('GH')?'assets/'+(ghostImages[t.slice(2)]||'ghost-white.png'):asset(t);
 const configs={1:{mask:['..XXX..','.XXXXX.','XXXXXXX','XXXXXXX','.XXXXX.','..XXX..'],types:'HSGM',moves:10,goals:{H:8,S:7},tutorial:'rocket'},2:{mask:['XXXXXXX','XXXXXXX','.XXXXX.','.XXXXX.','XXXXXXX','XXXXXXX'],types:'HSGMB',moves:14,goals:{H:10,B:10},tutorial:'bomb'},3:{mask:['..XXX..','.XXXXX.','XXXXXXX','XXXXXXX','XXXXXXX','.XXXXX.','..XXX..'],types:'HSGMBW',moves:16,goals:{G:9,W:9},tutorial:'wheel'},4:{mask:['.XXXXX.','XXXXXXX','XXXXXXX','XX...XX','XXXXXXX','XXXXXXX','.XXXXX.'],types:'HSGMBWC',moves:18,goals:{GH:1,H:10},tutorial:'ghost'}};
 
+// TUTORIAL MASTER LAYOUTS — every playable cell is authored, not randomly filled.
+// None/null means a hole in the original level mask. All four lessons are identical
+// for first-time players, incognito sessions and replays.
+const gbTutorialLayouts={
+ 1: [[null,null,"H","G","G",null,null],[null,"M","H","S","M","G",null],["S","H","S","H","S","M","H"],["M","M","H","M","M","G","S"],[null,"S","S","H","S","M",null],[null,null,"M","M","H",null,null]],
+ 2: [["B","G","B","S","G","H","S"],["B","M","H","G","M","S","S"],[null,"H","G","H","G","M",null],[null,"M","H","G","H","M",null],["S","G","H","G","G","S","S"],["G","S","M","S","G","M","H"]],
+ 3: [[null,null,"B","G","H",null,null],[null,"H","B","W","W","B",null],["H","B","S","G","W","W","H"],["B","G","G","H","G","G","H"],["G","G","B","S","W","S","M"],[null,"B","S","M","M","H",null],[null,null,"G","M","G",null,null]],
+ 4: [[null,"W","M","S","C","H",null],["C","S","H","GHH","S","W","W"],["M","H","G","H","H","B","B"],["B","C",null,null,null,"W","W"],["M","G","S","S","G","W","W"],["H","H","C","S","C","G","B"],[null,"M","W","M","B","G",null]],
+};
+// Fixed refill tapes also make the guided aftermath repeatable on different devices.
+// Gameplay Level 5+ retains its existing dynamic random-piece generator.
+const gbTutorialRefills={
+ 1: (
+  'GSGMMGMGGGMMGSSGMHHHMHMGSGMSMMMGMMSGGMMGGHHHGSHMGGSHMGGMGGMGHHHMHGSMMSGSMSGGGHMHHHGGMMMGHSGMGMGSGHSG' +
+  'GGMMMHMMGSGSHHHMSSHSHGMHHGMSSHMHMSMHGSMHGMGGHHSMSMHMSHMSSMSHSGMGSGGHSSGGMHHGGHMHSSMHMMHGHGGSMMHHMSGG' +
+  'HMSGMHHMMSGSSHHMHHGGMMHGGHHSHGGMSHGGGGHGMGSSHSHHHGHHMHGGMGGHHHGSSMMGHMSGMGGHMGSHHHSMMMGMHHMGMGHGMMSS' +
+  'SGSGMSHGMHMGGMSMMMMGHMSGSGGGHSSHHSGSMMHHGMMMMMHMSSGSMGGGGSHMSGGHSHMGMHGHMHSMHGHHMHGSMHHSHHSGHGMGHSMG' +
+  'SMSMHHMHGSGHHMHHSHHSSGSHSGGHMHHHHHHMHMMSHHMMHSMMHSHHHSGMMMHHGGMSHMGMSSSGGHHHSGSSGMHSHGMSHHGHHGGGSHGH' +
+  'SGMSGMGGMGGMHMMGSMHGHMMSGHSGSSGGSMMHSGSSHHMGSMGMGHHSSHGMHMSSSGSMMHHMMGMGMMMMGHSSGGMHHHHHGHGHGHHMSHSS' +
+  'MMSGSMSMGHMGSMMHGSGHHMMGMSHGSGMSSSGSMGMGHSHHSGHGHGGSMSHSSMGHSGMHMMGSSSGHMMMMHMSMMGGHGMGGSGSMMSHMSSMH' +
+  'GGSHMMGHGSSMGGMGHMSGGSHSSHHHHMMGGHMSSHSGMSGGGHSMGHGSGGGSGMMMSSGSHMMMHGGHSHMSGMMHHHMGMGHMMMHSHMSHHHHM' +
+  'SMSHHSSMHMMGGSSSMSSGMSGHHMSMHSMMHHHSGHGSGGMMMSMGHSSSSSMHMSHMMSGHMHMMMMGGHSGMGMSHSSGGSSMSGGGHHSHGSSHG' +
+  'GHGGMGSHHGHHSSSMSSHGGSGGSHSHSGSSGMSSGGGMHSSMHMGGHSSMGHMGSSHSHSGGMGGMHSSGGGHGMSGGMSGGSGMMGGGHGMSGSGMM' +
+  'MMSHSHSSSMSGGHSGGSHHHSMSSMHGHMHSGGMGMGGMHSGSHHMHHSGMMMGHGGGGHHMHHSMGMGHSMGMGSGGSHGHHMGMSHSSHSHGHHMSS' +  'GGGSGGHHHGGGHHSGSHMGSSMGMSGGHSSMSSGSMHMSMMSHMMHHGHGSMHGGSSHSSMGHHGGHMGMGHSGSHMSSHGSHHGMSGHGSMMHGSGGG'
+ ),
+ 2: (
+  'MSSBMMBHMHGBMGSGMMMBBHHSGHMBGGHHSGSMMSGGGSBMMGSGSMSBHSHMHBSGHHBGSHSMSHHSSSSMSGSMGBBMGSHMBHHHMSSHSGHS' +
+  'GGBBHHSHSMSSGBBHBGGSHGMSHMHMMGBHMMBHBSSHMMBBBHBBSGGHMBHHBSMMMBSSGGHGGGMHMSSBSBMHMGGGMMMSMMSSBMMMHSMS' +
+  'BSMBMBGMBSBHSGMBBMSBGGHSSBSGHMBHGSSHHHGHBMBMBBMMGHBSSMMSMGHMSGGMSGHBHBGBHBSHGGMGSGBSBSSHHMSBBBMBMGBM' +
+  'GGMBMBBMHBHHSMMSGSGGHHMHBHHHGGGSBBMBGGMHHGSBMGMMSHGMSSBSMBBGBSBHHMSBMGSSHBGGBGMSHMHGSMSBSHMGMGSBSMGG' +
+  'BSBSMSBBMMMSMSHBSBMGBSHSBBHSGSHGGGMSGMBGHHBHMSGGBHBMBHBGGBBMGGSSHSSMSBMMBSMGSMMBMMHHBBBBMSGSGHSMGBBM' +
+  'BGHGHMMHSGMGHHMHGMGHHSSHBBMMSMSBGHGBMGMBGMMSHGGHHGBSHSSBMMSHGMMMSMMBGSMBMSMBBBMGSMBMGHSMBHSBBMHHSHGG' +
+  'SBSHSMBBGBHGMBSHGMHGSGBMMSSBBGBBHSMGGSSMGGBBGBHGHMHBHBMHSSHGSBBHGHSGMHGMGHSGBSHGHSHSMGMGSHBGBMMBGGSH' +
+  'GSGGBGGMMHGBMBGSGSMBGMMBBHHMHMBMSMSBSGSHHMMBMMHGGGHHBSGGGBGMSSBMBHSSGHSHGMGBBBGMSHSSGMMHMHSBBSSGBBMG' +
+  'BMHGBBSMBSHSSBBBSMSGGBMMBHHHHHMSHMMSBSGGHSHGMBGHHSMBSHBGGBGSMMBGBHMGHHHBBHHHBSSBGSBGHSGHMGGMSMSGBBSG' +
+  'GBGHSGGMGHSGHHSHMHSSHHSGSBMBSHGBMMMBSBHBHBBHBGHGHBSSBMHBHMSHHGHBBHBHBGBSSMBHGHHBMGBBSMHSSGHGMGMMHMHG' +
+  'SGGGGSSGSSHSSMBSSSHGBHGSBSHSMMHSBHGGSMSBHHHMHGMHBHBGSHHBHMSMBSBHGMMMBMBMGMBSBBMGSSSHHGBGGMBGBGSGBHBM' +  'HBBGSMGHHGHBSBMHHBSMHHSMSHBBSSGHBGSSBSMSGHMSHHHMHGHHHMHBSMSGMHMHHBSMMMGBMSBSSSBHSGGGSGGGGSMHBMBHHHSS'
+ ),
+ 3: (
+  'BWMHWSSHHWHGGWWSMHBSMGBWMBBGWGGHWHMMHWWWMBSHGSMSBHWGWBMGSHHHMGSBMSSMBGSGBMWSGBBHSWBBMHMGGHHMSWBWBSWB' +
+  'BBHHWSMHBWSBMMGSMBSMBMSGGGSGBSSMHBGWBGBWGHSBGWMGMMGBMHHHWBHMHBBSMMBWWWSBBWSGGSWSHWMGWWHGHWGSGWHMMSWG' +
+  'GMGGMHHGSHGHHBWGGHGWWWBWBBWMMSMWBHHGHHMMBMSGBGBGWMHBSMWBGMMGWHMWSBBMHMGGHHBHSMHMHHGGBBBHHHWMWBMMGHMS' +
+  'MMBWHSGHGWHWWMMWWHHGWBBSBBBMHBHMMWHSBGGHWBSWBSGMGGHMHHSGBBSWBMGSMGGHMGWMBGSBMBGBWSSMHMSGGMWGMWWHMHWH' +
+  'MBHGGHWHWMMMHMHSBSBMWGHMGGMMGGHWSMWGGSBSGBSSBMMGHHGMBBSBHHSSBSSMHGMGWSSBWHHMWMSHGWHSMBMWMHWBMBHMWWMB' +
+  'WGHHHMSHBSBWBBSHBBGSHSMGGWMMBMMMWGBHSGGMBGMSBSMHWWHHWBGGGBMSBHHWWWMHMHHSWSWWHSBGSGHSMBWWGMGHWWWBMWBW' +
+  'SWBSHWWMBWWSWBSHSGMMWBBHBGSHHHBBSMMWHMWMSBGGMGGBSWSGMSHSMGHHSMHBMBGSWSWSGMGGHMWMWMBWWWHGBWHHWMWMWHBG' +
+  'HBWWHSMWBGSMBWSSHBMWGSMBHHMSSWGGMSGHHSSSGWSMSWSWHMSHMBHMMSBSBBBMHMGGGSSWBSBHMWGGHHWHWHGMHMSMWHSSWMMH' +
+  'GWMMWHGHMMGHHBWBWMMGMSWWHSBBWSSSMGHBHMMSBSMBSMWBSSBGMWMHSBSSMWSSWBMGGHWGWMHGWHGSMBBHSHSGWMSGHBBBSGWM' +
+  'BWGHMSBGGSWGMBSWWBGWHBHWSHGMMHBWBGBHGMSGHGGBBHSMHMMBSBWSSSGBBHHMBWSSBMGBWWBMWWBHBHGGGWWMHGHBBMHWGWWM' +
+  'WGWGMHSBGGGMSBBWHBMSSGBHHBHWBWSMMBMWMMGBWGMMWGGBHHWSMBSWWBWHMSMBMBGBGMMMHWGMHMWWHBGSMMGBGWBMHGMMGHHM' +  'SSWBMGWMHGHGGMSHMWHGMMWWSSHMHMBSWSWGGGSGMSHSHSGHSMMSBHSHMBGMMMWSBMHWMMHWMHSBBGWSGGGWHHMHGBHGGBBHWWHB'
+ ),
+ 4: (
+  'CSGBWCHWSHGHHBSHSMCWSBSSWHMCWWHSCCMGCMWCGMMCGCHMHHHHMWCCSCSGHSSWWSBCBGHCWHCWSSWSCBCWWCMMSBWHGHHCHHCM' +
+  'HHSGGHMBBHGBSHSWSGBMCHGBWCBGSGGSMCMGGMBHWHMWHWGHGMHGSMWBBMBCSWMSGGGWWBHSHSHSHGGCBMWGSHWHWHCBBMSCCCWC' +
+  'MBHGGHGWBWHMBCGHBWMSWCWMWGCSBMGCCHWSWGCGHGBCHSBSGGBGCCWCSGWMBCSSBMGMCGWMGMBSSBSBMCSCBBSBGWGCHSHMSMHC' +
+  'GCMMGCGBSHCSSHSWBSCBMSBMGHCSBMMWCSWMCHCMHBMWCHCBGSBGCHHCWWMSHCWMHGBBCGSCMBBGHWHGMSWWCMGMWMHCHCHCCCHW' +
+  'WHSMCBMGCMMSSSCHHCCCSBHMSMWHCCSMCWGWBBHSCSWMSMBCSCWMGWCSCMWHGWGHMCMMHBSHCWWWWCMWMCCSGWSMWGBHSGMCGCCM' +
+  'HSMBMCHBCCSCBHWBGBSGBHGWBSMHMBCHSWBGGCMMSMSSHWGBBGHHGHWSCGBHHWHMHSSBHBWCGGWBSWSSSMCCBBHMGGGGSCSBSGCW' +
+  'MWSHBGBGGWSWSMGMCMHCGCSGSCHGHGBCCHBBHHHSBHWMWBBSWHSHGHCWCMWSGWSSMCSGMHHBBBMWHBHMCCHWHCSHSBSGBBCWHGBM' +
+  'HBBBHHHGBSMWMGGSHGMSMSHSCMGSBHWGHCHHMBWWBHBCWWHMHGSGHCSWHCSSSCCWWHSSWBHBHCCSWSMGCWWSGBWWCGMWMCBMWHHW' +
+  'BSSMMMMBCCWBWCCSWMSMGCCGWGCHHHBMCCHCHHMHGCMCMGHCHMMSWWGWHHHMBHBCCBMMWWGBBCBHBBWSWGMHHCWBCHHMGGMBMWCC' +
+  'CSHBHMGMSSMSBBHSCSWWBHWMWCSSWGWSHWSSBHGGCBBHSWGCHMBCCWSWBSGCGCGCBSSWHHBMBCWWCMCGBHGCCGMCHWCGBCSMGHHC' +
+  'WBMBMBGSHMCSGGMBGCWCHBMWCMCCMWWMWGCMWBHBBSBMGMGHBCSHCBHMMGGBWGWHHCMBWSSHBSBWHMGWHSHHCHSBCGGSMGHMMSCH' +  'WWCWMWHBHMGMSBWCWBGMBGSHHWCHMGSWBWBSWMGHGWBMSWMBSWBSCMGSHBWMSCMHBBSGCSMWMMSWSGBGBSSMGCBMGBWBBBCHMMHG'
+ ),
+};
+let gbTutorialRefillCursor=0;
+
 // Endless Freakshow: stable, seeded configurations from Level 5 onward.
 const boardMasks=[
  ['.XXXXXX.','XXXXXXXX','XXXXXXXX','XXXXXXXX','XXXXXXXX','.XXXXXX.'],
@@ -738,22 +805,23 @@ function renderTickets(){ $('ticketgrid').innerHTML=Array.from({length:12},(_,i)
 $('gameback').onclick=()=>{if(mode==='failed'){finalizeFailedAttempt();menu();return}if(mode!=='ended'&&mode!=='surge'&&moves<conf.moves){if(!confirm('Leave this unfinished level? This attempt will cost 1 life.'))return;consumeFailedLife();mode='ended'}menu()};
 updateBoosterBar();
 
-function rand(){seed=(1664525*seed+1013904223)>>>0;return seed/4294967296}function random(){return conf.types[Math.floor(rand()*conf.types.length)]}const valid=(r,c)=>!!conf.mask[r]&&conf.mask[r][c]==='X';
-function freshBoard(){grid=conf.mask.map(row=>[...row].map(ch=>ch==='X'?random():null));for(let i=0;i<150&&matches().length;i++)for(const group of matches())for(const [r,c] of group)grid[r][c]=random();if(conf.tutorial){configureGuide(0);stabilizeTutorial(0)}else{stabilizeSetup();blockerInit()}}
-function configureGuide(step){if(step>2)return;let p=conf.tutorial;
-  if(p==='rocket'&&step===2){place([[2,2,'RV'],[2,3,'S']]);return}
-  if(p==='rocket' && step===0){place([[1,2,'H'],[2,2,'S'],[3,2,'H'],[2,1,'H'],[2,3,'H']]);return}
-  if(p==='rocket' && step===1){place([[2,1,'S'],[2,2,'S'],[2,3,'G'],[2,4,'S'],[1,3,'S']]);return}
-  if(p==='bomb' && step===0){place([[2,1,'H'],[2,2,'G'],[2,3,'H'],[1,2,'H'],[3,2,'H'],[4,2,'H'],[1,3,'G']]);return}
-  if(p==='wheel' && step===0){place([[3,1,'G'],[3,2,'G'],[3,3,'H'],[3,4,'G'],[3,5,'G'],[2,3,'G']]);return}
-  if(p==='ghost' && step===0){place([[1,2,'H'],[1,3,'GHH'],[2,1,'H'],[2,2,'G'],[2,3,'H'],[0,3,'S']]);return}
-  // Second guided state: special activation uses actual swap, then live damage.
-  const special=p==='rocket'?'RV':p==='bomb'?'CB':p==='wheel'?'FW':null;
-  if(p==='ghost'){return}
-  else {place([[2,2,special],[2,3,'S'],[1,2,'G']])}
+function rand(){seed=(1664525*seed+1013904223)>>>0;return seed/4294967296}function random(){if(conf?.tutorial){const tape=gbTutorialRefills[chosen];return tape[gbTutorialRefillCursor++%tape.length]}return conf.types[Math.floor(rand()*conf.types.length)]}const valid=(r,c)=>!!conf.mask[r]&&conf.mask[r][c]==='X';
+function freshBoard(){if(conf.tutorial){grid=gbTutorialLayouts[chosen].map(row=>row.slice());blockers=grid.map(row=>row.map(()=>null));return;}grid=conf.mask.map(row=>[...row].map(ch=>ch==='X'?random():null));for(let i=0;i<150&&matches().length;i++)for(const group of matches())for(const [r,c] of group)grid[r][c]=random();stabilizeSetup();blockerInit()}
+function configureGuide(step){
+ // Never relocate a special just to fit the next tutorial arrow.
+ // These are the minimal scripted adjacent pieces needed for activation.
+ if(step===1&&conf.tutorial==='rocket'){
+  place([[2,1,'S'],[2,2,'S'],[2,3,'G'],[2,4,'S'],[1,3,'S']]);
+ }else if(step===1&&conf.tutorial==='bomb'){
+  place([[2,3,'S']]); // Clownbomb stays where the swipe created it: (2,2)
+ }else if(step===1&&conf.tutorial==='wheel'){
+  place([[3,4,'G']]); // Ferris Wheel stays at its creation cell: (3,3)
+ }else if(step===2&&conf.tutorial==='rocket'){
+  place([[2,2,'S']]); // Rocket stays at its creation cell: (2,3)
+ }
 }
 function place(assign){for(const [r,c,t] of assign)if(valid(r,c))grid[r][c]=t}
-function guide(){const p=conf.tutorial;if(phase===0)return p==='rocket'?[1,2,2,2]:p==='bomb'?[1,2,2,2]:p==='wheel'?[2,3,3,3]:[1,2,2,2];if(phase===1)return p==='rocket'?[1,3,2,3]:p==='ghost'?[1,2,2,2]:[2,2,2,3];if(phase===2&&p==='rocket')return [2,2,2,3];return null}
+function guide(){const p=conf.tutorial;if(phase===0)return p==='rocket'?[1,2,2,2]:p==='bomb'?[1,2,2,2]:p==='wheel'?[2,3,3,3]:[1,2,2,2];if(phase===1)return p==='rocket'?[1,3,2,3]:p==='wheel'?[3,3,3,4]:p==='ghost'?[1,2,2,2]:[2,2,2,3];if(phase===2&&p==='rocket')return [2,3,2,2];return null}
 const talkLines={rocket:['Match 3 pieces of the same kind.','Match 4 in a line to create a Rocket.','Activate the Rocket. It clears the line it points along.','There you go. Finish the objectives up there.'],bomb:['Match five pieces into a T or L. Watch what appears.','Swap the Clownbomb to trigger one 3×3 blast.','Lovely. Finish the remaining objectives.'],wheel:['Match five in a straight line to create a Ferris Wheel.','Swap the Wheel with a piece to clear every piece of that color.','Now complete the objectives yourself.'],ghost:['Ghosts are obstacles. Match three pieces of the same color directly beside one to remove it.','Good. Ghosts cannot be swiped, but they fall when pieces drop. Clear one more Ghost!']};
 function placePreGameSpecials(items){
  const coords=[];for(let r=0;r<grid.length;r++)for(let c=0;c<grid[r].length;c++)if(valid(r,c)&&grid[r][c]?.length===1&&!getB(r,c))coords.push([r,c]);
@@ -763,8 +831,8 @@ function placePreGameSpecials(items){
 function start(n){eventRun=false;if(n>save.current||!canAttempt())return;
  const selected=[...selectedPre].filter(t=>n>=5&&(save.preSpecials[t]||0)>0);
  selectedPre.clear();for(const t of selected)save.preSpecials[t]--;if(selected.length)persist();
- dailyRecord('attempts',1);chosen=n;conf=levelConfig(n);grantBoosters();boosterTarget=null;boosterFirst=null;pinnedSpecialCells.clear();seed=((Date.now()>>>0)^(n*781))>>>0;moves=conf.moves;starPoints=0;comboChain=0;collected=Object.fromEntries(Object.keys(conf.goals).map(t=>[t,0]));score=0;phase=0;ghostRemoved=0;ghostSpawnQueue=n===4?['G']:[];mode=conf.tutorial?'talk':'free';busy=false;grid=[];blockers=[];source=null;anchor=null;cells=[];$('board').replaceChildren();$('board').classList.remove('shuffle-motion','shuffle-arrive','fx-shake');$('gbShuffle').hidden=true;turnFireCleared=false;freshBoard();if(selected.length)placePreGameSpecials(selected);$('result').hidden=true;$('gbFail').hidden=true;document.querySelector('#result .gb-win-shell').hidden=false;failedPending=false;failedAttemptPaid=false;save.pendingFailure=false;persist();show('game');updateBoosterBar();render();if(conf.tutorial)talk();else {$('walker').hidden=true;render();}}
-function talk(){if(phase>0){for(let i=0;i<220&&matches().length;i++){for(const group of matches()){const [rr,cc]=group[Math.floor(rand()*group.length)];grid[rr][cc]=random();}}}mode='talk';$('speech').textContent=talkLines[conf.tutorial][Math.min(phase,talkLines[conf.tutorial].length-1)];$('walker').hidden=false;render()}
+ dailyRecord('attempts',1);chosen=n;conf=levelConfig(n);grantBoosters();boosterTarget=null;boosterFirst=null;pinnedSpecialCells.clear();seed=conf.tutorial?(0x6b0a2026+n*781)>>>0:((Date.now()>>>0)^(n*781))>>>0;gbTutorialRefillCursor=0;moves=conf.moves;starPoints=0;comboChain=0;collected=Object.fromEntries(Object.keys(conf.goals).map(t=>[t,0]));score=0;phase=0;ghostRemoved=0;ghostSpawnQueue=n===4?['G']:[];mode=conf.tutorial?'talk':'free';busy=false;grid=[];blockers=[];source=null;anchor=null;cells=[];$('board').replaceChildren();$('board').classList.remove('shuffle-motion','shuffle-arrive','fx-shake');$('gbShuffle').hidden=true;turnFireCleared=false;freshBoard();if(selected.length)placePreGameSpecials(selected);$('result').hidden=true;$('gbFail').hidden=true;document.querySelector('#result .gb-win-shell').hidden=false;failedPending=false;failedAttemptPaid=false;save.pendingFailure=false;persist();show('game');updateBoosterBar();render();if(conf.tutorial)talk();else {$('walker').hidden=true;render();}}
+function talk(){mode='talk';$('speech').textContent=talkLines[conf.tutorial][Math.min(phase,talkLines[conf.tutorial].length-1)];$('walker').hidden=false;render()}
 $('continue').onclick=()=>{ $('walker').hidden=true;mode=phase<(conf.tutorial==='rocket'?3:conf.tutorial==='ghost'?1:2)?'guide':'free';render();if(mode==='free')say('Finish the objectives!')};
 let gbLastMoveAt=Date.now();
 function gbResetHint(){gbLastMoveAt=Date.now();document.querySelectorAll('#board .gb-idle-hint').forEach(el=>el.classList.remove('gb-idle-hint'))}
@@ -869,16 +937,20 @@ async function refill(){
 }
 
 function stabilizeTutorial(step){
- const fixed={rocket:[[1,2],[2,2],[3,2],[2,1],[2,3]],bomb:[[2,1],[2,2],[2,3],[1,2],[3,2],[4,2],[1,3]],wheel:[[3,1],[3,2],[3,3],[3,4],[3,5],[2,3]],ghost:[[1,2],[1,3],[2,1],[2,2],[2,3]]};
- const keep=new Set((fixed[conf.tutorial]||[]).map(p=>p.join(',')));
- for(let i=0;i<800&&matches().length;i++){
-  let changed=false;
-  for(const group of matches()){
-   const available=group.filter(([r,c])=>!keep.has(r+','+c));
-   if(!available.length)continue;
-   const [r,c]=available[Math.floor(rand()*available.length)];grid[r][c]=random();changed=true;
+ const protectedCells={
+  rocket:{1:[[2,1],[2,2],[2,3],[2,4],[1,3]],2:[[2,2],[2,3]]},
+  bomb:{1:[[2,2],[2,3]]},wheel:{1:[[3,3],[3,4]]},ghost:{1:[]}
+ };
+ const keep=new Set((protectedCells[conf.tutorial]?.[step]||[]).map(p=>p.join(',')));
+ for(let i=0;i<350;i++){
+  const groups=matches();if(!groups.length)return;
+  let repaired=false;
+  for(const group of groups){
+   const editable=group.find(([r,c])=>!keep.has(r+','+c));
+   if(!editable)continue;
+   const [r,c]=editable;grid[r][c]=random();repaired=true;
   }
-  if(!changed)break;
+  if(!repaired)break;
  }
 }
 function playableSwaps(){const result=[];for(let r=0;r<grid.length;r++)for(let c=0;c<grid[r].length;c++)if(valid(r,c)){for(const [dr,dc] of [[1,0],[0,1]]){let rr=r+dr,cc=c+dc;if(!valid(rr,cc))continue;const a=grid[r][c],b=grid[rr][cc];if(a?.startsWith('GH')||b?.startsWith('GH')||fixedToken(a)||fixedToken(b)||getB(r,c)?.kind==='JL'||getB(rr,cc)?.kind==='JL')continue;if(isSpecial(a)||isSpecial(b)){result.push([r,c,rr,cc]);continue;}grid[r][c]=b;grid[rr][cc]=a;const good=matches().length>0;grid[r][c]=a;grid[rr][cc]=b;if(good)result.push([r,c,rr,cc]);}}return result}
@@ -1097,10 +1169,10 @@ async function swap(r,c,tr,tc){try{gbResetHint();
    [grid[r][c],grid[tr][tc]]=[src,dst];moves++;busy=false;mode='guide';render();say('Complete the highlighted pattern');return;
   }
   clear([...groups.flat(),...made.cells,...adjacentGhosts(groups)]);grid[tr][tc]=made.type==='GH'?'GH'+made.color:made.type;pinnedSpecialCells.add(tr+','+tc);
-  await refill();phase=1;configureGuide(1);busy=false;talk();return;
+  await refill();phase=1;configureGuide(1);stabilizeTutorial(1);busy=false;talk();return;
  }
- if(wasGuided&&phase===0&&chosen===1){clear(groups.flat());await refill();phase=1;configureGuide(1);busy=false;talk();return}
- if(wasGuided&&phase===1&&chosen===1){const made=maybeSpecial(groups,r,c,tr,tc);clear(groups.flat());grid[tr][tc]=made?.type||'RV';pinnedSpecialCells.add(tr+','+tc);await refill();phase=2;configureGuide(2);busy=false;talk();return}
+ if(wasGuided&&phase===0&&chosen===1){clear(groups.flat());await refill();phase=1;configureGuide(1);stabilizeTutorial(1);busy=false;talk();return}
+ if(wasGuided&&phase===1&&chosen===1){const made=maybeSpecial(groups,r,c,tr,tc);clear(groups.flat());grid[tr][tc]=made?.type||'RV';pinnedSpecialCells.add(tr+','+tc);await refill();phase=2;configureGuide(2);stabilizeTutorial(2);busy=false;talk();return}
  if(specialA&&specialB&&chosen>=5){
   // Combo dispatch reserved for Level 5; level 1–4 do not expose supreme swaps.
   if(!(await supremeCombo(r,c,tr,tc,src,dst)))await triggerQueue([{r:tr,c:tc,type:src},{r,c,type:dst}]);
