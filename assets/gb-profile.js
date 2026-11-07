@@ -177,35 +177,76 @@ prAdminScreen.insertAdjacentHTML('beforeend',`<section class="gbpr-panel gb-admi
  window.gbAdminFramesSection=groups[1];
 })();
 
-// MULTI-REWARD CODES: coins and published frames; Curio Packs wait for a real inventory API.
+// UNIFIED GIFT CODES: approved test frames become publishable directly here.
+// No changes to frame fitting, shop renderers, or other gameplay views.
 (function gbAdminGiftBundleCreator(){
  const section=window.gbAdminFramesSection;if(!section)return;
  const box=document.createElement('section');box.className='gb-admin-bundle-box';
- box.innerHTML=`<h3>✦ Gift Code Creator</h3><p class="gbpr-muted">Combine coins with a previously published frame. One claim per player. Curio Packs are not yet enabled in the inventory backend.</p>
+ box.innerHTML=`<h3>✦ Gift Code Creator</h3><p class="gbpr-muted">Choose an approved frame directly from your Testing Lab. Activating publishes the selected artwork and creates one redeemable code. Coins can be added to the same code.</p>
  <form id="gb-admin-bundle-form" class="gbpr-form">
  <label>Code<input id="gb-admin-bundle-code" required maxlength="32" placeholder="CARNIVALGIFT"></label>
  <label>Maximum claims<input id="gb-admin-bundle-limit" required type="number" min="1" max="100000" value="500"></label>
- <label>Coins (0 for none)<input id="gb-admin-bundle-coins" required type="number" min="0" max="1000000" value="0"></label>
- <label>Published frame (optional)<select id="gb-admin-bundle-frame"><option value="">No frame</option></select></label>
- <label class="gb-admin-disabled">Curio Packs <input disabled value="Not yet supported" aria-label="Curio packs not yet supported"></label>
- <button type="submit" class="gbpr-btn">CREATE GIFT CODE</button></form>`;
+ <label>Skull Coins (0 for none)<input id="gb-admin-bundle-coins" required type="number" min="0" max="1000000" value="0"></label>
+ <label>Frame reward<select id="gb-admin-bundle-frame"><option value="">No frame (coins only)</option></select></label>
+ <label class="gb-admin-disabled">Curio Packs<input disabled value="Not yet supported" aria-label="Curio Packs not yet supported"></label>
+ <button type="submit" class="gbpr-btn" id="gb-admin-bundle-create">ACTIVATE GIFT CODE</button></form>`;
  section.append(box);
  const select=box.querySelector('#gb-admin-bundle-frame');
+ const button=box.querySelector('#gb-admin-bundle-create');
+ let ready=new Map();
  window.gbAdminRefreshBundleFrames=async()=>{
-  if(gbAdminRole!=='owner'){box.hidden=true;return;}box.hidden=false;
-  const {data,error}=await sb.rpc('gb_admin_list_published_frames');
-  select.replaceChildren(new Option('No frame',''));
-  if(!error)(data||[]).forEach(f=>select.add(new Option(f.title+' ('+f.frame_id+')',f.frame_id)));
+  if(gbAdminRole!=='owner'){box.hidden=true;return;}
+  box.hidden=false;
+  const selected=select.value;
+  const [approved,published]=await Promise.all([
+   sb.rpc('gb_admin_list_approved_frames_for_codes'),
+   sb.rpc('gb_admin_list_published_frames')
+  ]);
+  ready=new Map();select.replaceChildren(new Option('No frame (coins only)',''));
+  if(approved.error){gbAdminNote('Approved-frame list unavailable: '+approved.error.message);}
+  else for(const f of approved.data||[]){const key='test:'+f.id;ready.set(key,f);select.add(new Option(f.title+' — APPROVED',key));}
+  if(!published.error)for(const f of published.data||[]){const key='published:'+f.frame_id;select.add(new Option(f.title+' — ALREADY PUBLISHED',key));}
+  if(Array.from(select.options).some(o=>o.value===selected))select.value=selected;
  };
  box.querySelector('form').onsubmit=async e=>{
-  e.preventDefault();if(gbAdminRole!=='owner')return;
+  e.preventDefault();if(gbAdminRole!=='owner'||button.disabled)return;
   const code=box.querySelector('#gb-admin-bundle-code').value.trim().toUpperCase();
-  const max=Number(box.querySelector('#gb-admin-bundle-limit').value),coins=Number(box.querySelector('#gb-admin-bundle-coins').value),frame=select.value||null;
-  if(!/^[A-Z0-9-]{4,32}$/.test(code)||!Number.isInteger(max)||max<1||max>100000||!Number.isInteger(coins)||coins<0||coins>1000000||(!frame&&coins===0)){gbAdminNote('Enter a valid code and at least one reward.');return;}
-  if(!await gbprConfirm('Create gift code '+code+' for '+max+' claims?'))return;
-  const {error}=await sb.rpc('gb_admin_create_bundle_code',{p_code:code,p_limit:max,p_coins:coins,p_frame_id:frame});
-  gbAdminNote(error?error.message:'Gift code created. Players can redeem it in Settings → Gift Code.',!error);
-  if(!error){e.target.reset();await gbprAlert('Gift code '+code+' created successfully.');}
+  const max=Number(box.querySelector('#gb-admin-bundle-limit').value);
+  const coins=Number(box.querySelector('#gb-admin-bundle-coins').value);
+  const chosen=select.value;
+  if(!/^[A-Z0-9-]{4,32}$/.test(code)||code.startsWith('SYS-')||!Number.isSafeInteger(max)||max<1||max>100000||!Number.isSafeInteger(coins)||coins<0||coins>1000000||(!chosen&&coins===0)){
+   gbAdminNote('Enter a valid code, claim limit, and at least one reward.');return;
+  }
+  if(!await gbprConfirm('Activate '+code+' for '+max+' accounts'+(chosen?' with a frame':'')+(coins?' and '+coins+' coins':'')+'? A selected approved frame will become publicly viewable, but only claimants can equip it.'))return;
+  button.disabled=true;
+  let publicPath=null,uploadedByUs=false;
+  try{
+   let testId=null,existingFrame=null;
+   if(chosen.startsWith('test:')){
+    const selectedFrame=ready.get(chosen);
+    if(!selectedFrame)throw new Error('Approved frame not found. Refresh and try again.');
+    testId=selectedFrame.id;
+    const ext=selectedFrame.storage_path.toLowerCase().endsWith('.webp')?'.webp':'.png';
+    publicPath='published/'+testId+ext;
+    const fromPrivate=await sb.storage.from('gb-admin-test-frames').download(selectedFrame.storage_path);
+    if(fromPrivate.error)throw fromPrivate.error;
+    const put=await sb.storage.from('gb-published-frames').upload(publicPath,fromPrivate.data,{upsert:false,contentType:ext==='.webp'?'image/webp':'image/png'});
+    if(put.error && !/already exists|duplicate/i.test(put.error.message||''))throw put.error;
+    uploadedByUs=!put.error;
+   }else if(chosen.startsWith('published:'))existingFrame=chosen.slice('published:'.length);
+   const created=await sb.rpc('gb_admin_activate_gift_bundle',{
+    p_code:code,p_limit:max,p_coins:coins,p_test_id:testId,p_existing_frame:existingFrame,p_storage_path:publicPath
+   });
+   if(created.error)throw created.error;
+   gbAdminNote('Gift code '+code+' activated. The approved frame is now published and archived from the Testing Lab.',true);
+   e.target.reset();await gbAdminRefresh();
+   await gbprAlert('Gift code '+code+' is now active. Test it with another account before sharing.');
+  }catch(err){
+   // An unused public upload may remain after an RPC rejection. Do not remove it
+   // here: another attempt may have already published a matching reference.
+   gbAdminNote('Gift-code activation failed: '+(err?.message||err));
+   await gbprAlert('Gift-code activation failed: '+(err?.message||err));
+  }finally{button.disabled=false;}
  };
 })();
 let prCurrent='hub';
@@ -519,7 +560,7 @@ async function gbAdminCheck(){
 function gbAdminNote(message,ok=false){const el=$p('gb-admin-status');if(el){el.textContent=message;el.style.color=ok?'#98f2c1':'';}}
 async function gbAdminRefresh(){
  if(!sb||!gbAdminRole)return;
- $p('gb-admin-role').textContent=gbAdminRole==='owner'?'OWNER ACCESS':'ADMIN ACCESS';const releaseArea=prAdminScreen.querySelector('.gb-admin-publish-controls');if(releaseArea)releaseArea.hidden=gbAdminRole!=='owner';
+ $p('gb-admin-role').textContent=gbAdminRole==='owner'?'OWNER ACCESS':'ADMIN ACCESS';const releaseArea=prAdminScreen.querySelector('.gb-admin-publish-controls');if(releaseArea)releaseArea.hidden=true; // Unified creator replaces old separate publishing step.
  void window.gbAdminRefreshBundleFrames?.();
  const [names,frames]=await Promise.all([sb.rpc('gb_admin_list_reserved'),sb.rpc('gb_admin_list_unpublished_test_frames')]);
  $p('gb-admin-reserved-list').textContent=names.error?'Unable to list usernames: '+names.error.message:(names.data||[]).map(x=>'@'+x.username).join(' · ')||'No protected usernames';
@@ -566,35 +607,10 @@ async function gbAdminRefresh(){
   if(gbAdminRole==='owner'){
    const sel=document.createElement('select');['draft','testing','approved'].forEach(x=>{const o=document.createElement('option');o.value=x;o.textContent=x.toUpperCase();o.selected=x===f.status;sel.append(o)});
    sel.onchange=async()=>{const res=await sb.rpc('gb_admin_set_test_frame_status',{p_id:f.id,p_status:sel.value});gbAdminNote(res.error?res.error.message:'Status updated. Frame remains private.',!res.error);if(res.error)sel.value=f.status;else{f.status=sel.value;void gbAdminRefresh();}};details.append(sel);
-   if(f.status==='approved'){
-    const codeBtn=document.createElement('button');codeBtn.type='button';codeBtn.className='gbpr-btn';codeBtn.textContent='PUBLISH AS GIFT CODE';
-    codeBtn.onclick=()=>gbAdminPublishGift(f,image.src);
-    details.append(codeBtn);
-   }
+
   }
   item.append(image,details);area.append(item);
  }
-}
-async function gbAdminPublishGift(frame,privateUrl){
- if(gbAdminRole!=='owner'||frame.status!=='approved')return;
- const codeInput=$p('gb-admin-publish-code');const limitInput=$p('gb-admin-publish-limit');
- const code=(codeInput?.value||'').trim().toUpperCase();const limit=Number(limitInput?.value);
- if(!/^[A-Z0-9-]{4,32}$/.test(code)){gbAdminNote('Enter a code of 4–32 letters, digits or hyphens.');return;}
- if(!Number.isSafeInteger(limit)||limit<1||limit>100000){gbAdminNote('Enter a maximum of 1–100,000 claims.');return;}
- if(!await gbprConfirm('Publish '+frame.title+' as a real redeemable frame with code '+code+' and '+limit+' maximum claims? This makes its artwork publicly accessible, but only code redeemers can equip it.'))return;
- try{
-  const ext=frame.storage_path.toLowerCase().endsWith('.webp')?'.webp':'.png';
-  const publicPath='published/'+frame.id+ext;
-  const download=await sb.storage.from('gb-admin-test-frames').download(frame.storage_path);
-  if(download.error)throw download.error;
-  const uploaded=await sb.storage.from('gb-published-frames').upload(publicPath,download.data,{upsert:false,contentType:ext==='.png'?'image/png':'image/webp'});
-  if(uploaded.error && !/already exists|duplicate/i.test(uploaded.error.message||''))throw uploaded.error;
-  const result=await sb.rpc('gb_publish_test_frame_code',{p_test_id:frame.id,p_code:code,p_limit:limit,p_storage_path:publicPath});
-  if(result.error)throw result.error;
-  gbAdminNote('Gift code '+code+' published! The frame is now archived from Testing Lab previews. Players can redeem it in Settings → Gift Code.',true);
-  await gbAdminRefresh();
-  await gbprAlert('Gift code '+code+' is live. The frame can now be redeemed by up to '+limit+' players.');
- }catch(e){gbAdminNote('Publishing failed: '+(e?.message||e));await gbprAlert('Gift-code publishing failed: '+(e?.message||e))}
 }
 $p('gb-admin-broadcast').onsubmit=async e=>{
  e.preventDefault();if(!gbAdminRole)return;
