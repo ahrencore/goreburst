@@ -387,3 +387,19 @@ img.gbpf-rank-overlay {
   text-shadow: none !important;
 }
 /* Leave existing avatar photographs and unrelated decorative UI unchanged. */
+/* Carnival Control Room: only mounted/navigation-enabled after verified role RPC. */
+#gb-profile-layer #gb-admin-nav[hidden]{display:none!important}
+#gb-profile-layer .gb-admin-panel h3{margin:18px 0 9px;color:#ffc2e5;font-size:15px}
+#gb-profile-layer .gb-admin-panel textarea,#gb-profile-layer .gb-admin-panel select{width:100%;box-sizing:border-box;min-height:42px;background:#2b1732;border:1px solid #95578c;border-radius:9px;color:white;padding:10px;font:inherit}
+#gb-profile-layer .gb-admin-panel textarea{min-height:100px;resize:vertical}
+#gb-profile-layer .gb-admin-items{margin-top:10px;font-size:12px;line-height:1.8;overflow-wrap:anywhere}
+#gb-profile-layer .gb-admin-frame-item{display:flex;align-items:center;gap:10px;border-top:1px solid #71446d;padding:10px 0;flex-wrap:wrap}
+#gb-profile-layer .gb-admin-frame-item>img{width:68px;height:68px;object-fit:contain;background:#301831;border-radius:9px}
+#gb-profile-layer .gb-admin-frame-item>div:nth-child(2){flex:1;min-width:140px}
+#gb-profile-layer .gb-admin-frame-item p{margin:3px 0;font-size:11px;color:#e6a9d3}
+#gb-profile-layer .gb-admin-frame-preview{position:relative;width:160px;height:160px;flex-basis:100%;margin:auto}
+#gb-profile-layer .gb-admin-preview-avatar{position:absolute;inset:25%;width:50%;height:50%;object-fit:cover;border-radius:50%}
+#gb-profile-layer .gb-admin-preview-frame{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+#gb-profile-layer .gb-admin-announcement{margin:10px 0;padding:12px;border:1px solid #7c436d;border-radius:10px;background:#28132d;white-space:pre-wrap}
+#gb-profile-layer .gb-admin-announcement small{display:block;color:#d6a8ca;margin:5px 0}
+#gb-profile-layer .gb-admin-announcement p{white-space:pre-wrap;overflow-wrap:anywhere}

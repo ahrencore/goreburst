@@ -42,7 +42,7 @@ const layer=document.createElement('aside');layer.id='gb-profile-layer';layer.se
 <div class="gbpr-panel gbpr-hero"><img id="gbpr-current-avatar" src="${fallbackAvatar}" alt="Current avatar"><div><div class="gbpr-name" id="gbpr-display">Carnival Guest</div><div class="gbpr-handle" id="gbpr-handle">Guest player</div><div class="gbpr-level" id="gbpr-level">LEVEL 1 · Local progress</div></div></div>
 <div id="gbpr-auth-panel" class="gbpr-panel"><div class="gbpr-tag">YOUR CARNIVAL ACCOUNT</div><p class="gbpr-muted">You can keep playing as a guest. Sign in to save your online profile and find other players later.</p>
 <div class="gbpr-tabs"><button id="gbpr-login-tab" class="gbpr-btn">SIGN IN</button><button id="gbpr-signup-tab" class="gbpr-btn secondary">CREATE ACCOUNT</button></div>
-<form id="gbpr-auth-form" class="gbpr-form"><label>Email<input id="gbpr-email" type="email" autocomplete="email" required maxlength="254" placeholder="you@example.com"></label><label>Password<input id="gbpr-password" type="password" autocomplete="current-password" minlength="6" required placeholder="Your password"></label><button id="gbpr-auth-submit" class="gbpr-btn" type="submit">SIGN IN</button></form><p class="gbpr-error" id="gbpr-auth-status" aria-live="polite"></p></div>
+<form id="gbpr-auth-form" class="gbpr-form"><label>Email<input id="gbpr-email" type="email" autocomplete="email" required maxlength="254" placeholder="you@example.com"></label><label class="gbpr-signup-field gbpr-hide">Display name<input id="gbpr-signup-name" maxlength="30" placeholder="Your carnival name"></label><label class="gbpr-signup-field gbpr-hide">Username<input id="gbpr-signup-username" maxlength="20" minlength="3" placeholder="unique_username" autocapitalize="none" spellcheck="false"></label><label>Password<input id="gbpr-password" type="password" autocomplete="current-password" minlength="6" required placeholder="Your password"></label><button id="gbpr-auth-submit" class="gbpr-btn" type="submit">SIGN IN</button></form><p class="gbpr-error" id="gbpr-auth-status" aria-live="polite"></p></div>
 <div id="gbpr-account-panel" class="gbpr-panel gbpr-hide"><div class="gbpr-tag">EDIT YOUR PROFILE</div>
 <form id="gbpr-edit-form" class="gbpr-form"><label>Display name<input id="gbpr-new-name" maxlength="30" required placeholder="Carnival Guest"></label><label>Unique username (3–20 letters, numbers or underscores)<input id="gbpr-new-handle" maxlength="20" minlength="3" pattern="[a-zA-Z0-9_]{3,20}" placeholder="my_carnival_name"></label><button type="submit" class="gbpr-btn">SAVE PROFILE</button></form><p class="gbpr-error" id="gbpr-edit-status" aria-live="polite"></p></div>
 <div class="gbpr-panel"><div class="gbpr-tag">CHOOSE A CARNIVAL AVATAR</div><div id="gbpr-avatar-list" class="gbpr-avatars"></div><p class="gbpr-muted" id="gbpr-avatar-help">Sign in to save your avatar to your online profile. You may preview the characters as a guest.</p><div class="gbpr-actions"><label class="gbpr-btn secondary" for="gbpr-upload">UPLOAD YOUR PHOTO</label><input id="gbpr-upload" type="file" accept="image/jpeg,image/png,image/webp" hidden></div><p class="gbpr-error" id="gbpr-upload-status" aria-live="polite"></p></div>
@@ -64,7 +64,7 @@ const prScroll=layer.querySelector('.gbpr-scroll');
 const prPanels=[...prScroll.children];
 const prHero=prPanels[0],prLogin=prPanels[1],prEdit=prPanels[2],prAvatar=prPanels[3],prSaveInfo=prPanels[4],prCloud=prPanels[5];
 const prHub=document.createElement('section');prHub.id='gbpr-hub';prHub.className='gbpr-screen';
-prHub.innerHTML=`<div class="gbpr-hub-identity"></div><div class="gbpr-hub-stats"><div><small>LEVEL</small><strong id="gbpr-hub-level">1</strong></div><div><small>STARS</small><strong id="gbpr-hub-stars">0 ★</strong></div></div><div class="gbpr-hub-links"><button type="button" data-gbpr-nav="mail">✉ <span>MAILBOX</span></button><button type="button" data-gbpr-nav="friends">♧ <span>FRIENDS</span></button><button type="button" data-gbpr-nav="edit">✦ <span>EDIT PROFILE</span></button><button type="button" data-gbpr-nav="account">⚙ <span>ACCOUNT</span></button></div>`;
+prHub.innerHTML=`<div class="gbpr-hub-identity"></div><div class="gbpr-hub-stats"><div><small>LEVEL</small><strong id="gbpr-hub-level">1</strong></div><div><small>STARS</small><strong id="gbpr-hub-stars">0 ★</strong></div></div><div class="gbpr-hub-links"><button type="button" data-gbpr-nav="mail">✉ <span>MAILBOX</span></button><button type="button" data-gbpr-nav="friends">♧ <span>FRIENDS</span></button><button type="button" data-gbpr-nav="edit">✦ <span>EDIT PROFILE</span></button><button type="button" data-gbpr-nav="account">⚙ <span>ACCOUNT</span></button><button type="button" id="gb-admin-nav" data-gbpr-nav="admin" hidden style="display:none">⚿ <span>CONTROL ROOM</span></button></div>`;
 prScroll.prepend(prHub);
 prHub.querySelector('.gbpr-hub-identity').append(prHero);
 const prScreen=(id,title)=>{const section=document.createElement('section');section.id='gbpr-screen-'+id;section.className='gbpr-screen gbpr-hide';section.innerHTML=`<div class="gbpr-subhead"><button type="button" class="gbpr-btn secondary" data-gbpr-home>‹ BACK</button><h3>${title}</h3></div>`;prScroll.append(section);return section};
@@ -109,20 +109,33 @@ prRewardSync.innerHTML='<div class="gbpr-tag">CLAIMED REWARDS</div><p class="gbp
 prAccountScreen.insertBefore(prRewardSync,prCloud);
 
 const prMailScreen=prScreen('mail','MAILBOX');
-prMailScreen.insertAdjacentHTML('beforeend',`<section class="gbpr-panel"><div class="gbpr-tag">CARNIVAL MAIL</div><div class="gbpr-social-actions"><button type="button" class="gbpr-btn secondary" id="gbpr-mail-refresh">REFRESH</button></div><div id="gbpr-mail-list" aria-live="polite" class="gbpr-social-list">Loading mail…</div></section>`);
+prMailScreen.insertAdjacentHTML('beforeend',`<section class="gbpr-panel"><div class="gbpr-tag">CARNIVAL MAIL</div><div class="gbpr-social-actions"><button type="button" class="gbpr-btn secondary" id="gbpr-mail-refresh">REFRESH</button></div><div class="gbpr-tag">OFFICIAL ANNOUNCEMENTS</div><div id="gbpr-global-announcements" class="gb-admin-announcements">Loading announcements…</div><div class="gbpr-tag">PERSONAL MAIL</div><div id="gbpr-mail-list" aria-live="polite" class="gbpr-social-list">Loading mail…</div></section>`);
 const prPublicScreen=prScreen('public','CARNIVAL PLAYER');
 prPublicScreen.insertAdjacentHTML('beforeend',`<section class="gbpr-panel gbpr-public-panel"><div class="gbpr-tag">✦ CARNIVAL PLAYER ✦</div><div id="gbpr-public-content" aria-live="polite">Loading player…</div><button type="button" class="gbpr-btn secondary" id="gbpr-public-back">‹ BACK TO FRIENDS</button></section>`);
 const prFriendsScreen=prScreen('friends','FRIENDS');
 prFriendsScreen.insertAdjacentHTML('beforeend',`<section class="gbpr-panel"><div class="gbpr-tag">FIND YOUR CARNIVAL CREW</div><p id="gbpr-friends-note" class="gbpr-muted"></p><button type="button" class="gbpr-btn" id="gbpr-friends-account">ACCOUNT</button><div id="gbpr-friends-controls" class="gbpr-hide"><form id="gbpr-friend-search" class="gbpr-social-search"><input type="search" maxlength="20" minlength="3" placeholder="Search @username" aria-label="Find player by username" required><button type="submit" class="gbpr-btn">SEARCH</button></form><div id="gbpr-friend-results" class="gbpr-social-list" aria-live="polite"></div><div class="gbpr-tag" style="margin-top:16px">YOUR FRIENDS & REQUESTS</div><div id="gbpr-friend-list" class="gbpr-social-list" aria-live="polite"></div><button type="button" class="gbpr-btn secondary" id="gbpr-friends-refresh">REFRESH</button></div></section>`);
+const prAdminScreen=prScreen('admin','CARNIVAL CONTROL ROOM');
+prAdminScreen.insertAdjacentHTML('beforeend',`<section class="gbpr-panel gb-admin-panel">
+<div class="gbpr-tag">PRIVATE ADMINISTRATION</div><p class="gbpr-muted">Authorized staff only. Unreleased frames never enter public profile inventories.</p>
+<div id="gb-admin-role" class="gbpr-muted"></div>
+<h3>✉ Broadcast announcement</h3>
+<form id="gb-admin-broadcast" class="gbpr-form"><label>Title<input id="gb-admin-title" maxlength="100" required></label><label>Message<textarea id="gb-admin-body" maxlength="3000" rows="5" required></textarea></label><button class="gbpr-btn" type="submit">SEND TO ALL PLAYERS</button></form>
+<h3>✦ Private frame testing lab</h3><p class="gbpr-muted">PNG/WebP, up to 5 MB. Preview privately; approval does not automatically publish to the public store.</p>
+<form id="gb-admin-frame-form" class="gbpr-form"><label>Frame title<input id="gb-admin-frame-title" maxlength="80" required></label><label>Artwork<input id="gb-admin-frame-file" type="file" accept="image/png,image/webp" required></label><button class="gbpr-btn" type="submit">UPLOAD TEST FRAME</button></form>
+<div id="gb-admin-test-frames" class="gb-admin-items"></div>
+<h3>⚿ Username protection</h3><form id="gb-admin-username-form" class="gbpr-form"><label>Username<input id="gb-admin-username" maxlength="20" placeholder="username" required></label><div class="gbpr-actions"><button class="gbpr-btn" type="submit" data-mode="reserve">PROTECT</button><button class="gbpr-btn secondary" type="button" id="gb-admin-unreserve">RELEASE</button></div></form><div id="gb-admin-reserved-list" class="gb-admin-items"></div>
+<p id="gb-admin-status" class="gbpr-error" aria-live="polite"></p><button type="button" id="gb-admin-refresh" class="gbpr-btn secondary">REFRESH CONTROL ROOM</button></section>`);
 let prCurrent='hub';
 function prNavigate(name){
+ if(name==='admin'&&!gbAdminRole)return;
  prCurrent=name;prScroll.querySelectorAll('.gbpr-screen').forEach(s=>s.classList.toggle('gbpr-hide',s.id!==(name==='hub'?'gbpr-hub':'gbpr-screen-'+name)));
  const authLabel=prAccountScreen.querySelector('#gbpr-simple-status');if(authLabel)authLabel.textContent=gbprRegistered()?'Signed in to your Carnival account.':'Sign in or create an account to save your progress.';
  const f=prFriendsScreen.querySelector('#gbpr-friends-note');if(f)f.textContent=gbprRegistered()?(profile?.username?'Search by unique @username.':'Choose your unique @username under Edit Profile first.'):'Create an account and choose a unique @username to add friends.';
  prFriendsScreen.querySelector('#gbpr-friends-account').classList.toggle('gbpr-hide',!!(gbprRegistered()&&profile?.username));
  prFriendsScreen.querySelector('#gbpr-friends-controls').classList.toggle('gbpr-hide',!(gbprRegistered()&&profile?.username));
  if(name==='friends'&&gbprRegistered()&&profile?.username)gbprLoadFriends();
- if(name==='mail')gbprLoadMail();
+ if(name==='mail'){gbprLoadMail();void gbLoadGlobalAnnouncements();}
+ if(name==='admin')void gbAdminRefresh();
  prScroll.scrollTop=0;
 }
 prScroll.querySelectorAll('[data-gbpr-nav]').forEach(b=>b.onclick=()=>prNavigate(b.dataset.gbprNav));
@@ -136,6 +149,7 @@ const prUpdateHub=()=>{
 };
 
 let sb=null,user=null,profile=null,signup=false,working=false,avatarPreview=null;
+let gbAdminRole=null;
 
 // Cloud-validated continue purchases. A successful RPC is the only authority to grant +5 moves.
 window.gbWalletIsSignedIn = () => !!(sb && user && !user.is_anonymous);
@@ -379,31 +393,121 @@ document.getElementById('profile').addEventListener('click',()=>view(true));
 layer.addEventListener('pointerdown',e=>e.stopPropagation());
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&layer.classList.contains('open'))view(false)});
 $p('gbpr-avatar-list').innerHTML=AVATARS.map((name,i)=>`<button type="button" class="gbpr-avatar" data-index="${i}"><img loading="lazy" src="${avatarFile(i)}" alt=""></button>`).join('');
-async function fetchProfile(){if(!sb||!user)return;const {data,error}=await sb.from('profiles').select('id,username,display_name,avatar_key,avatar_path,equipped_frame').eq('id',user.id).maybeSingle();if(error){setMessage('gbpr-edit-status',error.message);return}profile=data||null;refresh();void window.gbGiftOwnershipRefresh?.();void window.gbAlbumFrameRefresh?.();void window.gbShopApi?.sync().catch(()=>{});void gbprRefreshRequestDot();if(gbprRegistered())window.gbCloudReady?.()}
+
+// Admin authorization is checked via a SECURITY DEFINER RPC; no public roles table access.
+async function gbAdminCheck(){
+ const nav=$p('gb-admin-nav');gbAdminRole=null;
+ if(sb&&gbprRegistered()){
+  const r=await sb.rpc('gb_my_admin_role');
+  if(!r.error&&['owner','admin'].includes(r.data))gbAdminRole=r.data;
+ }
+ if(nav){nav.hidden=!gbAdminRole;nav.style.display=gbAdminRole?'':'none';}
+ if(!gbAdminRole&&prCurrent==='admin')prNavigate('hub');
+}
+function gbAdminNote(message,ok=false){const el=$p('gb-admin-status');if(el){el.textContent=message;el.style.color=ok?'#98f2c1':'';}}
+async function gbAdminRefresh(){
+ if(!sb||!gbAdminRole)return;
+ $p('gb-admin-role').textContent=gbAdminRole==='owner'?'OWNER ACCESS':'ADMIN ACCESS';
+ const [names,frames]=await Promise.all([sb.rpc('gb_admin_list_reserved'),sb.from('gb_admin_test_frames').select('id,title,storage_path,status,created_at').order('created_at',{ascending:false}).limit(50)]);
+ $p('gb-admin-reserved-list').textContent=names.error?'Unable to list usernames: '+names.error.message:(names.data||[]).map(x=>'@'+x.username).join(' · ')||'No protected usernames';
+ const area=$p('gb-admin-test-frames');area.replaceChildren();
+ if(frames.error){area.textContent='Unable to load frames: '+frames.error.message;return;}
+ if(!frames.data?.length){area.textContent='No test frames yet.';return;}
+ for(const f of frames.data){
+  const item=document.createElement('div');item.className='gb-admin-frame-item';
+  const image=document.createElement('img');image.alt=f.title;image.loading='lazy';
+  const signed=await sb.storage.from('gb-admin-test-frames').createSignedUrl(f.storage_path,120);
+  if(!signed.error)image.src=signed.data.signedUrl;
+  const details=document.createElement('div');const title=document.createElement('strong');title.textContent=f.title;
+  const line=document.createElement('p');line.textContent=f.status.toUpperCase();details.append(title,line);
+  const test=document.createElement('button');test.type='button';test.className='gbpr-btn secondary';test.textContent='PREVIEW';
+  test.onclick=()=>{const viewer=$p('gb-admin-frame-preview');viewer?.remove();const wrap=document.createElement('div');wrap.id='gb-admin-frame-preview';wrap.className='gb-admin-frame-preview';const avatar=document.createElement('img');avatar.src=avatarUrl();avatar.alt='Your profile photo';avatar.className='gb-admin-preview-avatar';const overlay=document.createElement('img');overlay.alt='Test frame';overlay.src=image.src;overlay.className='gb-admin-preview-frame';wrap.append(avatar,overlay);item.append(wrap);};
+  details.append(test);
+  if(gbAdminRole==='owner'){
+   const sel=document.createElement('select');['draft','testing','approved'].forEach(x=>{const o=document.createElement('option');o.value=x;o.textContent=x.toUpperCase();o.selected=x===f.status;sel.append(o)});
+   sel.onchange=async()=>{const res=await sb.rpc('gb_admin_set_test_frame_status',{p_id:f.id,p_status:sel.value});gbAdminNote(res.error?res.error.message:'Status updated. Frame remains private.',!res.error);if(res.error)sel.value=f.status;else f.status=sel.value;};details.append(sel);
+  }
+  item.append(image,details);area.append(item);
+ }
+}
+$p('gb-admin-broadcast').onsubmit=async e=>{
+ e.preventDefault();if(!gbAdminRole)return;
+ const title=$p('gb-admin-title').value.trim(),body=$p('gb-admin-body').value.trim();
+ if(!confirm('Send this announcement to every signed-in player?'))return;
+ const r=await sb.rpc('gb_send_announcement',{p_title:title,p_body:body});gbAdminNote(r.error?r.error.message:'Announcement sent to all registered accounts.',!r.error);
+ if(!r.error)e.target.reset();
+};
+$p('gb-admin-username-form').onsubmit=async e=>{e.preventDefault();await gbAdminUsernameChange(true);};
+$p('gb-admin-unreserve').onclick=()=>gbAdminUsernameChange(false);
+async function gbAdminUsernameChange(reserve){
+ if(!gbAdminRole)return;
+ const n=$p('gb-admin-username').value.trim().toLowerCase();if(!/^[a-z0-9_]{3,20}$/.test(n)){gbAdminNote('Use 3–20 letters, numbers or underscores.');return;}
+ const r=await sb.rpc('gb_admin_reserve_username',{p_username:n,p_reserve:reserve});gbAdminNote(r.error?r.error.message:reserve?'Username protected.':'Username released.',!r.error);if(!r.error)void gbAdminRefresh();
+}
+$p('gb-admin-frame-form').onsubmit=async e=>{
+ e.preventDefault();if(!gbAdminRole||!user)return;
+ const f=$p('gb-admin-frame-file').files?.[0],title=$p('gb-admin-frame-title').value.trim();
+ if(!f||!['image/png','image/webp'].includes(f.type)||f.size>5242880||!title){gbAdminNote('Choose a PNG or WebP under 5MB and enter a title.');return;}
+ const path=user.id+'/'+crypto.randomUUID()+(f.type==='image/png'?'.png':'.webp');
+ const upload=await sb.storage.from('gb-admin-test-frames').upload(path,f,{contentType:f.type,upsert:false});
+ if(upload.error){gbAdminNote(upload.error.message);return;}
+ const saved=await sb.from('gb_admin_test_frames').insert({title,storage_path:path,created_by:user.id});
+ if(saved.error){await sb.storage.from('gb-admin-test-frames').remove([path]);gbAdminNote(saved.error.message);return;}
+ gbAdminNote('Private test frame uploaded!',true);e.target.reset();void gbAdminRefresh();
+};
+$p('gb-admin-refresh').onclick=()=>gbAdminRefresh();
+
+// Global announcements are blended into the existing mailbox without exposing the admin.
+async function gbLoadGlobalAnnouncements(){
+ const host=$p('gbpr-global-announcements');if(!host||!sb||!gbprRegistered())return;
+ const r=await sb.rpc('gb_read_announcements');
+ if(r.error){host.textContent='Announcements unavailable: '+r.error.message;return;}
+ host.replaceChildren();if(!r.data?.length){host.textContent='No announcements yet.';return;}
+ for(const a of r.data){
+  const item=document.createElement('div');item.className='gb-admin-announcement';
+  const title=document.createElement('strong');title.textContent=a.title;
+  const from=document.createElement('small');from.textContent="FROM MR. WALKER'S CARNIVAL · "+new Date(a.created_at).toLocaleDateString();
+  const body=document.createElement('p');body.textContent=a.body;item.append(title,from,body);
+  if(!a.read_at){const mark=document.createElement('button');mark.className='gbpr-btn secondary';mark.textContent='MARK READ';mark.onclick=async()=>{const r=await sb.rpc('gb_mark_announcement_read',{p_id:a.id});if(!r.error){mark.remove();void gbprRefreshMailDot();}};item.append(mark);}
+  host.append(item);
+ }
+}
+
+async function fetchProfile(){if(!sb||!user)return;const {data,error}=await sb.from('profiles').select('id,username,display_name,avatar_key,avatar_path,equipped_frame').eq('id',user.id).maybeSingle();if(error){setMessage('gbpr-edit-status',error.message);return}profile=data||null;refresh();void gbAdminCheck();void window.gbGiftOwnershipRefresh?.();void window.gbAlbumFrameRefresh?.();void window.gbShopApi?.sync().catch(()=>{});void gbprRefreshRequestDot();if(gbprRegistered())window.gbCloudReady?.()}
 for(const el of document.querySelectorAll('.gbpr-avatar'))el.onclick=async()=>{const i=Number(el.dataset.index);avatarPreview=i;refresh();if(!gbprRegistered()||!sb){try{localStorage.setItem('gb-guest-avatar',String(i))}catch(e){};return;}setMessage('gbpr-upload-status','Saving avatar…');const {error}=await sb.from('profiles').update({avatar_key:avatarKey(i),avatar_path:null}).eq('id',user.id);if(error){setMessage('gbpr-upload-status',error.message);return}profile={...profile,avatar_key:avatarKey(i),avatar_path:null};avatarPreview=null;setMessage('gbpr-upload-status','Avatar saved!',true);refresh()};
-function setAuthMode(isSignup){signup=isSignup;$p('gbpr-auth-submit').textContent=signup?'CREATE ACCOUNT':'SIGN IN';$p('gbpr-login-tab').classList.toggle('secondary',signup);$p('gbpr-signup-tab').classList.toggle('secondary',!signup);$p('gbpr-password').autocomplete=signup?'new-password':'current-password';setMessage('gbpr-auth-status','')}
+function setAuthMode(isSignup){signup=isSignup;document.querySelectorAll('.gbpr-signup-field').forEach(el=>el.classList.toggle('gbpr-hide',!signup));$p('gbpr-signup-name').required=signup;$p('gbpr-signup-username').required=signup;$p('gbpr-auth-submit').textContent=signup?'CREATE ACCOUNT':'SIGN IN';$p('gbpr-login-tab').classList.toggle('secondary',signup);$p('gbpr-signup-tab').classList.toggle('secondary',!signup);$p('gbpr-password').autocomplete=signup?'new-password':'current-password';setMessage('gbpr-auth-status','')}
 $p('gbpr-login-tab').onclick=()=>setAuthMode(false);$p('gbpr-signup-tab').onclick=()=>setAuthMode(true);
 $p('gbpr-auth-form').onsubmit=async e=>{
  e.preventDefault();if(!sb){setMessage('gbpr-auth-status','Connection not ready.');return}
  if(working)return;working=true;$p('gbpr-auth-submit').disabled=true;
  const email=$p('gbpr-email').value.trim(),password=$p('gbpr-password').value;
+ const signupName=$p('gbpr-signup-name').value.trim(),signupUsername=$p('gbpr-signup-username').value.trim().toLowerCase();
+ if(signup&&(!signupName||! /^[a-z0-9_]{3,20}$/.test(signupUsername))){setMessage('gbpr-auth-status','Enter a display name and a username of 3–20 letters, numbers or underscores.');working=false;$p('gbpr-auth-submit').disabled=false;return;}
+ if(signup){const check=await sb.rpc('gb_username_available',{p_username:signupUsername});if(check.error){setMessage('gbpr-auth-status','Username check unavailable. Please try again after the database update.');working=false;$p('gbpr-auth-submit').disabled=false;return;}if(!check.data){setMessage('gbpr-auth-status','This username is already taken.');working=false;$p('gbpr-auth-submit').disabled=false;return;}}
  setMessage('gbpr-auth-status',signup?'Securing your carnival account…':'Signing in…');
  try{
   let result;
   if(signup&&gbprIsGuest()){
    // Convert this exact anonymous identity; never create a second account ID.
-   result=await sb.auth.updateUser({email,password});
+   result=await sb.auth.updateUser({email,password,data:{display_name:signupName,username:signupUsername}});
    if(result.error)throw result.error;
    setMessage('gbpr-auth-status','Check your email for a confirmation link. Keep this browser session until confirmed.',true);
   }else if(signup){
-   result=await sb.auth.signUp({email,password});if(result.error)throw result.error;
+   result=await sb.auth.signUp({email,password,options:{data:{display_name:signupName,username:signupUsername}}});if(result.error)throw result.error;
    setMessage('gbpr-auth-status',result.data?.session?'Welcome!':'Check your email to confirm your account.',true);
   }else{
    if(gbprIsGuest()&&!confirm('Signing into a different account will replace the current guest login on this browser. Guest progress is backed up locally, but it will not be attributed to the other account. Continue?'))return;
    result=await sb.auth.signInWithPassword({email,password});if(result.error)throw result.error;
    setMessage('gbpr-auth-status','Welcome back!',true);
   }
-  if(result?.data?.user){await gbSwitchIdentity(result.data.user);}
+  if(result?.data?.user){
+   await gbSwitchIdentity(result.data.user);
+   if(signup&&result.data.session){
+    const profileWrite=await sb.from('profiles').upsert({id:result.data.user.id,display_name:signupName,username:signupUsername},{onConflict:'id'});
+    if(profileWrite.error){setMessage('gbpr-auth-status',profileWrite.error.code==='23505'?'Account created, but this username is already taken. Please choose another in Edit Profile.':'Account created; profile setup needs attention: '+profileWrite.error.message);}
+    else {await fetchProfile();setMessage('gbpr-auth-status','Welcome to the Carnival!',true)}
+   }
+  }
  }catch(err){setMessage('gbpr-auth-status',err.message||'Authentication failed')}
  finally{working=false;$p('gbpr-auth-submit').disabled=false}
 };
@@ -542,7 +646,7 @@ async function gbInitializeCloudIdentity(who,generation){
 async function gbSwitchIdentity(next){
  const generation=++gbIdentityGeneration;
  gbIdentityLoadingUid=next?.id||null;
- user=next||null;profile=null;
+ user=next||null;profile=null;gbAdminRole=null;const nav=$p('gb-admin-nav');if(nav){nav.hidden=true;nav.style.display='none';}
  window.gbAccountReadyForPlay=false;
  window.gbWalletCache?.clear?.();
  if(!next){refresh();setMessage('gbpr-auth-status','Sign in to load your cloud progress.');return}
@@ -660,6 +764,10 @@ async function gbprRefreshMailDot(){
  const {data,error}=await sb.from('gb_inbox').select('id,category,claimed_at,read_at').eq('recipient',user.id).limit(100);
  if(error)return;
  gbprMailPending=!!data?.some(gbprMailPendingCheck);
+ if(gbprRegistered()){
+  const announcements=await sb.rpc('gb_read_announcements');
+  if(!announcements.error&&announcements.data?.some(a=>!a.read_at))gbprMailPending=true;
+ }
  button?.classList.toggle('gbpr-mail-pending',gbprMailPending);
  gbprUpdatePfpNotice();
 }
