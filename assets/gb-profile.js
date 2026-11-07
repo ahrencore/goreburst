@@ -395,7 +395,6 @@ let gbPublishedFrameOwned=new Set();const gbPublishedFrameUrls=new Map();
 
 // Published artwork is public, ownership is PRIVATE. Never derive other players'
 // frame URLs from the currently signed-in player's entitlements.
-const gbPublicFrameFits=new Map();
 let gbPublicCatalogTask=null;
 async function gbpfEnsurePublicCatalog(){
  if(!sb)return;
@@ -408,17 +407,10 @@ async function gbpfEnsurePublicCatalog(){
    if(!/^custom_[a-f0-9]{12}$/.test(id)||!row.storage_path)continue;
    const url=sb.storage.from('gb-published-frames').getPublicUrl(row.storage_path).data.publicUrl;
    gbPublishedFrameUrls.set(id,url);
-   if(Number(row.opening_size)>0){const fit={x:Number(row.opening_x),y:Number(row.opening_y),size:Number(row.opening_size)};
-    gbPublicFrameFits.set(id,fit);gbpfAutoHoleCache.set(id,fit);}
   }
  })().catch(e=>{console.warn('Published frame catalog unavailable:',e.message);gbPublicCatalogTask=null;});
  return gbPublicCatalogTask;
 }
-function gbpfFrameFit(id){
- const t=gbpfShopHole[id];if(t)return {size:t[0],x:t[1],y:t[2]};
- return gbPublicFrameFits.get(id)||gbpfAutoHoleCache.get(id)||{size:70,x:50,y:50};
-}
-function gbpfFrameVars(id){const f=gbpfFrameFit(id);return `--gbpf-view-size:${f.size}%;--gbpf-view-x:${f.x}%;--gbpf-view-y:${f.y}%;`;}
 const gbpfFile=id=>gbPublishedFrameUrls.has(String(id))?gbPublishedFrameUrls.get(String(id)):gbShopFrameIds.includes(String(id))?'assets/shop-frames/'+String(id).slice(6)+'.webp':id==='hungry_gate'?GBPF_PATH+'hungry_gate.png':/^album_completion_0[2-9]$/.test(String(id))?'assets/collectibles/completion-frames/completion_'+String(id).slice(-2)+'.webp':/^[1-5]$/.test(String(id))?GBPF_PATH+'frame_0'+id+'.png':/^gift_(0[1-9]|1[0-9])$/.test(String(id))?GBPF_PATH+id+'.png':'';
 const gbpfNormalize=id=>/^custom_[a-f0-9]{12}$/.test(String(id))?String(id):gbShopFrameIds.includes(String(id))?String(id):id==='hungry_gate'?'hungry_gate':/^album_completion_0[2-9]$/.test(String(id))?String(id):/^[1-5]$/.test(String(id))?String(id):/^gift_(0[1-9]|1[0-9])$/.test(String(id))?String(id):'none';
 let gbAlbumFrameOwned=new Set();
@@ -466,57 +458,6 @@ const gbpfShopHole={
  frame_purplefluffy:[47.4,48.3,47.0],frame_poseidon:[46.1,47.0,48.2],
  frame_greek:[42.1,46.5,47.3]
 };
-// Detect the largest safe central circular opening from transparency.
-// Works with centered and slightly offset openings; if the artwork has no
-// enclosed transparent center, fall back to the established profile circle.
-const gbpfAutoHoleCache=new Map();
-const gbpfManualHoleOverrides=new Map();
-function gbpfHoleFromPixels(img){
- const n=192,c=document.createElement('canvas');c.width=c.height=n;
- const ctx=c.getContext('2d',{willReadFrequently:true});ctx.clearRect(0,0,n,n);
- ctx.drawImage(img,0,0,n,n);const data=ctx.getImageData(0,0,n,n).data;
- const clear=(x,y)=> x>=1&&y>=1&&x<n-1&&y<n-1&&data[(Math.floor(y)*n+Math.floor(x))*4+3]<45;
- let sx=-1,sy=-1,dist=Infinity;
- for(let y=52;y<140;y++)for(let x=52;x<140;x++)if(clear(x,y)){
-  const d=(x-96)**2+(y-96)**2;
-  if(d<dist){dist=d;sx=x;sy=y;}
- }
- if(sx<0||dist>35**2)return null;
- // Contiguous transparent central region must not reach outside the frame.
- const seen=new Uint8Array(n*n),queue=new Int32Array(n*n);let head=0,tail=0;
- const start=sy*n+sx;seen[start]=1;queue[tail++]=start;
- let minX=sx,maxX=sx,minY=sy,maxY=sy,touchesEdge=false;
- while(head<tail){const idx=queue[head++],x=idx%n,y=(idx/n)|0;
-  minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);
-  if(x<2||y<2||x>n-3||y>n-3){touchesEdge=true;break;}
-  for(const j of [idx-1,idx+1,idx-n,idx+n]){if(!seen[j]&&clear(j%n,(j/n)|0)){seen[j]=1;queue[tail++]=j;}}
- }
- if(touchesEdge||tail<120)return null;
- const cx=(minX+maxX)/2,cy=(minY+maxY)/2;
- let radius=75;
- for(let a=0;a<48;a++){
-  const rad=2*Math.PI*a/48;let r=0;
-  for(;r<75;r+=.75){const x=Math.round(cx+Math.cos(rad)*r),y=Math.round(cy+Math.sin(rad)*r);if(!clear(x,y))break;}
-  radius=Math.min(radius,r);
- }
- radius-=2.2; if(radius<12)return null;
- return {x:cx/n*100,y:cy/n*100,size:Math.min(70,radius*2/n*100)};
-}
-function gbpfApplyAutoHole(el,fit){
- if(!el||!fit)return;
- el.classList.add('gbpf-auto-fit');
- el.style.setProperty('--gbpf-auto-x',fit.x+'%');
- el.style.setProperty('--gbpf-auto-y',fit.y+'%');
- el.style.setProperty('--gbpf-auto-size',fit.size+'%');
-}
-function gbpfLoadAutoHole(img,wrap,key,afterFit){
- if(!img||!wrap)return;
- if(gbpfAutoHoleCache.has(key)){const fit=gbpfAutoHoleCache.get(key);gbpfApplyAutoHole(wrap,fit);afterFit?.(fit);return;}
- const analyze=()=>{try{const result=gbpfHoleFromPixels(img);
-  if(result){gbpfAutoHoleCache.set(key,result);gbpfApplyAutoHole(wrap,result);afterFit?.(result);}
- }catch(e){console.warn('Frame opening scan unavailable:',e.message);}};
- if(img.complete&&img.naturalWidth)analyze();else img.addEventListener('load',analyze,{once:true});
-}
 const gbpfFit=(el,id)=>{
  if(!el)return;
  const fit=gbpfShopHole[id];
@@ -532,69 +473,13 @@ function gbpfDecorate(el,id){
  if(!wrap){wrap=document.createElement('span');wrap.className='gbpf-hero-avatar-wrap';el.parentNode.insertBefore(wrap,el);wrap.appendChild(el)}
  wrap.querySelectorAll('.gbpf-overlay').forEach(x=>x.remove());
  gbpfFit(wrap,id);
- const viewFit=gbpfFrameFit(id); gbpfApplyAutoHole(wrap,viewFit);
  el.classList.add('gbpf-avatar-img');
  const src=gbpfFile(id);
  if(!src)return;
  const frame=document.createElement('img');frame.src=src;frame.className='gbpf-overlay';frame.alt='';frame.setAttribute('aria-hidden','true');wrap.appendChild(frame);
- if(String(id).startsWith('custom_')){frame.crossOrigin='anonymous';gbpfLoadAutoHole(frame,wrap,id);
-  if(sb)void sb.rpc('gb_public_frame_opening',{p_frame_id:id}).then(({data,error})=>{
-   if(!error&&data&&Number(data.size)>0&&frame.isConnected){const fit={x:Number(data.x),y:Number(data.y),size:Number(data.size)};gbpfAutoHoleCache.set(id,fit);gbpfApplyAutoHole(wrap,fit);}
-  });}
 }
-
-let gbpfHudResizeHook=false;
-let gbpfHudFitVersion=0;
-function gbpfHudPositionPhoto(frame,fit){
- // Match the shop's proven 70%-photo / 100%-overlay geometry.
- // Measure the actual *contained* artwork, not the larger HUD canvas.
- const avatar=document.getElementById('gbMenuAvatar');
- const hud=frame?.parentElement;
- if(!avatar||!hud||!frame?.naturalWidth||!frame?.naturalHeight)return;
- const parent=hud.getBoundingClientRect(),r=frame.getBoundingClientRect();
- if(!r.width||!r.height||!parent.width||!parent.height)return;
- const scale=Math.min(r.width/frame.naturalWidth,r.height/frame.naturalHeight);
- const w=frame.naturalWidth*scale,h=frame.naturalHeight*scale;
- const x=r.left+(r.width-w)/2-parent.left,y=r.top+(r.height-h)/2-parent.top;
- const hole=fit||{x:50,y:50,size:70};
- const size=Math.min(w,h)*Math.max(0.1,Math.min(0.85,Number(hole.size)/100));
- const left=x+w*(Number(hole.x)/100)-size/2,top=y+h*(Number(hole.y)/100)-size/2;
- const rules={left:left+'px',top:top+'px',width:size+'px',height:size+'px',
-   'border-radius':'50%','clip-path':'circle(49% at 50% 50%)',
-   '-webkit-clip-path':'circle(49% at 50% 50%)','object-fit':'cover',
-   'object-position':'center','z-index':'2',transform:'none'};
- Object.entries(rules).forEach(([k,v])=>avatar.style.setProperty(k,v,'important'));
- frame.style.setProperty('z-index','3','important');
-}
-function gbpfHudResetPhoto(){
- const avatar=document.getElementById('gbMenuAvatar');if(!avatar)return;
- for(const k of ['left','top','width','height','border-radius','clip-path','object-fit','object-position','z-index','-webkit-clip-path','transform'])avatar.style.removeProperty(k);
-}
-function gbpfHudBindFrame(frame,id){
- const version=++gbpfHudFitVersion;
- const fitFrame=async()=>{
-  if(version!==gbpfHudFitVersion)return;
-  let fit={x:50,y:50,size:70};
-  const shop=gbpfShopHole[id];if(shop)fit={x:shop[1],y:shop[2],size:shop[0]};
-  if(id.startsWith('custom_')){
-   // Metadata stored by the owner takes precedence over heuristic detection.
-   try{const client=sb;if(client){const res=await client.rpc('gb_public_frame_opening',{p_frame_id:id});
-    if(!res.error&&res.data&&Number(res.data.size)>0)fit=res.data;
-   }}catch{}
-   if(version!==gbpfHudFitVersion)return;
-   if(fit.size===70){const cached=gbpfAutoHoleCache.get(id);if(cached)fit=cached;
-    else try{const detected=gbpfHoleFromPixels(frame);if(detected){fit=detected;gbpfAutoHoleCache.set(id,detected)}}catch{}}
-  }
-  if(version!==gbpfHudFitVersion)return;
-  gbpfHudPositionPhoto(frame,fit);frame.dataset.gbpfFit=JSON.stringify(fit);
- };
- if(frame.complete&&frame.naturalWidth)void fitFrame();else frame.addEventListener('load',()=>void fitFrame(),{once:true});
- if(!gbpfHudResizeHook){gbpfHudResizeHook=true;window.addEventListener('resize',()=>{
-   const f=document.getElementById('gbpf-hud-frame');if(f?.naturalWidth){let fit;try{fit=JSON.parse(f.dataset.gbpfFit||'null')}catch{}if(fit)gbpfHudPositionPhoto(f,fit);}
- },{passive:true});}
-}
-function gbpfPaint(){const selected=gbpfCurrent();gbpfFit(prFramePanel.querySelector('.gbpf-preview'),selected);gbpfApplyAutoHole(prFramePanel.querySelector('.gbpf-preview'),gbpfFrameFit(selected));const hero=$p('gbpr-current-avatar');gbpfDecorate(hero,selected);const avatar=$p('gbpf-preview-avatar');if(avatar)avatar.src=avatarUrl();const border=$p('gbpf-preview-border');if(border){border.src=gbpfFile(selected)||'';border.hidden=!gbpfFile(selected)};
- const hud=document.getElementById('gbMenuAvatar');if(hud){const old=document.getElementById('gbpf-hud-frame');if(old)old.remove();if(gbpfFile(selected)){const overlay=document.createElement('img');overlay.id='gbpf-hud-frame';overlay.src=gbpfFile(selected);overlay.alt='';overlay.setAttribute('aria-hidden','true');hud.insertAdjacentElement('afterend',overlay);gbpfHudBindFrame(overlay,selected)}else{gbpfHudFitVersion++;gbpfHudResetPhoto()}}
+function gbpfPaint(){const selected=gbpfCurrent();gbpfFit(prFramePanel.querySelector('.gbpf-preview'),selected);const hero=$p('gbpr-current-avatar');gbpfDecorate(hero,selected);const avatar=$p('gbpf-preview-avatar');if(avatar)avatar.src=avatarUrl();const border=$p('gbpf-preview-border');if(border){border.src=gbpfFile(selected)||'';border.hidden=!gbpfFile(selected)};
+ const hud=document.getElementById('gbMenuAvatar');if(hud){const old=document.getElementById('gbpf-hud-frame');if(old)old.remove();if(gbpfFile(selected)){const overlay=document.createElement('img');overlay.id='gbpf-hud-frame';overlay.src=gbpfFile(selected);overlay.alt='';overlay.setAttribute('aria-hidden','true');hud.insertAdjacentElement('afterend',overlay)}}
  const choices=$p('gbpf-options');if(choices){choices.innerHTML=['none','1','2','3','4','5',...Array.from(gbAlbumFrameOwned),...Array.from({length:19},(_,i)=>'gift_'+String(i+1).padStart(2,'0')).filter(id=>gbGiftOwned.has(id)),...gbShopFrameIds.filter(id=>gbShopFrameOwned.has(id)),...Array.from(gbPublishedFrameOwned)].map(id=>{const locked=((id==='hungry_gate'||id.startsWith('album_completion_'))&&!gbAlbumFrameOwned.has(id))||(id.startsWith('gift_')&&!gbGiftOwned.has(id))||(id.startsWith('frame_')&&!gbShopFrameOwned.has(id));const chosen=id===selected;const inner=gbpfFile(id)?'<img src="'+gbpfFile(id)+'" alt="">':'<span class="gbpf-empty">○</span>';return '<button type="button" data-gbpf-frame="'+id+'" class="gbpf-choice '+(chosen?'selected ':'')+(locked?'locked':'')+'" aria-label="'+(locked?'Locked frame':id==='none'?'No frame':'Profile frame '+id)+'" aria-pressed="'+chosen+'">'+inner+(locked?'<span class="gbpf-lock">🔒</span>':'')+(chosen?'<span class="gbpf-tick">✓</span>':'')+'</button>'}).join('')}
 }
 window.gbpfRefresh=gbpfPaint;
@@ -648,9 +533,7 @@ async function gbAdminRefresh(){
   if(!signed.error)image.src=signed.data.signedUrl;
   const details=document.createElement('div');const title=document.createElement('strong');title.textContent=f.title;
   const line=document.createElement('p');line.textContent=f.status.toUpperCase();
-  const size=document.createElement('span');size.className='gb-admin-file-size';
-  const bytes=Number(f.file_size_bytes);size.textContent=Number.isFinite(bytes)&&bytes>0?' · '+(bytes/1024).toFixed(1)+' KB':' · size unavailable';
-  title.append(size);details.append(title,line);
+  details.append(title,line);
   const test=document.createElement('button');test.type='button';test.className='gbpr-btn secondary';test.textContent='PREVIEW';
   test.onclick=()=>{
    const previous=$p('gb-admin-frame-preview');previous?.remove();
@@ -660,28 +543,7 @@ async function gbAdminRefresh(){
    const avatar=document.createElement('img');avatar.src=avatarUrl();avatar.alt='Your profile photo';avatar.className='gbpf-avatar-img';
    const overlay=document.createElement('img');overlay.crossOrigin='anonymous';overlay.alt='Test frame';overlay.src=image.src;overlay.className='gbpf-overlay';overlay.setAttribute('aria-hidden','true');
    wrap.append(avatar,overlay);preview.append(wrap);item.append(preview);
-   gbpfFit(wrap,'none');gbpfLoadAutoHole(overlay,wrap,'test:'+f.id); // Detect inner transparent opening.
-   const calibrate=document.createElement('div');calibrate.className='gb-admin-calibrate';
-   calibrate.innerHTML='<small>Adjust PFP opening (center X / center Y / diameter %). Save once; future viewers use the same values.</small>';
-   const fields=[['X',50],['Y',50],['Size',55]].map(([label,initial])=>{
-    const holder=document.createElement('label');holder.textContent=label+' ';
-    const input=document.createElement('input');input.type='number';input.min='10';input.max='90';input.step='.5';
-    input.value=gbpfAutoHoleCache.get('test:'+f.id)?.[label==='Size'?'size':label.toLowerCase()]||initial;
-    holder.append(input);calibrate.append(holder);return input;
-   });
-   const update=()=>{gbpfApplyAutoHole(wrap,{x:Number(fields[0].value),y:Number(fields[1].value),size:Number(fields[2].value)});};
-   fields.forEach(field=>field.addEventListener('input',update));
-   const save=document.createElement('button');save.type='button';save.className='gbpr-btn secondary';save.textContent='SAVE FIT';
-   save.onclick=async()=>{
-    const x=Number(fields[0].value),y=Number(fields[1].value),size=Number(fields[2].value);
-    if(![x,y,size].every(Number.isFinite)||size<15||size>85||x<10||x>90||y<10||y>90){gbAdminNote('Please enter valid opening settings.');return;}
-    const result=await sb.rpc('gb_admin_set_test_frame_opening',{p_id:f.id,p_x:x,p_y:y,p_size:size});
-    gbAdminNote(result.error?result.error.message:'Opening saved. Published gift frames will reuse this fit.',!result.error);
-    if(!result.error)gbpfAutoHoleCache.set('test:'+f.id,{x,y,size});
-   };calibrate.append(save);preview.append(calibrate);
-   void sb.rpc('gb_admin_get_test_frame_opening',{p_id:f.id}).then(({data,error})=>{
-     if(!error&&data&&Number(data.size)>0){fields[0].value=data.x;fields[1].value=data.y;fields[2].value=data.size;update();}
-   });
+   gbpfFit(wrap,'none'); // Restore pre-experimental centered preview geometry.
   };
   details.append(test);
   const removeBtn=document.createElement('button');removeBtn.type='button';removeBtn.className='gbpr-btn secondary gb-admin-remove';removeBtn.textContent='DELETE TEST FRAME';
@@ -1046,10 +908,10 @@ async function gbprOpenPublicProfile(targetId){
  const [matchedFrame]=await gbpfPublicFrames([{user_id:targetId}]);
  if(matchedFrame)r.equipped_frame=matchedFrame.equipped_frame;
  if(prCurrent!=='public')return;
- host.innerHTML=`<span class="gbpf-public-wrap" style="${gbpfFrameVars(gbpfNormalize(r.equipped_frame))}"><img class="gbpr-public-avatar" src="${gbprSocialAvatar(r)}" alt="Player avatar">${gbpfFile(gbpfNormalize(r.equipped_frame))?'<img class="gbpf-overlay" src="'+gbpfFile(gbpfNormalize(r.equipped_frame))+'" alt="">':''}</span><h3>${safe(r.display_name||'Carnival Guest')}</h3><p class="gbpr-public-handle">@${safe(r.username||'unknown')}</p><div class="gbpr-public-stats"><div><small>LEVEL</small><strong>${Math.max(1,Math.min(100000,Number(r.player_level)||1))}</strong></div><div><small>STARS</small><strong>${Math.max(0,Math.min(300000,Number(r.total_stars)||0))} ★</strong></div></div>`;
+ host.innerHTML=`<span class="gbpf-public-wrap"><img class="gbpr-public-avatar" src="${gbprSocialAvatar(r)}" alt="Player avatar">${gbpfFile(gbpfNormalize(r.equipped_frame))?'<img class="gbpf-overlay" src="'+gbpfFile(gbpfNormalize(r.equipped_frame))+'" alt="">':''}</span><h3>${safe(r.display_name||'Carnival Guest')}</h3><p class="gbpr-public-handle">@${safe(r.username||'unknown')}</p><div class="gbpr-public-stats"><div><small>LEVEL</small><strong>${Math.max(1,Math.min(100000,Number(r.player_level)||1))}</strong></div><div><small>STARS</small><strong>${Math.max(0,Math.min(300000,Number(r.total_stars)||0))} ★</strong></div></div>`;
 }
 prPublicScreen.querySelector('#gbpr-public-back').onclick=()=>prNavigate('friends');
-const gbprFriendCard=(r,actions)=>`<div class="gbpr-social-card"><span class="gbpf-social-avatar" style="${gbpfFrameVars(gbpfNormalize(r.equipped_frame))}"><img src="${gbprSocialAvatar(r)}" alt="">${gbpfFile(gbpfNormalize(r.equipped_frame))?`<img class="gbpf-social-frame" src="${gbpfFile(gbpfNormalize(r.equipped_frame))}" alt="">`:``}</span><span><b>${safe(r.display_name||'Carnival Guest')}</b><small>@${safe(r.username||'unknown')}</small></span><div class="gbpr-social-card-actions">${actions}</div></div>`;
+const gbprFriendCard=(r,actions)=>`<div class="gbpr-social-card"><span class="gbpf-social-avatar"><img src="${gbprSocialAvatar(r)}" alt="">${gbpfFile(gbpfNormalize(r.equipped_frame))?`<img class="gbpf-social-frame" src="${gbpfFile(gbpfNormalize(r.equipped_frame))}" alt="">`:``}</span><span><b>${safe(r.display_name||'Carnival Guest')}</b><small>@${safe(r.username||'unknown')}</small></span><div class="gbpr-social-card-actions">${actions}</div></div>`;
 // Welcome gift: one-time, per-account local inventory application.
 // The SQL RPC owns the claim; this receipt prevents replay on the same game save.
 window.gbWelcomeApplyGift=function(accountId,mailId,grant,claimedAt){
@@ -1826,7 +1688,7 @@ window.gbLeaderboardAvatarHtml=function(r,avatarClass,escapeFn){
   const escape=typeof escapeFn==='function'?escapeFn:(v=>String(v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'));
   const src=window.gbGhostAvatarUrl?.(r)||fallbackAvatar;
   const frame=gbpfFile(gbpfNormalize(r?.equipped_frame));
-  return '<span class="gbpf-rank-avatar" style="'+gbpfFrameVars(gbpfNormalize(r?.equipped_frame))+'"><img class="'+avatarClass+'" src="'+escape(src)+'" alt="" loading="lazy">'+(frame?'<img class="gbpf-rank-overlay" src="'+escape(frame)+'" alt="" loading="lazy">':'')+'</span>';
+  return '<span class="gbpf-rank-avatar"><img class="'+avatarClass+'" src="'+escape(src)+'" alt="" loading="lazy">'+(frame?'<img class="gbpf-rank-overlay" src="'+escape(frame)+'" alt="" loading="lazy">':'')+'</span>';
 };
 window.gbGhostAvatarUrl=function(record){
   if(record?.avatar_path){

@@ -397,6 +397,8 @@ img.gbpf-rank-overlay {
 #gb-profile-layer .gb-admin-frame-item>img{width:68px;height:68px;object-fit:contain;background:#301831;border-radius:9px}
 #gb-profile-layer .gb-admin-frame-item>div:nth-child(2){flex:1;min-width:140px}
 #gb-profile-layer .gb-admin-frame-item p{margin:3px 0;font-size:11px;color:#e6a9d3}
+
+/* Legacy-size Admin preview: base profile frame geometry only; no opening detector. */
 /* Admin frame testing: mirror the live profile hero renderer and its 70% round PFP.
    No independent oval-prone sizing rules, and no changes to public frames. */
 #gb-profile-layer .gb-admin-frame-preview.gbpr-hero{
@@ -428,27 +430,6 @@ img.gbpf-rank-overlay {
 #gb-profile-layer .gb-admin-announcement small{display:block;color:#d6a8ca;margin:5px 0}
 #gb-profile-layer .gb-admin-announcement p{white-space:pre-wrap;overflow-wrap:anywhere}
 
-/* Control Room v1.2: frame test must be a TRUE circular stencil, not an
-   unconstrained avatar rectangle underneath the overlaid PNG. Keep the
-   same 108px square profile frame renderer; the photo is clipped inward
-   so no colored photo pixels can protrude through a frame's inner rim. */
-#gb-profile-layer .gb-admin-frame-preview.gbpr-hero .gbpf-hero-avatar-wrap{
-  width:108px!important;height:108px!important;aspect-ratio:1 / 1!important;
-  flex:0 0 108px!important;min-width:108px!important;max-width:108px!important;
-}
-#gb-profile-layer .gb-admin-frame-preview.gbpr-hero .gbpf-hero-avatar-wrap > img.gbpf-avatar-img{
-  position:absolute!important;left:15%!important;top:15%!important;
-  width:70%!important;height:70%!important;aspect-ratio:1 / 1!important;
-  object-fit:cover!important;object-position:center!important;
-  border-radius:50%!important;
-  clip-path:circle(43% at 50% 50%)!important;
-  -webkit-clip-path:circle(43% at 50% 50%)!important;
-}
-#gb-profile-layer .gb-admin-frame-preview.gbpr-hero .gbpf-hero-avatar-wrap > img.gbpf-overlay{
-  inset:0!important;width:100%!important;height:100%!important;z-index:2!important;
-  object-fit:contain!important;
-}
-
 /* Inbox delete control: individual hide, never a global deletion. */
 #gb-profile-layer .gbpr-inbox-entry{display:flex;align-items:stretch;gap:5px;margin:8px 0}
 #gb-profile-layer .gbpr-inbox-entry .gbpr-inbox-row{flex:1;min-width:0;margin:0}
@@ -479,17 +460,6 @@ img.gbpf-rank-overlay {
 .gbpr-dialog-actions {display:flex;justify-content:center;flex-wrap:wrap;gap:11px}
 .gbpr-dialog-actions .gbpr-btn {min-width:110px;border:1.5px solid #ffc4e9;border-radius:999px;box-shadow:0 0 12px #ff65d1aa;cursor:pointer}
 
-/* Automatic transparent-hole fitting for uploaded custom frames. */
-#gb-profile-layer .gb-admin-frame-preview .gbpf-hero-avatar-wrap.gbpf-auto-fit > img.gbpf-avatar-img,
-#gb-profile-layer .gbpr-hero .gbpf-hero-avatar-wrap.gbpf-auto-fit > img.gbpf-avatar-img,
-#gb-profile-layer .gbpr-hub-identity .gbpr-hero .gbpf-hero-avatar-wrap.gbpf-auto-fit > img.gbpf-avatar-img {
- left:var(--gbpf-auto-x,50%)!important;top:var(--gbpf-auto-y,50%)!important;
- width:var(--gbpf-auto-size,70%)!important;height:var(--gbpf-auto-size,70%)!important;
- transform:translate(-50%,-50%)!important;clip-path:circle(49% at 50% 50%)!important;
- -webkit-clip-path:circle(49% at 50% 50%)!important;
- border-radius:50%!important;object-fit:cover!important;
-}
-#gb-profile-layer .gb-admin-file-size{font-size:10px;color:#d9b2d1;font-weight:500;white-space:nowrap}
 #gb-profile-layer .gb-admin-remove{margin:5px 0;border-color:#d98eab;color:#ffd6e8;background:#51233e}
 
 /* Combined v2: admin subpages and universal avatar clipping. */
@@ -505,77 +475,5 @@ img.gbpf-rank-overlay {
 #gb-profile-layer .gb-admin-calibrate label{display:flex;align-items:center;gap:4px}
 #gb-profile-layer .gb-admin-calibrate input{width:53px;padding:5px;color:#fff;background:#30172e;border:1px solid #b76cb1;border-radius:6px}
 #gb-profile-layer .gb-admin-calibrate button{font-size:11px}
-#menu .top.art-hud > #gbMenuAvatar{clip-path:circle(49% at 50% 50%)!important;-webkit-clip-path:circle(49% at 50% 50%)!important}
-#gb-profile-layer .gbpf-hero-avatar-wrap.gbpf-auto-fit > img.gbpf-avatar-img{clip-path:circle(49% at 50% 50%)!important;-webkit-clip-path:circle(49% at 50% 50%)!important}
 
-
-/* REGRESSION FIX: use the exact working shop 70/100 avatar/frame geometry
-   consistently in edit preview, profile hero, and Admin frame preview.
-   Override prior auto-fit and narrow clip rules. */
-#gb-profile-layer .gbpf-preview > img#gbpf-preview-avatar,
-#gb-profile-layer .gbpr-hero .gbpf-hero-avatar-wrap > img.gbpf-avatar-img,
-#gb-profile-layer .gbpr-hub-identity .gbpr-hero .gbpf-hero-avatar-wrap > img.gbpf-avatar-img,
-#gb-profile-layer .gb-admin-frame-preview.gbpr-hero .gbpf-hero-avatar-wrap > img.gbpf-avatar-img,
-#gb-profile-layer .gbpf-hero-avatar-wrap.gbpf-auto-fit > img.gbpf-avatar-img {
- position:absolute!important;inset:auto!important;top:15%!important;left:15%!important;
- right:auto!important;bottom:auto!important;width:70%!important;height:70%!important;
- min-width:0!important;min-height:0!important;max-width:none!important;max-height:none!important;
- transform:none!important;aspect-ratio:1 / 1!important;object-fit:cover!important;
- object-position:center!important;border-radius:50%!important;
- clip-path:circle(49% at 50% 50%)!important;
- -webkit-clip-path:circle(49% at 50% 50%)!important;
- margin:0!important;padding:0!important;background:transparent!important;
- z-index:1!important;
-}
-#gb-profile-layer .gbpf-preview > img#gbpf-preview-border,
-#gb-profile-layer .gbpr-hero .gbpf-hero-avatar-wrap > img.gbpf-overlay,
-#gb-profile-layer .gb-admin-frame-preview.gbpr-hero .gbpf-hero-avatar-wrap > img.gbpf-overlay{
- position:absolute!important;top:0!important;left:0!important;right:auto!important;bottom:auto!important;
- width:100%!important;height:100%!important;max-width:none!important;
- object-fit:contain!important;z-index:2!important;pointer-events:none!important;
-}
-#gb-profile-layer .gb-admin-section[hidden],
-#gb-profile-layer .gb-admin-home[hidden],
-#gb-profile-layer .gb-admin-subnav[hidden]{display:none!important}
-
-/* Unified frame geometry, based on the actual Carnival Shop's fit array.
-   All percentages are relative to the same square artwork canvas.
-   A transparent artwork opening is not necessarily 70% or centered. */
-#gb-profile-layer .gbpf-hero-avatar-wrap,
-#gb-profile-layer .gbpf-preview,
-#gb-profile-layer .gbpf-public-wrap,
-#gb-profile-layer .gbpf-social-avatar,
-.gbpf-rank-avatar {position:relative;isolation:isolate;}
-#gb-profile-layer .gbpr-hero .gbpf-hero-avatar-wrap > img.gbpf-avatar-img,
-#gb-profile-layer .gbpr-hub-identity .gbpr-hero .gbpf-hero-avatar-wrap > img.gbpf-avatar-img,
-#gb-profile-layer .gb-admin-frame-preview.gbpr-hero .gbpf-hero-avatar-wrap > img.gbpf-avatar-img,
-#gb-profile-layer .gbpf-hero-avatar-wrap.gbpf-auto-fit > img.gbpf-avatar-img,
-#gb-profile-layer .gbpf-preview > img#gbpf-preview-avatar,
-#gb-profile-layer .gbpf-public-wrap > img.gbpr-public-avatar,
-#gb-profile-layer .gbpf-social-avatar > img:first-child,
-.gbpf-rank-avatar > img:first-child {
-  position:absolute!important;
-  left:var(--gbpf-view-x,50%)!important;
-  top:var(--gbpf-view-y,50%)!important;
-  width:var(--gbpf-view-size,70%)!important;
-  height:var(--gbpf-view-size,70%)!important;
-  right:auto!important;bottom:auto!important;
-  transform:translate(-50%,-50%)!important;
-  object-fit:cover!important;border-radius:50%!important;
-  clip-path:circle(49% at 50% 50%)!important;
-  -webkit-clip-path:circle(49% at 50% 50%)!important;
-  z-index:1!important;
-}
-#gb-profile-layer .gbpf-hero-avatar-wrap.gbpf-auto-fit,
-#gb-profile-layer .gbpf-preview.gbpf-auto-fit {
- --gbpf-view-x:var(--gbpf-auto-x,50%);
- --gbpf-view-y:var(--gbpf-auto-y,50%);
- --gbpf-view-size:var(--gbpf-auto-size,70%);
-}
-#gb-profile-layer .gbpf-public-wrap > img.gbpf-overlay,
-#gb-profile-layer .gbpf-social-avatar > img.gbpf-social-frame,
-.gbpf-rank-avatar > img.gbpf-rank-overlay {
- position:absolute!important;left:0!important;top:0!important;
- width:100%!important;height:100%!important;object-fit:contain!important;
- z-index:2!important;pointer-events:none!important;
-}
+/* Restore native frame and avatar sizing from the pre-Control-Room CSS. */
