@@ -16,9 +16,19 @@ submit.disabled=true;msg.textContent='Checking your code…';img.hidden=true;
 try{
  const client=window.gbGiftSupabaseClient || await (async()=>{const m=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');return m.createClient('https://harqhhpobaepfkfeitmw.supabase.co','sb_publishable_K9F36jgWZaMWywln6Wwaiw_4zJ7523C',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}})})();
  const {data:{user},error:authError}=await client.auth.getUser();if(authError||!user||user.is_anonymous){msg.textContent='Log in to your account to claim gift codes.';return;}
- const {data,error}=await client.rpc('gb_redeem_frame_code',{p_code:code});if(error){msg.textContent=error.message||'Could not redeem code.';return;}
+ // Existing codes retain their original RPC; new Control Room codes use a separate secured RPC.
+ let {data,error}=await client.rpc('gb_redeem_frame_code',{p_code:code});
+ let published=false;
+ if(error || !(Array.isArray(data)?data[0]:data)?.success){
+   const second=await client.rpc('gb_redeem_published_frame_code',{p_code:code});
+   if(!second.error && second.data?.success){data=second.data;error=null;published=true;}
+   else {msg.textContent=second.error?.message||error?.message||(Array.isArray(data)?data[0]:data)?.message||'Code could not be redeemed.';return;}
+ }
  const result=Array.isArray(data)?data[0]:data;if(!result?.success){msg.textContent=result?.message||'Code could not be redeemed.';return;}
- msg.textContent='GIFT CLAIMED! Your new frame is in Edit Profile → Frames.';img.src='assets/profile-frames/'+result.frame_id+'.png';img.hidden=false;await window.gbGiftOwnershipRefresh?.();
+ msg.textContent='GIFT CLAIMED! Your new frame is in Edit Profile → Frames.';
+ img.src=published?client.storage.from('gb-published-frames').getPublicUrl(result.storage_path).data.publicUrl:'assets/profile-frames/'+result.frame_id+'.png';
+ img.hidden=false;
+ await window.gbGiftOwnershipRefresh?.();await window.gbPublishedFrameRefresh?.();
 }catch(err){msg.textContent='Connection error. Please try again.';console.warn(err)}finally{submit.disabled=false}
 });
 })();
