@@ -545,9 +545,9 @@ function gbpfDecorate(el,id){
 
 let gbpfHudResizeHook=false;
 let gbpfHudFitVersion=0;
-function gbpfHudPositionPhoto(frame,fit){
- // Match the shop's proven 70%-photo / 100%-overlay geometry.
- // Measure the actual *contained* artwork, not the larger HUD canvas.
+function gbpfHudPositionPhoto(frame,_fit){
+ // Restore the previously working centered 70%-photo / 100%-frame HUD fit.
+ // Do not scale the menu PFP using custom frame-opening metadata.
  const avatar=document.getElementById('gbMenuAvatar');
  const hud=frame?.parentElement;
  if(!avatar||!hud||!frame?.naturalWidth||!frame?.naturalHeight)return;
@@ -556,9 +556,8 @@ function gbpfHudPositionPhoto(frame,fit){
  const scale=Math.min(r.width/frame.naturalWidth,r.height/frame.naturalHeight);
  const w=frame.naturalWidth*scale,h=frame.naturalHeight*scale;
  const x=r.left+(r.width-w)/2-parent.left,y=r.top+(r.height-h)/2-parent.top;
- const hole=fit||{x:50,y:50,size:70};
- const size=Math.min(w,h)*Math.max(0.1,Math.min(0.85,Number(hole.size)/100));
- const left=x+w*(Number(hole.x)/100)-size/2,top=y+h*(Number(hole.y)/100)-size/2;
+ const size=Math.min(w,h)*.70;
+ const left=x+(w-size)/2,top=y+(h-size)/2;
  const rules={left:left+'px',top:top+'px',width:size+'px',height:size+'px',
    'border-radius':'50%','clip-path':'circle(49% at 50% 50%)',
    '-webkit-clip-path':'circle(49% at 50% 50%)','object-fit':'cover',
@@ -1860,8 +1859,7 @@ window.gbClashLeaderboardFetch=async function(){
   if(!sb)return {error:'Supabase connection is starting. Try Refresh Rankings.'};
   const {data,error}=await sb.rpc('gb_bot_clash_leaderboard');
   if(error)return {error:'Carnival Clash database setup required: '+error.message};
-  try{return {rows:(await gbLeaderboardRegisteredRows(data||[],true)).slice(0,15)}}
-  catch(e){return {error:e.message||'Cannot verify leaderboard membership.'}}
+  return {rows:(data||[]).filter(r=>r.is_guest!==true&&r.is_anonymous!==true)};
 };
 window.gbClashSubmit=async function(game,points){
   if(!sb||!user)return; // offline local mode
@@ -1885,7 +1883,7 @@ window.gbWeeklyVerifiedComplete=async function(session,stage){
  if(error)throw new Error(error.message);
  return {ok:true};
 };
-window.gbWeeklyTop10=async function(){if(!sb)return {rows:[],error:'Offline'};const {data,error}=await sb.rpc('gb_bot_weekly_leaderboard');if(error)return {rows:[],error:error.message};try{return {rows:(await gbLeaderboardRegisteredRows(data||[],true)).slice(0,10),error:null}}catch(e){return {rows:[],error:e.message||'Cannot verify leaderboard membership.'}}};
+window.gbWeeklyTop10=async function(){if(!sb)return {rows:[],error:'Offline'};const {data,error}=await sb.rpc('gb_bot_weekly_leaderboard');return {rows:(data||[]).filter(r=>r.is_guest!==true&&r.is_anonymous!==true),error:error?.message||null}};
 
 
 // Server-issued Creepy Sudoku sessions (independent of visual Events UI).
