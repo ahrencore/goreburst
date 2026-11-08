@@ -298,7 +298,7 @@ function evWeekly(){
  evDisplay(`${evHeader('WEEKLY NIGHTMARE')}<section class="ev-nightmare-lobby">
  <div class="ev-nightmare-art" aria-hidden="true"></div>
  <div class="ev-nightmare-status"><span>${evOpenWeek()?'LIVE NOW':'CLOSED'}</span><span class="ev-countdown" id="evWeeklyDetailCountdown">${evCountdownText(evWeeklyBoundary())}</span></div>
-  <ol class="ev-nightmare-rules" aria-label="Nightmare rules"><li>No pre-game specials.</li><li>No in-game boosters.</li><li>One +5 Moves rescue.</li><li>Each failure costs 1 life.</li></ol>
+  <div class="ev-nightmare-rules" aria-label="Nightmare rules"><div class="ev-nightmare-rules-title">RULES</div><ul><li>No pre-game specials.</li><li>No in-game boosters.</li><li>One +5 Moves rescue.</li><li>Each failure costs 1 life.</li></ul></div>
  <div class="ev-nightmare-stage">STAGE: ${evData.weeklyStage}</div>
  <button class="ev-nightmare-enter" id="evWeeklyGo" ${!evOpenWeek()?'disabled':''}>${evOpenWeek()?'ENTER NIGHTMARE':'REOPENS MONDAY'}</button>
  </section><section class="ev-nightmare-ranks"><h2>Weekly Top Players</h2><div id="evNightmareRankings" class="ev-nightmare-rank-list">Loading rankings…</div><button class="ev-nightmare-rewards" id="evWeeklyRewards">VIEW REWARDS</button></section>`);

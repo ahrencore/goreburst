@@ -647,6 +647,8 @@
 .ev-daily-error{color:#ffd3d3;border:1px solid #cb6479;background:#55243888;border-radius:8px;padding:8px 10px;font-size:12px;margin:8px 0}
 
 /* Weekly Nightmare lobby rules — display only, scoped to this panel. */
-.ev-root .ev-nightmare-rules{box-sizing:border-box;width:100%;margin:10px 0 10px;padding:9px 12px 9px 33px;border:1px solid rgba(253,125,201,.35);border-radius:11px;background:rgba(59,15,49,.52);color:#ffe2f0;text-align:left;font:600 clamp(11px,2.9vw,13px)/1.55 system-ui,-apple-system,sans-serif;}
-.ev-root .ev-nightmare-rules li{padding-left:3px;margin:2px 0;}
-.ev-root .ev-nightmare-rules li::marker{color:#ff9dd1;font-weight:900;}
+.ev-root .ev-nightmare-rules{box-sizing:border-box;width:100%;margin:10px 0 10px;padding:9px 12px;border:1px solid rgba(253,125,201,.35);border-radius:11px;background:rgba(59,15,49,.52);color:#ffe2f0;text-align:center;font:600 clamp(11px,2.9vw,13px)/1.55 system-ui,-apple-system,sans-serif;}
+.ev-root .ev-nightmare-rules-title{margin:0 0 5px;color:#ffb9dc;font-weight:800;letter-spacing:.12em;text-align:center;}
+.ev-root .ev-nightmare-rules ul{list-style:none;margin:0;padding:0;}
+.ev-root .ev-nightmare-rules li{margin:2px 0;text-align:center;}
+.ev-root .ev-nightmare-rules li::before{content:"• ";color:#ff9dd1;font-weight:900;}
