@@ -1,4 +1,4 @@
 {
-  "version": "2026.11.08.12",
-  "notes": "Registered players only on all leaderboard displays, event bots preserved"
+  "version": "2026.11.08.14",
+  "notes": "Restore Ghost Parade bots, hide guests, simplify sign-in text"
 }

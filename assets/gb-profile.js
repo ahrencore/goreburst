@@ -56,7 +56,7 @@ const layer=document.createElement('aside');layer.id='gb-profile-layer';layer.se
 <div class="gbpr-top"><h2>✦ PLAYER PROFILE ✦</h2><button class="gbpr-close" id="gbpr-close" aria-label="Close profile">×</button></div>
 <div class="gbpr-scroll">
 <div class="gbpr-panel gbpr-hero"><img id="gbpr-current-avatar" src="${fallbackAvatar}" alt="Current avatar"><div><div class="gbpr-name" id="gbpr-display">Carnival Guest</div><div class="gbpr-handle" id="gbpr-handle">Guest player</div><div class="gbpr-level" id="gbpr-level">LEVEL 1 · Local progress</div></div></div>
-<div id="gbpr-auth-panel" class="gbpr-panel"><div class="gbpr-tag">YOUR CARNIVAL ACCOUNT</div><p class="gbpr-muted">You can keep playing as a guest. Sign in to save your online profile and find other players later. Sign in or sign up to join the leaderboards!</p>
+<div id="gbpr-auth-panel" class="gbpr-panel"><div class="gbpr-tag">YOUR CARNIVAL ACCOUNT</div><p class="gbpr-muted">You can keep playing as a guest, but sign in to add friends and join leaderboards.</p>
 <div class="gbpr-tabs"><button id="gbpr-login-tab" class="gbpr-btn">SIGN IN</button><button id="gbpr-signup-tab" class="gbpr-btn secondary">CREATE ACCOUNT</button></div>
 <form id="gbpr-auth-form" class="gbpr-form"><label>Email<input id="gbpr-email" type="email" autocomplete="email" required maxlength="254" placeholder="you@example.com"></label><label class="gbpr-signup-field gbpr-hide">Display name<input id="gbpr-signup-name" maxlength="30" placeholder="Your carnival name"></label><label class="gbpr-signup-field gbpr-hide">Username<input id="gbpr-signup-username" maxlength="20" minlength="3" placeholder="unique_username" autocapitalize="none" spellcheck="false"></label><label>Password<input id="gbpr-password" type="password" autocomplete="current-password" minlength="6" required placeholder="Your password"></label><button id="gbpr-auth-submit" class="gbpr-btn" type="submit">SIGN IN</button></form><p class="gbpr-error" id="gbpr-auth-status" aria-live="polite"></p></div>
 <div id="gbpr-account-panel" class="gbpr-panel gbpr-hide"><div class="gbpr-tag">EDIT YOUR PROFILE</div>
@@ -977,7 +977,7 @@ async function gbSwitchIdentity(next){
  user=next||null;profile=null;gbAdminRole=null;const nav=$p('gb-admin-nav');if(nav){nav.hidden=true;nav.style.display='none';}
  window.gbAccountReadyForPlay=false;
  window.gbWalletCache?.clear?.();
- if(!next){refresh();setMessage('gbpr-auth-status','Sign in to load your cloud progress.');return}
+ if(!next){refresh();setMessage('gbpr-auth-status','Sign in to load your progress.');return}
  try{
   const ready=await gbInitializeCloudIdentity(next,generation);
   if(!ready ||generation!==gbIdentityGeneration || user?.id!==next.id)return;
@@ -1777,13 +1777,26 @@ window.gbGhostParadeFetch=async function(){
  if(!sb)return {error:'Supabase has not finished initializing. Try again.'};
  const {data:{session},error:authError}=await sb.auth.getSession();
  if(authError||!session)return {error:'Online player identity is starting. Try Refresh.'};
- // The existing ghost_parade_top10 endpoint is retained; guest and simulated
- // participant feeds are no longer merged into Ghost Parade.
- const {data,error}=await sb.rpc('ghost_parade_top10');
- if(error)return {error:'Leaderboard query failed: '+error.message};
+ // Only the real-player feed needs registration verification.
+ // Ghost Parade's existing simulated bots come from the dedicated server bot RPC.
+ // Do not fetch the guest stars feed, and do not remove the bot feed.
+ const [registered,simulated]=await Promise.all([
+  sb.rpc('ghost_parade_top10'),
+  sb.rpc('gb_bot_ghost_parade')
+ ]);
+ if(registered.error)return {error:'Leaderboard query failed: '+registered.error.message};
+ if(simulated.error)return {error:'Ghost Parade participants unavailable: '+simulated.error.message};
  try{
-  const rows=await gbLeaderboardRegisteredRows(data||[],false);
-  const sorted=rows.sort((a,b)=>Number(b.total_stars||0)-Number(a.total_stars||0)).slice(0,10).map((r,i)=>({...r,rank_position:i+1}));
+  const players=await gbLeaderboardRegisteredRows(registered.data||[],false);
+  const combined=new Map();
+  for(const r of [...players,...(simulated.data||[])]){
+   const id=String(r.user_id||r.player_id||r.id||(r.is_bot?'bot-'+r.display_name:'participant-'+r.display_name));
+   const prior=combined.get(id);
+   if(!prior||Number(r.total_stars||0)>Number(prior.total_stars||0))combined.set(id,r);
+  }
+  const sorted=[...combined.values()]
+   .sort((a,b)=>Number(b.total_stars||0)-Number(a.total_stars||0))
+   .slice(0,10).map((r,i)=>({...r,rank_position:i+1}));
   return {rows:sorted,backup:null};
  }catch(e){return {error:e.message||'Unable to verify leaderboard membership.'}}
 };
