@@ -1,4 +1,4 @@
 {
-  "version": "2026.11.08.4",
-  "notes": "Gore Burst personalized welcome marquee"
+  "version": "2026.11.08.5",
+  "notes": "Remove inner welcome plaque outline; keep backdrop and marquee"
 }
