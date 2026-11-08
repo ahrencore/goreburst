@@ -298,6 +298,7 @@ function evWeekly(){
  evDisplay(`${evHeader('WEEKLY NIGHTMARE')}<section class="ev-nightmare-lobby">
  <div class="ev-nightmare-art" aria-hidden="true"></div>
  <div class="ev-nightmare-status"><span>${evOpenWeek()?'LIVE NOW':'CLOSED'}</span><span class="ev-countdown" id="evWeeklyDetailCountdown">${evCountdownText(evWeeklyBoundary())}</span></div>
+  <ol class="ev-nightmare-rules" aria-label="Nightmare rules"><li>No pre-game specials.</li><li>No in-game boosters.</li><li>One +5 Moves rescue.</li><li>Each failure costs 1 life.</li></ol>
  <div class="ev-nightmare-stage">STAGE: ${evData.weeklyStage}</div>
  <button class="ev-nightmare-enter" id="evWeeklyGo" ${!evOpenWeek()?'disabled':''}>${evOpenWeek()?'ENTER NIGHTMARE':'REOPENS MONDAY'}</button>
  </section><section class="ev-nightmare-ranks"><h2>Weekly Top Players</h2><div id="evNightmareRankings" class="ev-nightmare-rank-list">Loading rankings…</div><button class="ev-nightmare-rewards" id="evWeeklyRewards">VIEW REWARDS</button></section>`);
@@ -515,6 +516,20 @@ function evSudokuRender(){
   evRoot.querySelector('#evSudoHint').onclick=()=>{if(s.done||s.hintsLeft<=0)return;const i=s.selected>=0&&!s.givens.has(s.selected)&&s.values[s.selected]!==s.answer[s.selected]?s.selected:s.values.findIndex((n,i)=>n!==s.answer[i]&&!s.givens.has(i));if(i>=0){s.hintsLeft--;s.values[i]=s.answer[i];s.wrong.delete(i);s.selected=i;s.highlight=0;evSudokuPaint();evSudokuCheck()}};
   evSudokuPaint();
 }
+// Desktop Sudoku input: delegate to the existing button handlers so notes,
+// mistake limits, undo history, validation and verified scoring stay unchanged.
+document.addEventListener('keydown',function gbSudokuKeyboard(e){
+  if(e.altKey||e.ctrlKey||e.metaKey||e.isComposing||e.repeat)return;
+  if(!sudoku||sudoku.done||sudoku.selected<0||evRoot.hidden||!evRoot.querySelector('#evSudoBoard'))return;
+  const target=e.target;
+  if(target && (target.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName||'')))return;
+  let button=null;
+  if(/^[1-9]$/.test(e.key))button=evRoot.querySelector('[data-symbol="'+e.key+'"]');
+  else if(e.key==='Backspace'||e.key==='Delete')button=evRoot.querySelector('#evSudoErase');
+  if(!button||button.disabled)return;
+  e.preventDefault();
+  button.click();
+});
 function evSudokuKeepBoardSquare(){
   const board=evRoot && evRoot.querySelector('#evSudoBoard');
   if(!board)return;
