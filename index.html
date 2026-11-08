@@ -516,11 +516,22 @@ html,body{overscroll-behavior:none;height:100%;height:100dvh}
 @media(max-height:680px){#menu .menu-stage-backdrop{top:16.8%;height:64.2%}}
 @media (orientation:portrait){#menu .menu-stage-backdrop{top:calc(17.5% + env(safe-area-inset-top, 0px)*.12)}}
 
+
+/* Welcome marquee: decor only, clipped to the header atop the existing stage backing. */
+#menu .menu-stage-backdrop .gb-welcome-marquee{position:absolute;left:8%;right:8%;top:-2.2%;height:11%;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-width:0;overflow:hidden;pointer-events:none;padding:2px 8px 3px;text-align:center}
+#menu .gb-welcome-kicker{flex:none;font:700 clamp(7px,1.9cqw,10px)/1.2 Georgia,serif;letter-spacing:.11em;color:#f6bd9e;text-shadow:0 0 5px #ff8bae}
+#menu .gb-welcome-viewport{position:relative;width:100%;min-width:0;overflow:hidden;height:clamp(15px,4.2cqw,23px);display:flex;align-items:center;justify-content:center}
+#menu .gb-welcome-name{display:block;width:max-content;max-width:100%;white-space:nowrap;position:relative;font:800 clamp(12px,4.1cqw,20px)/1.1 Georgia,serif;color:#ffe3f1;text-shadow:0 0 5px #ff72c5,0 0 10px #f64b9d;letter-spacing:.012em;animation:gb-welcome-scroll 9s ease-in-out infinite;will-change:transform,opacity}
+#menu .gb-welcome-name.gb-welcome-long{font-size:clamp(10px,3.1cqw,15px)}
+#menu .gb-welcome-name.gb-welcome-verylong{font-size:clamp(9px,2.45cqw,12px)}
+@keyframes gb-welcome-scroll{0%,43%{transform:translateX(0);opacity:1}52%{transform:translateX(0);opacity:0}53%{transform:translateX(-115%);opacity:0}61%{opacity:1}82%{transform:translateX(115%);opacity:1}86%{transform:translateX(0);opacity:0}94%,100%{transform:translateX(0);opacity:1}}
+@media (prefers-reduced-motion:reduce){#menu .gb-welcome-name{animation:none!important;will-change:auto!important}}
+
 /* Soft-focus menu artwork only. Does not blur buttons, text, or other screens. */
 #menu .scenery{filter:blur(10px) brightness(.38) saturate(.7)!important;transform:scale(1.14);transform-origin:center center;pointer-events:none}
 </style><link rel="stylesheet" href="assets/gb-profile.css?v=control-room-bundle-20261107"><link rel="stylesheet" href="assets/gb-events.css?v=sudoku-square-20261103"><link rel="stylesheet" href="assets/gb-collectibles.css?v=iphone-safari-20261103"><link rel="stylesheet" href="assets/gb-shop.css?v=shop-old-avatar-fit-20261103"></head><body><div id="app">
 <section class="view active" id="loading" aria-label="Loading Gore Burst"><img src="assets/loading-clean.webp" alt="Gore Burst carnival entrance"></section>
-<section class="view" id="menu"><div class="scenery"></div><div class="vignette"></div><div class="menu-stage-backdrop" aria-hidden="true"></div>
+<section class="view" id="menu"><div class="scenery"></div><div class="vignette"></div><div class="menu-stage-backdrop" aria-hidden="true"><div class="gb-welcome-marquee"><div class="gb-welcome-kicker">✦ WELCOME BACK ✦</div><div class="gb-welcome-viewport"><span id="gbWelcomeName" class="gb-welcome-name">Carnival Guest</span></div></div></div>
 <div class="top art-hud"><img id="gbMenuAvatar" src="assets/avatars/01_Mr_Walker.png" alt="Your avatar"><img class="hud-art" src="assets/art-hud.webp" alt=""/><button class="hud-profile" id="profile" aria-label="Open player profile"></button><button class="hud-lives" id="livesaction" aria-label="Lives"><span id="lives">5/5</span><small id="lifeCountdown" aria-live="off"></small></button><button class="hud-coins" id="coinsaction" aria-label="Skull Coins"><span id="money">0</span></button><button class="hud-settings" id="settings" aria-label="Settings"></button></div>
 <div class="menu-sign"><img src="assets/art-sign.webp" alt=""/><div class="main-level" id="current">Level 1</div></div>
 <button id="openplay" class="menu-play art-btn" aria-label="Play"><img src="assets/art-play.webp" alt="PLAY"/></button>
@@ -1383,4 +1394,31 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeGbSettings()});
 #menu .bottom-tabs #events.ev-tab-has-reward{animation:gb-events-invite 1.8s ease-in-out infinite!important;isolation:isolate;overflow:visible!important;filter:drop-shadow(0 0 5px #ff79ec) drop-shadow(0 0 8px #a050ff)}
 @keyframes gb-events-invite{0%,100%{filter:drop-shadow(0 0 3px #ef4fb5) drop-shadow(0 0 4px #7844d4);opacity:1}50%{filter:drop-shadow(0 0 13px #ff72dd) drop-shadow(0 0 17px #895fff);opacity:.83}}
 @media(prefers-reduced-motion:reduce){#menu .bottom-tabs #events.ev-tab-has-reward{animation:none!important;filter:drop-shadow(0 0 10px #f858ce)}}
-</style><link rel="stylesheet" href="assets/gb-frame-universal.css?v=classic-fit-20261103-c"><script defer src="assets/gb-completion-frame-fit.js?v=opening-mask-20261104a"></script><script defer src="assets/gb-updater.js"></script></body></html>
+</style><link rel="stylesheet" href="assets/gb-frame-universal.css?v=classic-fit-20261103-c"><script defer src="assets/gb-completion-frame-fit.js?v=opening-mask-20261104a"></script><script defer src="assets/gb-updater.js"></script>
+<script id="gb-welcome-marquee-binding">
+/* Mirrors the existing profile display name. Never requests extra Supabase data. */
+(()=>{'use strict';
+  const dest=document.getElementById('gbWelcomeName');
+  if(!dest)return;
+  function sync(){
+    const source=document.getElementById('gbpr-display');
+    const value=(source?.textContent||'').trim().slice(0,80)||'Carnival Guest';
+    if(dest.textContent===value)return;
+    dest.textContent=value;
+    dest.classList.toggle('gb-welcome-long',value.length>16&&value.length<=25);
+    dest.classList.toggle('gb-welcome-verylong',value.length>25);
+    dest.style.animation='none';void dest.offsetWidth;dest.style.animation='';
+  }
+  function listen(){
+    const source=document.getElementById('gbpr-display');
+    if(!source)return false;
+    new MutationObserver(sync).observe(source,{childList:true,characterData:true,subtree:true});
+    sync();return true;
+  }
+  if(!listen()){
+    const watcher=new MutationObserver(()=>{if(listen())watcher.disconnect()});
+    watcher.observe(document.body,{childList:true,subtree:true});
+  }
+})();
+</script>
+</body></html>
