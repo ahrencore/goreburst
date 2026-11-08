@@ -2,11 +2,12 @@
    Never refresh an active level. No Supabase/game/shop/frame changes. */
 (() => {
   'use strict';
-  const INITIAL_VERSION = '2026.11.08.5';
+  const INITIAL_VERSION = '2026.11.08.6';
   const VERSION_URL = new URL('version.json', document.baseURI);
   const SW_URL = new URL('sw.js', document.baseURI);
   const KEY = 'gb_seen_game_version';
-  let currentVersion = INITIAL_VERSION;
+  const currentVersion = INITIAL_VERSION;
+  const acknowledgedVersion = () => { try { return localStorage.getItem(KEY); } catch (_) { return null; } };
   let pending = null;
   let modal = null;
   let checking = false;
@@ -53,6 +54,7 @@
         }
       } catch (e) { console.warn('GB update worker check:',e); }
       try { localStorage.setItem(KEY,target); } catch (_) {}
+      pending = null; hide();
       const url = new URL(window.location.href);
       url.searchParams.set('gb_version',target);
       window.location.replace(url.href);
@@ -70,7 +72,10 @@
       const remote = data && data.version;
       if (!versionOk(remote)) return;
       // Baseline this session on the JS build version, not localStorage, to avoid suppressing new installs.
-      if (remote !== currentVersion) { pending = remote; showIfSafe(); }
+      if (remote === currentVersion) { pending = null; hide(); return; }
+      // After UPDATE NOW, don't keep prompting for the same target if an old JS file is cached.
+      if (remote === acknowledgedVersion()) { pending = null; hide(); return; }
+      pending = remote; showIfSafe();
     } catch (err) { /* offline: continue using running session */ }
     finally { checking = false; }
   }
@@ -88,7 +93,6 @@
   async function init() {
     installStyle();
     try { if ('serviceWorker' in navigator) await navigator.serviceWorker.register(SW_URL.href,{scope:new URL('./',document.baseURI).pathname}); } catch(e) { console.warn('GB worker registration failed:',e); }
-    try { localStorage.setItem(KEY,currentVersion); } catch (_) {}
     check();
     document.addEventListener('visibilitychange', () => {if (document.visibilityState === 'visible') {check();showIfSafe();}});
     window.addEventListener('focus', () => {check();showIfSafe();});

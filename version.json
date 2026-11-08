@@ -1,4 +1,4 @@
 {
-  "version": "2026.11.08.5",
-  "notes": "Remove inner welcome plaque outline; keep backdrop and marquee"
+  "version": "2026.11.08.6",
+  "notes": "Welcome spacing, Ticket Book glow, and repeat update prompt fix"
 }
