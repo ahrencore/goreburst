@@ -509,6 +509,17 @@ html,body{overscroll-behavior:none;height:100%;height:100dvh}
 /* 2026-11-08 approved: subtle central backdrop so the menu signs feel mounted, not floating.
    Visual only. Keeps original controls, spacing, and click targets intact. */
 #menu .menu-stage-backdrop{position:absolute;left:11.5%;top:14.0%;width:77%;height:66.5%;pointer-events:none;z-index:1;border-radius:28px;background:linear-gradient(180deg,rgba(88,16,41,.88) 0%,rgba(63,11,34,.92) 18%,rgba(38,7,24,.95) 100%),repeating-linear-gradient(90deg,rgba(255,255,255,.035) 0 7.5%,rgba(0,0,0,0) 7.5% 15%);box-shadow:inset 0 0 0 1px rgba(255,154,195,.14),inset 0 0 35px rgba(255,110,182,.08),0 18px 36px rgba(0,0,0,.30)}
+/* Option B - softly breathing haunted-neon border with a rare gentle electrical flicker.
+   Shadows only: no changes to the backdrop size, layout, text, or click targets. */
+#menu .menu-stage-backdrop{animation:gb-stage-neon-breathe 8s ease-in-out infinite}
+@keyframes gb-stage-neon-breathe{
+  0%,100%{box-shadow:inset 0 0 0 1px rgba(255,154,195,.14),inset 0 0 35px rgba(255,110,182,.08),0 0 10px rgba(224,52,146,.12),0 18px 36px rgba(0,0,0,.30)}
+  28%,64%{box-shadow:inset 0 0 0 1px rgba(255,176,215,.28),inset 0 0 35px rgba(255,110,182,.14),0 0 17px 3px rgba(248,56,162,.28),0 0 31px 7px rgba(138,40,170,.15),0 18px 36px rgba(0,0,0,.30)}
+  73%{box-shadow:inset 0 0 0 1px rgba(255,143,197,.17),inset 0 0 35px rgba(255,110,182,.08),0 0 11px 1px rgba(227,45,145,.13),0 18px 36px rgba(0,0,0,.30)}
+  74%{box-shadow:inset 0 0 0 1px rgba(255,176,215,.29),inset 0 0 35px rgba(255,110,182,.15),0 0 21px 4px rgba(248,56,162,.30),0 0 32px 7px rgba(138,40,170,.15),0 18px 36px rgba(0,0,0,.30)}
+  75%{box-shadow:inset 0 0 0 1px rgba(255,156,202,.20),inset 0 0 35px rgba(255,110,182,.10),0 0 14px 2px rgba(227,45,145,.20),0 18px 36px rgba(0,0,0,.30)}
+}
+@media (prefers-reduced-motion:reduce){#menu .menu-stage-backdrop{animation:none!important}}
 #menu .menu-stage-backdrop::before{content:none;display:none}
 #menu .menu-stage-backdrop::after{content:"";position:absolute;inset:0;border-radius:28px;background:linear-gradient(90deg,rgba(255,130,196,.10),transparent 11%,transparent 89%,rgba(255,130,196,.10));opacity:.95}
 #menu .menu-sign,#menu .menu-play,#menu .tickets-btn,#menu .bottom-tabs{z-index:2}
@@ -1405,7 +1416,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeGbSettings()});
 #menu .bottom-tabs #events.ev-tab-has-reward{animation:gb-events-invite 1.8s ease-in-out infinite!important;isolation:isolate;overflow:visible!important;filter:drop-shadow(0 0 5px #ff79ec) drop-shadow(0 0 8px #a050ff)}
 @keyframes gb-events-invite{0%,100%{filter:drop-shadow(0 0 3px #ef4fb5) drop-shadow(0 0 4px #7844d4);opacity:1}50%{filter:drop-shadow(0 0 13px #ff72dd) drop-shadow(0 0 17px #895fff);opacity:.83}}
 @media(prefers-reduced-motion:reduce){#menu .bottom-tabs #events.ev-tab-has-reward{animation:none!important;filter:drop-shadow(0 0 10px #f858ce)}}
-</style><link rel="stylesheet" href="assets/gb-frame-universal.css?v=classic-fit-20261103-c"><script defer src="assets/gb-completion-frame-fit.js?v=opening-mask-20261104a"></script><script defer src="assets/gb-updater.js?v=2026.11.08.7"></script>
+</style><link rel="stylesheet" href="assets/gb-frame-universal.css?v=classic-fit-20261103-c"><script defer src="assets/gb-completion-frame-fit.js?v=opening-mask-20261104a"></script><script defer src="assets/gb-updater.js?v=2026.11.08.8"></script>
 <script id="gb-welcome-marquee-binding">
 /* Mirrors the existing profile display name. Never requests extra Supabase data. */
 (()=>{'use strict';
