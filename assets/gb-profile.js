@@ -177,33 +177,52 @@ prAdminScreen.insertAdjacentHTML('beforeend',`<section class="gbpr-panel gb-admi
  window.gbAdminFramesSection=groups[1];
 })();
 
-// MULTI-REWARD CODES: coins and published frames; Curio Packs wait for a real inventory API.
+// GIFT CODE CREATOR: show approved, not already-published test frames.
 (function gbAdminGiftBundleCreator(){
  const section=window.gbAdminFramesSection;if(!section)return;
  const box=document.createElement('section');box.className='gb-admin-bundle-box';
- box.innerHTML=`<h3>✦ Gift Code Creator</h3><p class="gbpr-muted">Combine coins with a previously published frame. One claim per player. Curio Packs are not yet enabled in the inventory backend.</p>
+ box.innerHTML=`<h3>✦ Gift Code Creator</h3><p class="gbpr-muted">Approved test frames appear automatically here. Previously published frames are excluded. Coins-only codes remain available; combining coins with a new frame is not yet supported by the backend. Curio Packs are not yet enabled.</p>
  <form id="gb-admin-bundle-form" class="gbpr-form">
  <label>Code<input id="gb-admin-bundle-code" required maxlength="32" placeholder="CARNIVALGIFT"></label>
  <label>Maximum claims<input id="gb-admin-bundle-limit" required type="number" min="1" max="100000" value="500"></label>
  <label>Coins (0 for none)<input id="gb-admin-bundle-coins" required type="number" min="0" max="1000000" value="0"></label>
- <label>Published frame (optional)<select id="gb-admin-bundle-frame"><option value="">No frame</option></select></label>
+ <label>Approved frame (optional)<select id="gb-admin-bundle-frame"><option value="">No frame</option></select></label>
  <label class="gb-admin-disabled">Curio Packs <input disabled value="Not yet supported" aria-label="Curio packs not yet supported"></label>
  <button type="submit" class="gbpr-btn">CREATE GIFT CODE</button></form>`;
  section.append(box);
  const select=box.querySelector('#gb-admin-bundle-frame');
+ let approvedFrames=new Map();
  window.gbAdminRefreshBundleFrames=async()=>{
   if(gbAdminRole!=='owner'){box.hidden=true;return;}box.hidden=false;
-  const {data,error}=await sb.rpc('gb_admin_list_published_frames');
+  const previous=select.value;
+  const {data,error}=await sb.rpc('gb_admin_list_unpublished_test_frames');
+  if(error){gbAdminNote('Could not load approved frames: '+error.message);return;}
+  approvedFrames=new Map((data||[]).filter(f=>f.status==='approved').map(f=>[String(f.id),f]));
   select.replaceChildren(new Option('No frame',''));
-  if(!error)(data||[]).forEach(f=>select.add(new Option(f.title+' ('+f.frame_id+')',f.frame_id)));
+  for(const f of approvedFrames.values())select.add(new Option(f.title,String(f.id)));
+  if(approvedFrames.has(previous))select.value=previous;
  };
  box.querySelector('form').onsubmit=async e=>{
   e.preventDefault();if(gbAdminRole!=='owner')return;
   const code=box.querySelector('#gb-admin-bundle-code').value.trim().toUpperCase();
   const max=Number(box.querySelector('#gb-admin-bundle-limit').value),coins=Number(box.querySelector('#gb-admin-bundle-coins').value),frame=select.value||null;
   if(!/^[A-Z0-9-]{4,32}$/.test(code)||!Number.isInteger(max)||max<1||max>100000||!Number.isInteger(coins)||coins<0||coins>1000000||(!frame&&coins===0)){gbAdminNote('Enter a valid code and at least one reward.');return;}
+  if(frame){
+   const approved=approvedFrames.get(frame);
+   if(!approved){gbAdminNote('This frame is no longer approved. Refresh the Control Room.');await window.gbAdminRefreshBundleFrames?.();return;}
+   if(coins!==0){gbAdminNote('This backend cannot combine a newly approved frame and coins in one code yet. Set coins to 0 for a frame code, or choose coins only.');return;}
+   if(!await gbprConfirm('Publish '+approved.title+' as a gift frame with code '+code+' and '+max+' maximum claims? This makes its artwork public, but only redeemers can equip it.'))return;
+   try{
+    await gbAdminPublishApprovedFrameCode(approved,code,max);
+    gbAdminNote('Gift code '+code+' published! The approved frame is now available to players who redeem it.',true);
+    e.target.reset();
+    await gbAdminRefresh();
+    await gbprAlert('Gift code '+code+' created successfully.');
+   }catch(error){gbAdminNote('Publishing failed: '+(error?.message||error));await gbprAlert('Gift-code publishing failed: '+(error?.message||error));}
+   return;
+  }
   if(!await gbprConfirm('Create gift code '+code+' for '+max+' claims?'))return;
-  const {error}=await sb.rpc('gb_admin_create_bundle_code',{p_code:code,p_limit:max,p_coins:coins,p_frame_id:frame});
+  const {error}=await sb.rpc('gb_admin_create_bundle_code',{p_code:code,p_limit:max,p_coins:coins,p_frame_id:null});
   gbAdminNote(error?error.message:'Gift code created. Players can redeem it in Settings → Gift Code.',!error);
   if(!error){e.target.reset();await gbprAlert('Gift code '+code+' created successfully.');}
  };
@@ -706,6 +725,19 @@ async function gbAdminRefresh(){
   }
   item.append(image,details);area.append(item);
  }
+}
+// Reuse the existing, server-verified publication path for an approved frame.
+// No unpublished frame is made public until a redeemable code is created.
+async function gbAdminPublishApprovedFrameCode(frame,code,limit){
+ if(gbAdminRole!=='owner'||frame.status!=='approved')throw new Error('Only the owner can publish approved frames.');
+ const ext=frame.storage_path.toLowerCase().endsWith('.webp')?'.webp':'.png';
+ const publicPath='published/'+frame.id+ext;
+ const download=await sb.storage.from('gb-admin-test-frames').download(frame.storage_path);
+ if(download.error)throw download.error;
+ const uploaded=await sb.storage.from('gb-published-frames').upload(publicPath,download.data,{upsert:false,contentType:ext==='.png'?'image/png':'image/webp'});
+ if(uploaded.error&&!/already exists|duplicate/i.test(uploaded.error.message||''))throw uploaded.error;
+ const result=await sb.rpc('gb_publish_test_frame_code',{p_test_id:frame.id,p_code:code,p_limit:limit,p_storage_path:publicPath});
+ if(result.error)throw result.error;
 }
 async function gbAdminPublishGift(frame,privateUrl){
  if(gbAdminRole!=='owner'||frame.status!=='approved')return;
