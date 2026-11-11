@@ -1,4 +1,4 @@
 {
-  "version": "2026.11.12.1",
-  "notes": "Approved test frames appear automatically in the Gift Code Creator; published frames are excluded"
+  "version": "2026.11.12.2",
+  "notes": "Approved frame and Skull Coins can share a single giftcode with the matching Supabase SQL migration"
 }

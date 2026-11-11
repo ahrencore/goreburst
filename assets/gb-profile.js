@@ -181,7 +181,7 @@ prAdminScreen.insertAdjacentHTML('beforeend',`<section class="gbpr-panel gb-admi
 (function gbAdminGiftBundleCreator(){
  const section=window.gbAdminFramesSection;if(!section)return;
  const box=document.createElement('section');box.className='gb-admin-bundle-box';
- box.innerHTML=`<h3>✦ Gift Code Creator</h3><p class="gbpr-muted">Approved test frames appear automatically here. Previously published frames are excluded. Coins-only codes remain available; combining coins with a new frame is not yet supported by the backend. Curio Packs are not yet enabled.</p>
+ box.innerHTML=`<h3>✦ Gift Code Creator</h3><p class="gbpr-muted">Approved test frames appear automatically here. Previously published frames are excluded. You can combine an approved frame with Skull Coins in one gift code after installing the matching Supabase SQL. Coins-only and frame-only codes are also available. Curio Packs are not yet enabled.</p>
  <form id="gb-admin-bundle-form" class="gbpr-form">
  <label>Code<input id="gb-admin-bundle-code" required maxlength="32" placeholder="CARNIVALGIFT"></label>
  <label>Maximum claims<input id="gb-admin-bundle-limit" required type="number" min="1" max="100000" value="500"></label>
@@ -210,11 +210,10 @@ prAdminScreen.insertAdjacentHTML('beforeend',`<section class="gbpr-panel gb-admi
   if(frame){
    const approved=approvedFrames.get(frame);
    if(!approved){gbAdminNote('This frame is no longer approved. Refresh the Control Room.');await window.gbAdminRefreshBundleFrames?.();return;}
-   if(coins!==0){gbAdminNote('This backend cannot combine a newly approved frame and coins in one code yet. Set coins to 0 for a frame code, or choose coins only.');return;}
-   if(!await gbprConfirm('Publish '+approved.title+' as a gift frame with code '+code+' and '+max+' maximum claims? This makes its artwork public, but only redeemers can equip it.'))return;
+   if(!await gbprConfirm('Publish '+approved.title+' as a gift frame with code '+code+', '+max+' maximum claims'+(coins>0?', and '+coins+' Skull Coins per claim':'')+'? Its artwork will become public, but only redeemers can equip it.'))return;
    try{
-    await gbAdminPublishApprovedFrameCode(approved,code,max);
-    gbAdminNote('Gift code '+code+' published! The approved frame is now available to players who redeem it.',true);
+    await gbAdminPublishApprovedFrameCode(approved,code,max,coins);
+    gbAdminNote('Gift code '+code+' published! Players can redeem the frame'+(coins>0?' and '+coins+' Skull Coins':'')+'.',true);
     e.target.reset();
     await gbAdminRefresh();
     await gbprAlert('Gift code '+code+' created successfully.');
@@ -728,7 +727,7 @@ async function gbAdminRefresh(){
 }
 // Reuse the existing, server-verified publication path for an approved frame.
 // No unpublished frame is made public until a redeemable code is created.
-async function gbAdminPublishApprovedFrameCode(frame,code,limit){
+async function gbAdminPublishApprovedFrameCode(frame,code,limit,coins=0){
  if(gbAdminRole!=='owner'||frame.status!=='approved')throw new Error('Only the owner can publish approved frames.');
  const ext=frame.storage_path.toLowerCase().endsWith('.webp')?'.webp':'.png';
  const publicPath='published/'+frame.id+ext;
@@ -736,7 +735,10 @@ async function gbAdminPublishApprovedFrameCode(frame,code,limit){
  if(download.error)throw download.error;
  const uploaded=await sb.storage.from('gb-published-frames').upload(publicPath,download.data,{upsert:false,contentType:ext==='.png'?'image/png':'image/webp'});
  if(uploaded.error&&!/already exists|duplicate/i.test(uploaded.error.message||''))throw uploaded.error;
- const result=await sb.rpc('gb_publish_test_frame_code',{p_test_id:frame.id,p_code:code,p_limit:limit,p_storage_path:publicPath});
+ const fn=coins>0?'gb_admin_create_frame_bundle_code':'gb_publish_test_frame_code';
+ const args={p_test_id:frame.id,p_code:code,p_limit:limit,p_storage_path:publicPath};
+ if(coins>0)args.p_coins=coins;
+ const result=await sb.rpc(fn,args);
  if(result.error)throw result.error;
 }
 async function gbAdminPublishGift(frame,privateUrl){
