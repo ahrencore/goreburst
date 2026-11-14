@@ -1,4 +1,4 @@
 {
-  "version": "2026.11.14.2",
-  "notes": "Weekly Nightmare retry and stage reconciliation; Supabase client reuse; Ghost Parade desktop layout; reward retry and validation; +5 Moves refund safeguards; dead-board special recovery. Requires reviewed Supabase SQL migrations."
+  "version": "2026.11.14.3",
+  "notes": "Cloud reward ordered retry queue and delayed response display; no backend or reward calculation changes"
 }

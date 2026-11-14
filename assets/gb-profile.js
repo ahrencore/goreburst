@@ -250,78 +250,10 @@ const prUpdateHub=()=>{
 };
 
 let sb=null,user=null,profile=null,signup=false,working=false,avatarPreview=null;
-const gbContinueReconciledForPage=new Set();
 let gbAdminRole=null;
 
 // Cloud-validated continue purchases. A successful RPC is the only authority to grant +5 moves.
 window.gbWalletIsSignedIn = () => !!(sb && user && !user.is_anonymous);
-// Persist purchase IDs before charging. A reconnect can reconcile even if the
-// charge succeeded but the browser never received its receipt.
-const gbContinuePendingKey=uid=>'gb-continue-pending-v2:'+uid;
-const gbContinueActiveInPage=new Set();
-const gbContinueRead=()=>{if(!user?.id||user.is_anonymous)return null;try{const p=JSON.parse(localStorage.getItem(gbContinuePendingKey(user.id))||'null');return p&&p.userId===user.id&&/^[0-9a-f-]{36}$/i.test(p.requestId)?p:null}catch{return null}};
-const gbContinueWrite=p=>{if(!user?.id||user.is_anonymous)throw Error('Registered account required');localStorage.setItem(gbContinuePendingKey(user.id),JSON.stringify({...p,userId:user.id}));};
-const gbContinueClear=()=>{if(user?.id)localStorage.removeItem(gbContinuePendingKey(user.id));};
-window.gbContinuePreparePurchase=async requestId=>{
- if(!sb||!user?.id||user.is_anonymous)throw Error('Sign in before purchasing +5 Moves');
- const {data,error}=await sb.rpc('gb_wallet_continue_ready');
- if(error||data!==true)throw Error('Continue refund protection is unavailable. Purchase was not charged.');
- const pending=gbContinueRead();
- if(pending && pending.requestId!==requestId)throw Error('Previous +5 Moves purchase needs reconciliation before buying again');
- gbContinueWrite({requestId,phase:'requested',startedAt:Date.now()});
-};
-window.gbContinuePurchaseGranted=requestId=>{
- const pending=gbContinueRead();
- if(!pending||pending.requestId!==requestId)throw Error('Purchase record was lost; reconnect before using moves');
- gbContinueWrite({...pending,phase:'active'});
- gbContinueActiveInPage.add(requestId);
-};
-// Called only for an already-validated move, before a purchased move is consumed.
-// If Supabase is unreachable, block that move rather than risk a false refund.
-window.gbContinueConfirmMove=async()=>{
- const pending=gbContinueRead();
- if(!pending||pending.phase!=='active')return;
- if(!sb)throw Error('Connection required to use purchased moves');
- const {data,error}=await sb.rpc('gb_wallet_continue_mark_used',{p_request_id:pending.requestId});
- if(error||!['USED','ALREADY_USED'].includes(data))throw Error('Unable to confirm purchased move: '+(error?.message||String(data)));
- gbContinueActiveInPage.delete(pending.requestId);
- gbContinueClear();
-};
-// Reconcile on a subsequent visit. A purchase still active at reload had zero
-// server-confirmed moves used and is eligible for exactly one refund.
-// Mark a purchased attempt as completed, including rare wins caused by a
-// booster before any purchased move; a completed attempt is not an interruption.
-window.gbContinueFinishPurchasedAttempt=async()=>{
- const pending=gbContinueRead();if(!pending||!['active','finished'].includes(pending.phase))return;
- if(pending.phase==='active')gbContinueWrite({...pending,phase:'finished'});
- const {data,error}=await sb.rpc('gb_wallet_continue_mark_used',{p_request_id:pending.requestId});
- if(error||!['USED','ALREADY_USED'].includes(data))throw Error('Unable to finalize purchased attempt');
- gbContinueActiveInPage.delete(pending.requestId);
- gbContinueClear();
-};
-window.gbContinueRefundInterrupted=async()=>{
- const pending=gbContinueRead();if(!pending||!sb)return;
- if(pending.phase==='active'&&gbContinueActiveInPage.has(pending.requestId))return;
- if(pending.phase==='finished')return window.gbContinueFinishPurchasedAttempt();
- const {data,error}=await sb.rpc('gb_wallet_continue_refund',{p_request_id:pending.requestId});
- if(error)throw Error('Unable to reconcile +5 Moves: '+error.message);
- const result=Array.isArray(data)?data[0]:data;
- if(!['REFUNDED','ALREADY_REFUNDED','ALREADY_USED','LEGACY_NOT_REFUNDABLE','NOT_FOUND'].includes(result?.status))throw Error('Unexpected refund result');
- if(result.status==='REFUNDED'||result.status==='ALREADY_REFUNDED'){
-  const balance=Number(result.balance_after);
-  if(Number.isSafeInteger(balance)&&balance>=0)window.gbWalletCache?.set(balance);
- }
- if(result.status==='NOT_FOUND' && Date.now()-Number(pending.startedAt||0)<120000)throw Error('Purchase reconciliation pending');
- gbContinueActiveInPage.delete(pending.requestId);
- gbContinueClear();return result;
-};
-window.gbContinueInterruptAttempt=()=>{
- const pending=gbContinueRead();
- if(pending)gbContinueActiveInPage.delete(pending.requestId);
- return window.gbContinueRefundInterrupted();
-};
-window.addEventListener('online',()=>{void window.gbContinueRefundInterrupted?.().catch(e=>console.warn('Continue refund reconnect:',e.message))});
-
 window.gbWalletContinueSpend = async (requestId) => {
   if (!sb) throw Error('Wallet unavailable: Supabase connection not ready.');
   if (!requestId) throw Error('Missing transaction ID.');
@@ -329,28 +261,17 @@ window.gbWalletContinueSpend = async (requestId) => {
   if (sessionError || !sessionData?.session?.access_token) throw Error('Session expired. Please sign in again.');
   const { data: authData, error: authError } = await sb.auth.getUser();
   if (authError || !authData?.user || authData.user.is_anonymous) throw Error('A registered account is required for +5 Moves.');
-  await window.gbContinuePreparePurchase(requestId);
   // Spend exactly once. A retry must reuse requestId, never generate another ID.
   const { data, error } = await sb.rpc('gb_wallet_continue_spend', {p_request_id: requestId});
   if (error) throw Error('Continue payment rejected: '+error.message);
   const receipt = Array.isArray(data) ? data[0] : data;
-  // A repeated request ID must NEVER deliver another five moves. If the first
-  // payment result was lost, refund the unused charge before permitting a new ID.
-  if(receipt?.already_spent===true){
-    let recovered;
-    try{recovered=await window.gbContinueRefundInterrupted()}catch(e){console.warn('Previously charged continue needs reconciliation:',e)}
-    if(['REFUNDED','ALREADY_REFUNDED'].includes(recovered?.status)){
-      const issue=Error('Earlier +5 Moves charge was refunded. Tap again to make a fresh purchase.');
-      issue.code='GB_CONTINUE_RECONCILED';throw issue;
-    }
-    throw Error('Previous +5 Moves charge needs reconciliation. No extra moves were granted; reconnect or return Home.');
-  }
   const value = Number(receipt?.balance_after);
   if (!Number.isSafeInteger(value) || value < 0) throw Error('Payment returned an invalid receipt. Check cloud ledger.');
-  // The authenticated, transactional RPC is the purchase receipt. Avoid a
-  // direct ledger SELECT: the ledger may be protected by row-level security.
-  // The move-use RPC independently checks refund status before the first move.
-  window.gbContinuePurchaseGranted(requestId);
+  // Read back the *same* receipt from server. Never grant moves without a ledger row.
+  const {data: ledger, error: ledgerError} = await sb.from('gb_wallet_continue_ledger')
+    .select('request_id,balance_after').eq('user_id',authData.user.id).eq('request_id',requestId).maybeSingle();
+  if (ledgerError) throw Error('Cannot verify payment receipt: '+ledgerError.message);
+  if (!ledger || Number(ledger.balance_after)!==value) throw Error('Payment could not be verified. Do not retry until cloud balance is checked.');
   window.gbWalletCache?.set(value);
   return value;
 };
@@ -378,60 +299,86 @@ window.gbWalletGetCloudBalance = async () => {
   return amount;
 };
 
-// Failed rewards remain bound to the ORIGINAL authenticated account and are
-// retried on reconnect. The server ledger remains the authority for credits.
+// Level reward claims are persisted per authenticated account before any RPC.
+// One in-page worker submits them in ascending level order; later claims never
+// overtake an earlier missing claim. Supabase remains the source of truth.
 const gbRewardPendingKey=uid=>'gb-pending-level-rewards-v1:'+uid;
-const gbRewardGet=()=>{if(!user?.id||user.is_anonymous)return [];try{
- const rows=JSON.parse(localStorage.getItem(gbRewardPendingKey(user.id))||'[]');
- return Array.isArray(rows)?rows.filter(x=>Number.isInteger(x.level)&&x.level>=1&&x.level<=10000&&Number.isInteger(x.stars)&&x.stars>=1&&x.stars<=3&&Number.isInteger(x.points)&&x.points>=0&&x.points<=10000).slice(0,200):[];
-}catch{return []}};
-const gbRewardSave=rows=>{if(!user?.id||user.is_anonymous)return;
- try{localStorage.setItem(gbRewardPendingKey(user.id),JSON.stringify(rows.slice(0,200)))}catch(e){console.warn('Pending reward not persisted:',e)}
-};
-function gbRewardQueue(level,stars,points){const rows=gbRewardGet();
- const row={level,stars,points};const index=rows.findIndex(x=>x.level===level);
- if(index<0)rows.push(row);
- else if(points>rows[index].points)rows[index]=row;
- gbRewardSave(rows);
+const gbRewardValid=x=>x&&Number.isInteger(x.level)&&x.level>=1&&x.level<=10000&&Number.isInteger(x.stars)&&x.stars>=1&&x.stars<=3&&Number.isInteger(x.points)&&x.points>=0&&x.points<=10000;
+function gbRewardGet(uid){if(!uid)return [];try{
+ const rows=JSON.parse(localStorage.getItem(gbRewardPendingKey(uid))||'[]');
+ return Array.isArray(rows)?rows.filter(gbRewardValid).slice(0,200):[];
+}catch{return []}}
+function gbRewardSave(uid,rows){if(!uid)return;
+ // Don't silently discard existing claims if storage is full/unavailable.
+ localStorage.setItem(gbRewardPendingKey(uid),JSON.stringify(rows));
 }
-function gbRewardAck(level,stars,points){
- // If a newer, better result arrived while an earlier request was in flight,
- // retain the improved claim for a second server-authorized comparison.
- gbRewardSave(gbRewardGet().filter(x=>x.level!==level||x.points>points));
+function gbRewardQueue(uid,level,stars,points){
+ const rows=gbRewardGet(uid),row={level,stars,points};
+ const index=rows.findIndex(x=>x.level===level);
+ if(index<0){if(rows.length>=200)throw Error('Pending reward queue full; reconnect to synchronize first');rows.push(row)}
+ else if(points>rows[index].points||(points===rows[index].points&&stars>rows[index].stars))rows[index]=row;
+ gbRewardSave(uid,rows);
 }
-let gbPendingRewardRetry=null;
-window.gbWalletRetryPendingRewards=()=>{
- if(gbPendingRewardRetry)return gbPendingRewardRetry;
- const uid=user?.id;
- if(!sb||!uid||user?.is_anonymous)return Promise.resolve();
- gbPendingRewardRetry=(async()=>{
-  for(const r of gbRewardGet().sort((a,b)=>a.level-b.level).slice(0,30)){
-   if(user?.id!==uid)break;
-   try{await window.gbWalletClaimLevelCoins(r.level,r.stars,r.points)}
-   catch(e){console.warn('Pending cloud reward will retry later:',r.level,e.message);break}
+function gbRewardAck(uid,level,stars,points){
+ // Retain improved results queued while the previous request was in flight.
+ gbRewardSave(uid,gbRewardGet(uid).filter(x=>x.level!==level||x.points>points||(x.points===points&&x.stars>stars)));
+}
+let gbRewardWorker=null;
+let gbRewardWorkerUid=null;
+const gbRewardResults=new Map();
+async function gbRewardDrain(uid){
+ if(gbRewardWorker){
+  if(gbRewardWorkerUid!==uid)throw Error('Another account reward is synchronizing');
+  return gbRewardWorker;
+ }
+ if(!sb||!uid||user?.id!==uid||user.is_anonymous)throw Error('Sign in to synchronize cloud rewards');
+ gbRewardWorkerUid=uid;
+ const work=(async()=>{
+  const {data:auth,error:authError}=await sb.auth.getUser();
+  if(authError||!auth?.user||auth.user.is_anonymous||auth.user.id!==uid||user?.id!==uid)throw Error('Account changed before reward synchronization');
+  let attempted=0;
+  while(attempted<200){
+   if(user?.id!==uid)throw Error('Account changed during reward synchronization');
+   const pending=gbRewardGet(uid).sort((a,b)=>a.level-b.level)[0];
+   if(!pending)break;
+   attempted++;
+   const {data,error}=await sb.rpc('gb_claim_level_coin_reward_v2',{
+    p_level:pending.level,p_stars:pending.stars,p_points:pending.points
+   });
+   if(error)throw Error(error.message);
+   const result=Array.isArray(data)?data[0]:data;
+   const balance_after=Number(result?.balance_after),credited=Number(result?.credited);
+   if(!Number.isSafeInteger(balance_after)||balance_after<0||!Number.isInteger(credited)||credited<0||credited>1000)throw Error('Invalid cloud reward receipt');
+   if(user?.id!==uid)throw Error('Account changed during reward synchronization');
+   gbRewardAck(uid,pending.level,pending.stars,pending.points);
+   gbRewardResults.set(uid+':'+pending.level,{balance_after,credited,points:pending.points,stars:pending.stars});
+   window.gbWalletCache?.set(balance_after);
   }
- })().finally(()=>{gbPendingRewardRetry=null});
- return gbPendingRewardRetry;
+ })();
+ gbRewardWorker=work;
+ try{return await work}finally{if(gbRewardWorker===work){gbRewardWorker=null;gbRewardWorkerUid=null}}
+}
+window.gbWalletRetryPendingRewards=async()=>{
+ const uid=user?.id;
+ if(!sb||!uid||user?.is_anonymous)return;
+ try{await gbRewardDrain(uid)}catch(e){console.warn('Pending cloud reward will retry later:',e.message)}
 };
 window.addEventListener('online',()=>{void window.gbWalletRetryPendingRewards?.()});
 // Server-computed, bounded coin rewards, recorded once per best outcome per level.
 // The browser controls the match-3 simulation, so this is abuse-limiting rather than proof of gameplay.
 window.gbWalletClaimLevelCoins=async(level,stars,points)=>{
-  if(!sb)throw Error('Cloud connection not available');
-  const {data:auth,error:authError}=await sb.auth.getUser();
-  if(authError||!auth?.user||auth.user.is_anonymous)throw Error('Registered account required');
-  if(!Number.isInteger(level)||level<1||level>10000||!Number.isInteger(stars)||stars<1||stars>3||!Number.isFinite(points)||points<0)throw Error('Invalid level result');
-  gbRewardQueue(level,stars,Math.floor(points));
-  const {data,error}=await sb.rpc('gb_claim_level_coin_reward_v2',{
-    p_level:level,p_stars:stars,p_points:Math.floor(points)
-  });
-  if(error)throw Error(error.message);
-  const result=Array.isArray(data)?data[0]:data;
-  const balance_after=Number(result?.balance_after),credited=Number(result?.credited);
-  if(!Number.isSafeInteger(balance_after)||balance_after<0||!Number.isInteger(credited)||credited<0||credited>1000)throw Error('Invalid cloud reward receipt');
-  gbRewardAck(level,stars,Math.floor(points));
-  window.gbWalletCache?.set(balance_after);
-  return {balance_after,credited};
+ if(!Number.isInteger(level)||level<1||level>10000||!Number.isInteger(stars)||stars<1||stars>3||!Number.isFinite(points)||points<0||points>10000)throw Error('Invalid level result');
+ const uid=user?.id;
+ if(!sb||!uid||user.is_anonymous)throw Error('Registered account required');
+ const score=Math.floor(points);
+ // Persist the completed level BEFORE any network request. If Supabase is down,
+ // this claim remains available on reconnect/reopen under this account only.
+ gbRewardQueue(uid,level,stars,score);
+ await gbRewardDrain(uid);
+ if(user?.id!==uid)throw Error('Account changed during reward claim');
+ const receipt=gbRewardResults.get(uid+':'+level);
+ if(!receipt||receipt.points<score||(receipt.points===score&&receipt.stars<stars))throw Error('Cloud reward still pending');
+ return {balance_after:receipt.balance_after,credited:receipt.credited};
 };
 
 // Server-authoritative Wheel of Misfortune: the draw, cost and coin prize share one transaction.
@@ -1133,10 +1080,6 @@ async function gbSwitchIdentity(next){
   if(!ready ||generation!==gbIdentityGeneration || user?.id!==next.id)return;
   await fetchProfile();
   if(!next.is_anonymous)void window.gbWalletRetryPendingRewards?.();
-  if(!next.is_anonymous&&!gbContinueReconciledForPage.has(next.id)){
-   gbContinueReconciledForPage.add(next.id);
-   void window.gbContinueRefundInterrupted?.().catch(e=>console.warn('Continue purchase reconciliation:',e.message));
-  }
   if(next.is_anonymous)void gbUploadGuestStars();
  }catch(err){
   window.gbAccountReadyForPlay=false;
@@ -1872,6 +1815,7 @@ async function cloudUpload(force=false){
     cloudRetryDelay=4000;clearTimeout(cloudRetryTimer);
     cloudEnableForAccount();
     cloudStatus('Cloud saved automatically · '+new Date().toLocaleTimeString()+' · revision '+revision,true);
+    void window.gbWalletRetryPendingRewards?.();
     // If a game action happened while the request was in flight, upload it too.
     if(saveFingerprint(readLocalGameSave())!==saveFingerprint(snapshot))cloudQueued=true;
     return true;
@@ -2027,15 +1971,6 @@ window.gbClashSubmit=async function(game,points){
 
 // Weekly Nightmare beta reporting: only stage totals; prizes must await trusted validation.
 // Weekly Nightmare progress is submitted only through a one-time server-issued stage session.
-window.gbWeeklyPlayerId=()=>user?.id||null;
-window.gbWeeklyNextStage=async function(){
- if(!sb||!user)throw Error('Online player identity unavailable');
- const {data,error}=await sb.rpc('gb_weekly_next_stage');
- if(error)throw Error(error.message);
- const stage=Number(data);
- if(!Number.isInteger(stage)||stage<1)throw Error('Invalid server stage');
- return stage;
-};
 window.gbWeeklySessionStart=async function(stage){
  if(!sb||!user)throw new Error('Online player identity unavailable');
  const {data,error}=await sb.rpc('gb_weekly_session_start',{p_stage:Number(stage)});

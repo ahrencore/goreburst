@@ -2,7 +2,7 @@
    Never refresh an active level. No Supabase/game/shop/frame changes. */
 (() => {
   'use strict';
-  const INITIAL_VERSION = '2026.11.14.2';
+  const INITIAL_VERSION = '2026.11.14.3';
   const VERSION_URL = new URL('version.json', document.baseURI);
   const SW_URL = new URL('sw.js', document.baseURI);
   const KEY = 'gb_update_last_attempt';
