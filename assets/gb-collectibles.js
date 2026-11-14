@@ -604,7 +604,7 @@ document.addEventListener('keydown',e=>{
  if(!$('gbcModal').hidden){if(!revealedCards.length||revealStep>=revealedCards.length)closeCardDetail();return;}
  if(page>=0||page===-2)lobby();else view('menu');
 });
-const tradeScript=document.createElement('script');tradeScript.src='assets/gb-trading.js?v=carnival-trade-confirm-20261105b';tradeScript.defer=true;document.head.appendChild(tradeScript);
+const tradeScript=document.createElement('script');tradeScript.src='assets/gb-trading.js?v=2026.11.14.1';tradeScript.defer=true;document.head.appendChild(tradeScript);
 
 // Refresh after sign-in/reload without requiring a trip into the Collectibles tab.
 let gbcNotificationRefreshBusy=false,gbcNotificationLastRefresh=0;

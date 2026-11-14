@@ -364,7 +364,7 @@ async function evStartWeeklyStage(){
   evWeeklySessionId=await window.gbWeeklySessionStart(evData.weeklyStage);
  }catch(error){evWeeklySessionId=null;alert('Weekly Nightmare could not start: '+(error.message||error));evWeeklyStarting=false;return}
  evWeeklyStarting=false;
- evRoot.hidden=true;evRoot.innerHTML='';eventRun=true;
+ evRoot.hidden=true;evRoot.innerHTML='';eventRun=true;save.gbAttemptUnlimitedProtected=Number(save.gbUnlimitedLivesUntil||0)>Date.now();
  evWeeklyContinueUsed=false;evWeeklyFailurePending=false;
  const stage=evData.weeklyStage;chosen=Math.min(99,Math.max(21,21+stage*5));
  const base=levelConfig(chosen);let goals;const types=['H','S','G','M','B','W','C'];const pick=types[(stage*3)%types.length];
@@ -398,14 +398,14 @@ async function evStartWeeklyStage(){
 function evWeeklyFinalizeFailure(){
  if(!evWeeklyFailurePending)return;
  evWeeklyFailurePending=false;evWeeklySessionId=null;
- save.pendingFailure=false;persist();consumeFailedLife();
+ save.pendingFailure=false;consumeFailedLife();save.gbAttemptUnlimitedProtected=false;persist();
 }
 function weeklyFinish(win){
  if(mode==='ended'||mode==='failed')return;
  const finishedStage=evData.weeklyStage;
  mode=win?'ended':'failed';busy=false;playSfx(win?'victory':'fail');$('result').hidden=true;
  if(win){
-  evWeeklyFailurePending=false;
+  evWeeklyFailurePending=false;save.gbAttemptUnlimitedProtected=false;persist();
   evData.weeklyBest=Math.max(evData.weeklyBest,finishedStage);evData.weeklyStage++;evSave();
   const session=evWeeklySessionId;evWeeklySessionId=null;
   evWeeklySubmitPromise=window.gbWeeklyVerifiedComplete(session,finishedStage);
@@ -426,7 +426,7 @@ function weeklyFinish(win){
  ${win?'':`<p class="ev-weekly-result-lives">♥ ${save.lives}/5 LIVES · ${evWeeklyContinueUsed?'CONTINUE USED':'ONE CONTINUE AVAILABLE'}</p>`}
  <div class="ev-weekly-result-actions">
  ${win?'':`<button type="button" class="ev-weekly-result-primary" id="evEventPlusMoves" ${canContinue?'':'disabled'}>+5 MOVES · 350 COINS</button>`}
- <button type="button" class="ev-weekly-result-primary" id="evEventRetry" ${(!win&&save.lives<=1)||!evOpenWeek()?'disabled':''}>${win?'NEXT STAGE':'RETRY STAGE'}</button>
+ <button type="button" class="ev-weekly-result-primary" id="evEventRetry" ${(!win&&save.lives<=1&&Number(save.gbUnlimitedLivesUntil||0)<=Date.now())||!evOpenWeek()?'disabled':''}>${win?'NEXT STAGE':'RETRY STAGE'}</button>
  <button type="button" class="ev-weekly-result-secondary" id="evEventHome">EVENT</button></div>
  </section>`;
  document.getElementById('app').appendChild(covered);
@@ -452,7 +452,7 @@ function weeklyFinish(win){
    covered.remove();eventRun=false;$('boosters').style.display='';menu();evWeekly();
  };
 }
-const evOldBack=$('gameback').onclick;$('gameback').onclick=function(e){if(eventRun){if(mode==='ended'||mode==='failed')return;if(!confirm('Leave Weekly Nightmare stage? This attempt costs one life.'))return;consumeFailedLife();eventRun=false;$('boosters').style.display='';menu();evWeekly();return}evOldBack.call(this,e)};
+const evOldBack=$('gameback').onclick;$('gameback').onclick=function(e){if(eventRun){if(mode==='ended'||mode==='failed')return;if(!confirm(save.gbAttemptUnlimitedProtected?'Leave Weekly Nightmare stage? Unlimited lives protects your hearts.':'Leave Weekly Nightmare stage? This attempt costs one life.'))return;consumeFailedLife();save.gbAttemptUnlimitedProtected=false;persist();eventRun=false;$('boosters').style.display='';menu();evWeekly();return}evOldBack.call(this,e)};
 // Intercept all ordinary result actions only for the event; standard screens stay unchanged.
 const sudokuImgs=['01_Pink_Neon_Bat.png','02_Blue_Neon_Moon.png','03_Orange_Neon_Pumpkin.png','04_Green_Neon_Cat.png','05_White_Pink_Ghost.png','06_Red_Neon_Heart.png','07_Purple_Neon_Candy.png','08_Yellow_Neon_Star.png','09_Cyan_Neon_Cross.png'];
 const sudokuSrc=n=>'assets/events/'+sudokuImgs[n-1];

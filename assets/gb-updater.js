@@ -2,12 +2,12 @@
    Never refresh an active level. No Supabase/game/shop/frame changes. */
 (() => {
   'use strict';
-  const INITIAL_VERSION = '2026.11.12.2';
+  const INITIAL_VERSION = '2026.11.14.1';
   const VERSION_URL = new URL('version.json', document.baseURI);
   const SW_URL = new URL('sw.js', document.baseURI);
-  const KEY = 'gb_seen_game_version';
+  const KEY = 'gb_update_last_attempt';
   const currentVersion = INITIAL_VERSION;
-  const acknowledgedVersion = () => { try { return localStorage.getItem(KEY); } catch (_) { return null; } };
+  const lastAttempt = () => { try { return JSON.parse(sessionStorage.getItem(KEY)||'null'); } catch (_) { return null; } };
   let pending = null;
   let modal = null;
   let checking = false;
@@ -53,7 +53,7 @@
           }
         }
       } catch (e) { console.warn('GB update worker check:',e); }
-      try { localStorage.setItem(KEY,target); } catch (_) {}
+      try { sessionStorage.setItem(KEY,JSON.stringify({target,time:Date.now()})); } catch (_) {}
       pending = null; hide();
       const url = new URL(window.location.href);
       url.searchParams.set('gb_version',target);
@@ -73,8 +73,9 @@
       if (!versionOk(remote)) return;
       // Baseline this session on the JS build version, not localStorage, to avoid suppressing new installs.
       if (remote === currentVersion) { pending = null; hide(); return; }
-      // After UPDATE NOW, don't keep prompting for the same target if an old JS file is cached.
-      if (remote === acknowledgedVersion()) { pending = null; hide(); return; }
+      // Old cached code is never accepted as updated. Delay re-prompt after a failed reload.
+      const attempted=lastAttempt();
+      if(attempted?.target===remote && Date.now()-attempted.time<5*60*1000)return;
       pending = remote; showIfSafe();
     } catch (err) { /* offline: continue using running session */ }
     finally { checking = false; }

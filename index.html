@@ -811,7 +811,7 @@ async function boosterTap(r,c){if(eventRun)return;if(!boosterTarget||busy||mode!
 function grantPreSpecials(){if(save.current>=5&&!save.preSpecialsGranted){save.preSpecialsGranted=true;for(const t of ['RV','CB','FW'])save.preSpecials[t]+=3;persist()}}
 let selectedPre=new Set(),failedPending=false,failedAttemptPaid=false;
 // A failed attempt cannot be erased with a reload to avoid the heart penalty.
-if(save.pendingFailure){save.pendingFailure=false;save.lives=Math.max(0,Number(save.lives||0)-1);try{localStorage.setItem('gb-playable-v4',JSON.stringify(save))}catch(e){}}
+if(save.pendingFailure){const protectedAttempt=save.gbAttemptUnlimitedProtected===true;save.pendingFailure=false;save.gbAttemptUnlimitedProtected=false;if(!protectedAttempt)save.lives=Math.max(0,Number(save.lives||0)-1);try{localStorage.setItem('gb-playable-v4',JSON.stringify(save))}catch(e){}}
 
 function regenLives(){
  const now=Date.now();if(save.lives>=MAX_LIVES){save.lives=MAX_LIVES;save.lifeTick=now;return}
@@ -819,8 +819,8 @@ function regenLives(){
  if(gained){save.lives=Math.min(MAX_LIVES,save.lives+gained);save.lifeTick=save.lives===MAX_LIVES?now:save.lifeTick+gained*LIFE_MS;persist()}
 }
 function lifeText(){regenLives();const el=$('lives');if(el){const remaining=MAX_LIVES-save.lives;el.textContent=save.lives+'/5';const secs=Math.ceil(Math.max(0,LIFE_MS-(Date.now()-save.lifeTick))/1000);el.title=remaining?'Next life in '+secs+'s':'Lives full';const countdown=$('lifeCountdown');if(countdown){countdown.textContent=remaining?String(Math.floor(secs/60)).padStart(2,'0')+':'+String(secs%60).padStart(2,'0'):'';countdown.style.display=remaining?'block':'none'}}}
-function canAttempt(){lifeText();if(save.lives>0)return true;const secs=Math.ceil(Math.max(0,LIFE_MS-(Date.now()-save.lifeTick))/1000);alert('No lives left! Next life in '+Math.floor(secs/60)+':'+String(secs%60).padStart(2,'0')+'.');return false}
-function consumeFailedLife(){regenLives();if(save.lives>0){if(save.lives===MAX_LIVES)save.lifeTick=Date.now();save.lives--;persist()}lifeText()}
+function canAttempt(){lifeText();if(save.lives>0||Number(save.gbUnlimitedLivesUntil||0)>Date.now())return true;const secs=Math.ceil(Math.max(0,LIFE_MS-(Date.now()-save.lifeTick))/1000);alert('No lives left! Next life in '+Math.floor(secs/60)+':'+String(secs%60).padStart(2,'0')+'.');return false}
+function consumeFailedLife(){if(save.gbAttemptUnlimitedProtected===true){lifeText();return;}regenLives();if(save.lives>0){if(save.lives===MAX_LIVES)save.lifeTick=Date.now();save.lives--;persist()}lifeText()}
 let eventRun=false;
 let pinnedSpecialCells=new Set();
 let chosen=1,page=0,conf,grid=[],cells=[],collected={},moves,score,starPoints=0,comboChain=0,phase,mode,busy=false,seed=123,anchor=null,source=null,ghostColor='H',toastTimer,ghostSpawnQueue=[],ghostRemoved=0;
@@ -850,7 +850,7 @@ window.gbShopApplyOrder=(order,accountId)=>{
 };
 
 function show(id){document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===id));}
-function menu(){eventRun=false;if(window.gbAccountReadyForPlay){grantPreSpecials();grantBoosters();}boosterTarget=null;boosterFirst=null; const el=$('current');el.textContent=window.gbAccountReadyForPlay?'Level '+save.current:'Syncing account…';el.classList.remove('digits2','digits3','digits4');const digits=String(save.current).length;if(digits>=2)el.classList.add('digits'+Math.min(digits,4));$('money').textContent=save.coins;lifeText();show('menu');void gbRefreshMenuCloudBalance() }
+function menu(){if(!save.pendingFailure&&save.gbAttemptUnlimitedProtected){save.gbAttemptUnlimitedProtected=false;persist()}eventRun=false;if(window.gbAccountReadyForPlay){grantPreSpecials();grantBoosters();}boosterTarget=null;boosterFirst=null; const el=$('current');el.textContent=window.gbAccountReadyForPlay?'Level '+save.current:'Syncing account…';el.classList.remove('digits2','digits3','digits4');const digits=String(save.current).length;if(digits>=2)el.classList.add('digits'+Math.min(digits,4));$('money').textContent=save.coins;lifeText();show('menu');void gbRefreshMenuCloudBalance() }
 // The menu displays the real Supabase wallet after authentication.
 // Deliberately does NOT change the local save: level rewards are not server-validated yet.
 let gbCloudDisplayToken=0;
@@ -880,7 +880,7 @@ function setlevel(n){if(!window.gbAccountReadyForPlay){alert('Your account progr
 $('livesaction').onclick=()=>{lifeText();const seconds=Math.ceil(Math.max(0,LIFE_MS-(Date.now()-save.lifeTick))/1000);alert(save.lives===5?'Lives full (5/5).':'Lives: '+save.lives+'/5. Next life in '+Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0')+'. One life regenerates every 5 minutes.');};$('openplay').onclick=()=>setlevel(save.current);$('menuplay').onclick=menu;$('setupclose').onclick=menu;$('start').onclick=()=>start(chosen);$('ticketsopen').onclick=()=>{if(!window.gbAccountReadyForPlay){alert('Cloud account is loading.');return}page=0;renderTickets();show('tickets')};$('ticketback').onclick=menu; $('prev').onclick=()=>{page=Math.max(0,page-1);renderTickets()};$('next').onclick=()=>{page=Math.min(Math.max(0,Math.ceil(save.current/12)-1),page+1);renderTickets()};
 function renderTickets(){ $('ticketgrid').innerHTML=Array.from({length:12},(_,i)=>{const n=i+1+page*12,locked=n>save.current;return `<button class="ticket ${locked?'locked':''}" data-level="${n}" ${locked?'disabled':''}>${n}<small>${locked?'🔒':('★'.repeat(save.best[n]||0)+'☆'.repeat(3-(save.best[n]||0)))}</small></button>`}).join('');$('pagenum').textContent=`${page+1} / ${Math.max(1,Math.ceil(save.current/12))}`;document.querySelectorAll('.ticket:not(.locked)').forEach(b=>b.onclick=()=>setlevel(Number(b.dataset.level)));}
 ['collectibles','shop'].forEach(id=>$(id).onclick=()=>alert('Coming in a future Gore Burst update.'));
-$('gameback').onclick=()=>{if(mode==='failed'){finalizeFailedAttempt();menu();return}if(mode!=='ended'&&mode!=='surge'&&moves<conf.moves){if(!confirm('Leave this unfinished level? This attempt will cost 1 life.'))return;consumeFailedLife();mode='ended'}menu()};
+$('gameback').onclick=()=>{if(mode==='failed'){finalizeFailedAttempt();menu();return}if(mode!=='ended'&&mode!=='surge'&&moves<conf.moves){if(!confirm(save.gbAttemptUnlimitedProtected?'Leave this unfinished level? Unlimited lives protects your hearts.':'Leave this unfinished level? This attempt will cost 1 life.'))return;consumeFailedLife();save.gbAttemptUnlimitedProtected=false;persist();mode='ended'}menu()};
 updateBoosterBar();
 
 function rand(){seed=(1664525*seed+1013904223)>>>0;return seed/4294967296}function random(){if(conf?.tutorial){const tape=gbTutorialRefills[chosen];return tape[gbTutorialRefillCursor++%tape.length]}return conf.types[Math.floor(rand()*conf.types.length)]}const valid=(r,c)=>!!conf.mask[r]&&conf.mask[r][c]==='X';
@@ -906,7 +906,7 @@ function placePreGameSpecials(items){
  // Each selected special is placed once and never replaces an obstacle or another special.
  for(let i=0;i<items.length&&coords.length;i++){const index=Math.floor((i+1)*coords.length/(items.length+1));const [r,c]=coords.splice(Math.min(coords.length-1,index),1)[0];grid[r][c]=items[i]}
 }
-function start(n){if(!window.gbAccountReadyForPlay){alert('Cloud save is still loading.');return}eventRun=false;if(n>save.current||!canAttempt())return;
+function start(n){if(!window.gbAccountReadyForPlay){alert('Cloud save is still loading.');return}eventRun=false;if(n>save.current||!canAttempt())return;save.gbAttemptUnlimitedProtected=Number(save.gbUnlimitedLivesUntil||0)>Date.now();
  const selected=[...selectedPre].filter(t=>n>=5&&(save.preSpecials[t]||0)>0);
  selectedPre.clear();for(const t of selected)save.preSpecials[t]--;if(selected.length)persist();
  dailyRecord('attempts',1);chosen=n;conf=levelConfig(n);grantBoosters();boosterTarget=null;boosterFirst=null;pinnedSpecialCells.clear();seed=conf.tutorial?(0x6b0a2026+n*781)>>>0:((Date.now()>>>0)^(n*781))>>>0;gbTutorialRefillCursor=0;moves=conf.moves;starPoints=0;comboChain=0;collected=Object.fromEntries(Object.keys(conf.goals).map(t=>[t,0]));score=0;phase=0;ghostRemoved=0;ghostSpawnQueue=n===4?['G']:[];mode=conf.tutorial?'talk':'free';busy=false;grid=[];blockers=[];source=null;anchor=null;cells=[];$('board').replaceChildren();$('board').classList.remove('shuffle-motion','shuffle-arrive','fx-shake');$('gbShuffle').hidden=true;turnFireCleared=false;freshBoard();if(selected.length)placePreGameSpecials(selected);$('result').hidden=true;$('gbFail').hidden=true;document.querySelector('#result .gb-win-shell').hidden=false;failedPending=false;failedAttemptPaid=false;save.pendingFailure=false;persist();show('game');updateBoosterBar();render();if(conf.tutorial)talk();else {$('walker').hidden=true;render();}}
@@ -1031,7 +1031,7 @@ function stabilizeTutorial(step){
   if(!repaired)break;
  }
 }
-function playableSwaps(){const result=[];for(let r=0;r<grid.length;r++)for(let c=0;c<grid[r].length;c++)if(valid(r,c)){for(const [dr,dc] of [[1,0],[0,1]]){let rr=r+dr,cc=c+dc;if(!valid(rr,cc))continue;const a=grid[r][c],b=grid[rr][cc];if(a?.startsWith('GH')||b?.startsWith('GH')||fixedToken(a)||fixedToken(b)||getB(r,c)?.kind==='JL'||getB(rr,cc)?.kind==='JL')continue;if(isSpecial(a)||isSpecial(b)){result.push([r,c,rr,cc]);continue;}grid[r][c]=b;grid[rr][cc]=a;const good=matches().length>0;grid[r][c]=a;grid[rr][cc]=b;if(good)result.push([r,c,rr,cc]);}}return result}
+function playableSwaps(){const result=[];for(let r=0;r<grid.length;r++)for(let c=0;c<grid[r].length;c++)if(valid(r,c)){for(const [dr,dc] of [[1,0],[0,1]]){let rr=r+dr,cc=c+dc;if(!valid(rr,cc))continue;const a=grid[r][c],b=grid[rr][cc];if(a?.startsWith('GH')||b?.startsWith('GH')||fixedToken(a)||fixedToken(b)||getB(r,c)?.kind==='JL'||getB(rr,cc)?.kind==='JL')continue;if(isSpecial(a)||isSpecial(b)){if(!(isSpecial(a)&&isSpecial(b)&&(a==='FW'||b==='FW')&&a!==b))result.push([r,c,rr,cc]);continue;}grid[r][c]=b;grid[rr][cc]=a;const good=matches().length>0;grid[r][c]=a;grid[rr][cc]=b;if(good)result.push([r,c,rr,cc]);}}return result}
 function stabilizeSetup(){for(let i=0;i<250&&matches().length;i++)for(const group of matches())for(const [r,c] of group)grid[r][c]=random();if(!playableSwaps().length)shuffleBoard(true)}
 function shuffleBoard(silent=false){
  const coords=[],types=[];
@@ -1039,29 +1039,55 @@ function shuffleBoard(silent=false){
   if(valid(r,c)&&grid[r][c]&&!isSpecial(grid[r][c])&&!grid[r][c].startsWith('GH')&&!fixedToken(grid[r][c])&&getB(r,c)?.kind!=='JL'){
    coords.push([r,c]);types.push(grid[r][c]);
   }
+ const original=coords.map(([r,c])=>grid[r][c]);
  const tryBoard=()=>!matches().length&&playableSwaps().length>0;
  for(let attempt=0;attempt<2200;attempt++){
-  if(attempt<450){for(let i=types.length-1;i>0;i--){let j=Math.floor(rand()*(i+1));[types[i],types[j]]=[types[j],types[i]]}}
-  coords.forEach(([r,c],i)=>grid[r][c]=attempt<450?types[i]:random());
+  for(let i=types.length-1;i>0;i--){let j=Math.floor(rand()*(i+1));[types[i],types[j]]=[types[j],types[i]]}
+  coords.forEach(([r,c],i)=>grid[r][c]=types[i]);
   if(tryBoard()){if(!silent)say('SHUFFLING!');render();return true}
  }
- // Never pretend that a board with no moves has been repaired.
- render();return false;
+ // All failed candidates stay invisible, and the exact original board is restored.
+ coords.forEach(([r,c],i)=>grid[r][c]=original[i]);return false;
+}
+// Try the fewest ordinary-color edits first; blockers, ghosts and specials never move.
+function gbRecoverByRecolor(){
+ const locations=[];for(let r=0;r<grid.length;r++)for(let c=0;c<grid[r].length;c++)
+  if(valid(r,c)&&grid[r][c]?.length===1&&!getB(r,c))locations.push([r,c]);
+ const colors=conf.types?.filter(t=>'HSGMBWC'.includes(t))||[...'HSGMBWC'];
+ // One recolor is the provably minimal positive change if it works.
+ for(const [r,c] of locations){const prior=grid[r][c];for(const color of colors){if(color===prior)continue;grid[r][c]=color;
+  if(!matches().length&&playableSwaps().length)return true;
+ }grid[r][c]=prior;}
+ // A bounded two-color search covers harder obstructed layouts.
+ for(let i=0;i<locations.length;i++){const [r,c]=locations[i],a=grid[r][c];for(const x of colors){if(x===a)continue;grid[r][c]=x;
+  for(let j=i+1;j<locations.length;j++){const [rr,cc]=locations[j],b=grid[rr][cc];for(const y of colors){if(y===b)continue;grid[rr][cc]=y;
+   if(!matches().length&&playableSwaps().length)return true;
+  }grid[rr][cc]=b;}
+ }grid[r][c]=a;}
+ return false;
+}
+// Only auto-activate a special when a prospective resulting board can be shown playable.
+// Otherwise skip this optional stage rather than gamble with a player's specials.
+async function gbRecoverWithProvenSpecial(){return false;}
+function gbRecoverByRebuild(){
+ const savedGrid=grid.map(row=>row.slice()),savedBlockers=blockers.map(row=>row.map(b=>b?{...b}:null));
+ for(let attempt=0;attempt<500;attempt++){
+  freshBoard();
+  if(!matches().length&&playableSwaps().length)return true;
+ }
+ grid=savedGrid;blockers=savedBlockers;return false;
 }
 async function settle(){await cascades();if(!playableSwaps().length){
-  const board=$('board');board.classList.add('shuffle-motion');$('gbShuffle').hidden=false;
-  playSfx('shuffle');await delay(650);let ok=shuffleBoard(true);
-  if(!ok){ // Obstacles can leave too few movable pieces: recover playable cells without destroying blockers.
-    for(let recovery=0;recovery<3&&!ok;recovery++){
-      for(let r=0;r<grid.length;r++)for(let c=0;c<grid[r].length;c++){
-        if(valid(r,c)&&grid[r][c]&&grid[r][c].length===1&&!getB(r,c))grid[r][c]=random();
-      }
-      ok=shuffleBoard(true);
-    }
-  }
-  await delay(550);board.classList.remove('shuffle-motion');
-  if(ok){board.classList.add('shuffle-arrive');await delay(320);board.classList.remove('shuffle-arrive')}
-  $('gbShuffle').hidden=true;
+ const board=$('board');board.classList.add('shuffle-motion');$('gbShuffle').hidden=false;
+ playSfx('shuffle');await delay(650);
+ let ok=shuffleBoard(true); // 1. Shuffle ordinary pieces only.
+ if(!ok)ok=gbRecoverByRecolor(); // 2. Minimal recoloring.
+ if(!ok)ok=await gbRecoverWithProvenSpecial(); // 3. Proven-safe existing special only.
+ if(!ok)ok=gbRecoverByRebuild(); // 4. Free rebuild as last resort.
+ await delay(550);board.classList.remove('shuffle-motion');
+ if(ok){render();board.classList.add('shuffle-arrive');await delay(320);board.classList.remove('shuffle-arrive')}
+ $('gbShuffle').hidden=true;
+ if(!ok){console.error('Goreburst: dead-board recovery could not produce a legal move');say('TRY AGAIN');}
  }render()}
 function fxRoot(){let layer=$('fx-layer');if(!layer){layer=document.createElement('div');layer.id='fx-layer';layer.className='fx-layer';$('app').appendChild(layer)}return layer}
 function cellRect(r,c){const el=cells[r*grid[0].length+c];const host=$('app').getBoundingClientRect(),b=el?.getBoundingClientRect();return b?{x:b.left-host.left,y:b.top-host.top,w:b.width,h:b.height}:null}
@@ -1159,7 +1185,8 @@ async function triggerQueue(initial){
  await refill();
 }
 async function cascades(){
- for(let i=0;i<12;i++){
+ for(let i=0;;i++){
+  // The board must completely stabilize before input resumes; never silently truncate a cascade.
   const groups=matches();if(!groups.length)break;
   if(i)say(['SCARY!','EERIE!','SPOOKY!','GORE BURST!'][Math.min(i-1,3)]);
 
@@ -1291,11 +1318,11 @@ async function checkEnd(){
   busy=false;finish(true);
  }else if(moves<=0)finish(false);
 }
-function finish(win){if(eventRun){weeklyFinish(win);return}if(mode==='ended'||mode==='failed')return;mode=win?'ended':'failed';if(!win){failedPending=true;save.pendingFailure=true;persist()}else{failedPending=false;save.pendingFailure=false;persist()}const priorBest=save.best[chosen]||0;const stars=win?(chosen===4?3:starPoints>=100?3:starPoints>=65?2:1):0;
+function finish(win){if(eventRun){weeklyFinish(win);return}if(mode==='ended'||mode==='failed')return;mode=win?'ended':'failed';if(!win){failedPending=true;save.pendingFailure=true;persist()}else{failedPending=false;save.pendingFailure=false;save.gbAttemptUnlimitedProtected=false;persist()}const priorBest=save.best[chosen]||0;const stars=win?(chosen===4?3:starPoints>=100?3:starPoints>=65?2:1):0;
  let earnedCoins=0;
  if(win){const previous=save.best[chosen]||0;const best=Math.max(previous,stars);const base=[0,10,30,50][stars];const total=base+Math.max(0,Math.floor(starPoints-100));const oldBest=Math.max(Number(save.bestCoins?.[chosen]||0),[0,10,30,50][previous]);earnedCoins=Math.max(0,total-oldBest);if(!(typeof window.gbWalletIsSignedIn==='function'&&window.gbWalletIsSignedIn()))save.coins+=earnedCoins;save.bestCoins=save.bestCoins||{};save.bestCoins[chosen]=Math.max(oldBest,total);save.best[chosen]=best;save.current=Math.max(save.current,chosen+1);persist();void window.gbCloudSaveNow?.().catch(e=>console.warn('Victory cloud save:',e))}
  playSfx(win?'victory':'fail');
- $('result').classList.toggle('lost',!win);$('gbFail').hidden=win;document.querySelector('#result .gb-win-shell').hidden=!win;if(!win){$('gbFailedLevel').textContent='LEVEL '+chosen;const count=Math.max(0,save.lives-1);$('gbFailureHearts').innerHTML=Array.from({length:5},(_,i)=>'<span class="'+(i<count?'full':'empty')+'">♥</span>').join('');$('gbFailureHint').textContent='';$('gbFailureObjectives').innerHTML='<div class="failure-objectives-header">OBJECTIVES • CURRENT PROGRESS</div>'+Object.entries(conf.goals).map(([t,n])=>{const done=Math.min(n,collected[t]||0),remaining=n-done;return '<div class="failure-objective-row"><img src="'+goalIcon(t)+'" alt=""><div><span>'+done+' / '+n+'</span><div class="failure-progress-track"><div class="failure-progress-fill" style="width:'+Math.round(done/n*100)+'%"></div></div></div><strong>'+remaining+' left</strong></div>'}).join('');$('gbPlusMoves').disabled=false;}$('resultlevel').textContent=win?'LEVEL '+chosen+' COMPLETED':'LEVEL '+chosen+' FAILED';$('headline').textContent=win?'SCARY!':'TRY AGAIN';$('resultstars').innerHTML=Array.from({length:3},(_,i)=>'<img class=\"victory-star '+(i<stars?'earned':'unearned')+'\" src=\"assets/star.png\" alt=\"'+(i<stars?'earned star':'unearned star')+'\">').join('');$('recap').innerHTML=Object.entries(conf.goals).map(([t,n])=>`<div class="gb-complete-goal"><img src="${goalIcon(t)}" alt=""><b>${collected[t]}/${n}</b><em>${collected[t]>=n?'✓':'·'}</em></div>`).join('');$('rewards').innerHTML=win?'<img class="reward-coin" src="assets/coin-skull-new.png" alt="Skull coin"><strong>+'+earnedCoins+'</strong><span>COINS</span>':'Life lost · '+save.lives+'/5 remaining' ;$('reward-note').textContent='';$('goNext').style.display=win?'inline-block':'none';$('result').hidden=false;
+ $('result').classList.toggle('lost',!win);$('gbFail').hidden=win;document.querySelector('#result .gb-win-shell').hidden=!win;if(!win){$('gbFailedLevel').textContent='LEVEL '+chosen;const count=Math.max(0,save.lives-(save.gbAttemptUnlimitedProtected?0:1));$('gbFailureHearts').innerHTML=Array.from({length:5},(_,i)=>'<span class="'+(i<count?'full':'empty')+'">♥</span>').join('');$('gbFailureHint').textContent='';$('gbFailureObjectives').innerHTML='<div class="failure-objectives-header">OBJECTIVES • CURRENT PROGRESS</div>'+Object.entries(conf.goals).map(([t,n])=>{const done=Math.min(n,collected[t]||0),remaining=n-done;return '<div class="failure-objective-row"><img src="'+goalIcon(t)+'" alt=""><div><span>'+done+' / '+n+'</span><div class="failure-progress-track"><div class="failure-progress-fill" style="width:'+Math.round(done/n*100)+'%"></div></div></div><strong>'+remaining+' left</strong></div>'}).join('');$('gbPlusMoves').disabled=false;}$('resultlevel').textContent=win?'LEVEL '+chosen+' COMPLETED':'LEVEL '+chosen+' FAILED';$('headline').textContent=win?'SCARY!':'TRY AGAIN';$('resultstars').innerHTML=Array.from({length:3},(_,i)=>'<img class=\"victory-star '+(i<stars?'earned':'unearned')+'\" src=\"assets/star.png\" alt=\"'+(i<stars?'earned star':'unearned star')+'\">').join('');$('recap').innerHTML=Object.entries(conf.goals).map(([t,n])=>`<div class="gb-complete-goal"><img src="${goalIcon(t)}" alt=""><b>${collected[t]}/${n}</b><em>${collected[t]>=n?'✓':'·'}</em></div>`).join('');$('rewards').innerHTML=win?'<img class="reward-coin" src="assets/coin-skull-new.png" alt="Skull coin"><strong>+'+earnedCoins+'</strong><span>COINS</span>':(save.gbAttemptUnlimitedProtected?'Unlimited lives · no heart lost':'Life lost · '+save.lives+'/5 remaining') ;$('reward-note').textContent='';$('goNext').style.display=win?'inline-block':'none';$('result').hidden=false;
  if(win && typeof window.gbWalletIsSignedIn==='function' && window.gbWalletIsSignedIn()){
    const rewardLevel=chosen, rewardStars=stars, rewardPoints=starPoints;
    const rewardBox=$('rewards'), rewardNote=$('reward-note');
@@ -1319,7 +1346,7 @@ function finish(win){if(eventRun){weeklyFinish(win);return}if(mode==='ended'||mo
    void rewardRun();
  }
 }
-function finalizeFailedAttempt(){if(failedPending&&!failedAttemptPaid){consumeFailedLife();failedAttemptPaid=true;failedPending=false;save.pendingFailure=false;persist()}}
+function finalizeFailedAttempt(){if(failedPending&&!failedAttemptPaid){consumeFailedLife();failedAttemptPaid=true;failedPending=false;save.pendingFailure=false;save.gbAttemptUnlimitedProtected=false;persist()}}
 $('gbRetry').onclick=()=>{finalizeFailedAttempt();selectedPre.clear();if(!canAttempt())return;start(chosen)};
 $('gbFailHome').onclick=()=>{finalizeFailedAttempt();menu()};
 let gbContinuePaymentBusy=false;
@@ -1413,7 +1440,7 @@ document.getElementById('gamepause').onclick=openGbSettings;
 document.getElementById('gbSettingsClose').onclick=closeGbSettings;
 document.getElementById('gbSettings').addEventListener('click',e=>{if(e.target.id==='gbSettings')closeGbSettings()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeGbSettings()});
-</script><link rel="stylesheet" href="assets/gb-giftcodes.css"><script defer src="assets/gb-giftcodes.js?v=admin-bundle-20261107"></script><script src="assets/gb-events.js?v=nightmare-rules-centered-20261109"></script><script type="module" src="assets/gb-profile.js?v=frame-coins-bundle-20261112"></script><script defer src="assets/gb-collectibles.js?v=gb-wallet-speed-20261107"></script><script defer src="assets/gb-shop.js?v=gb-wallet-speed-20261107"></script><style id="gb-events-badge-final-position">
+</script><link rel="stylesheet" href="assets/gb-giftcodes.css"><script defer src="assets/gb-giftcodes.js?v=admin-bundle-20261107"></script><script src="assets/gb-events.js?v=2026.11.14.1"></script><script type="module" src="assets/gb-profile.js?v=2026.11.14.1"></script><script defer src="assets/gb-collectibles.js?v=gb-wallet-speed-20261107"></script><script defer src="assets/gb-shop.js?v=gb-wallet-speed-20261107"></script><style id="gb-events-badge-final-position">
 /* Fixed badge: a child of the actual EVENTS tap area, not a pseudo-element. */
 #menu .bottom-tabs #events.ev-tab-has-reward::after{content:none!important;display:none!important}
 #menu .bottom-tabs #events{position:absolute!important;overflow:hidden!important}
@@ -1433,7 +1460,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeGbSettings()});
 #menu .bottom-tabs #events.ev-tab-has-reward{animation:gb-events-invite 1.8s ease-in-out infinite!important;isolation:isolate;overflow:visible!important;filter:drop-shadow(0 0 5px #ff79ec) drop-shadow(0 0 8px #a050ff)}
 @keyframes gb-events-invite{0%,100%{filter:drop-shadow(0 0 3px #ef4fb5) drop-shadow(0 0 4px #7844d4);opacity:1}50%{filter:drop-shadow(0 0 13px #ff72dd) drop-shadow(0 0 17px #895fff);opacity:.83}}
 @media(prefers-reduced-motion:reduce){#menu .bottom-tabs #events.ev-tab-has-reward{animation:none!important;filter:drop-shadow(0 0 10px #f858ce)}}
-</style><link rel="stylesheet" href="assets/gb-frame-universal.css?v=classic-fit-20261103-c"><script defer src="assets/gb-completion-frame-fit.js?v=opening-mask-20261104a"></script><script defer src="assets/gb-updater.js?v=2026.11.12.2"></script>
+</style><link rel="stylesheet" href="assets/gb-frame-universal.css?v=classic-fit-20261103-c"><script defer src="assets/gb-completion-frame-fit.js?v=opening-mask-20261104a"></script><script defer src="assets/gb-updater.js?v=2026.11.14.1"></script>
 <script id="gb-welcome-marquee-binding">
 /* Mirrors the existing profile display name. Never requests extra Supabase data. */
 (()=>{'use strict';

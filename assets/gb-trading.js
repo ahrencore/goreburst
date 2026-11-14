@@ -220,10 +220,11 @@ async function loadTrades(){
    const id=b.dataset.claimTrade;
    try{const {data:result,error}=await client.rpc('gb_trade_claim',{p_trade_id:id});
     if(error)throw error;
+    if(result!=='CLAIMED'&&result!=='ALREADY_CLAIMED')throw Error('Claim was not confirmed by the server.');
     b.textContent='CLAIMED';
     window.gbTradeReloadCollection?.();
     void updateTradeDot();
-   }catch(e){b.disabled=false;b.textContent='CLAIM GIFT';alert('Claim failed: '+(e.message||'Unknown error'));}
+   }catch(e){b.disabled=false;b.textContent='RETRY CLAIM';b.title='Claim not verified. Tap to retry. '+(e.message||'');console.warn('Trade claim still pending:',e);}
    finally{claiming=false;}
   });
   void updateTradeDot();

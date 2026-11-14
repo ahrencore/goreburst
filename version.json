@@ -1,4 +1,4 @@
 {
-  "version": "2026.11.12.2",
-  "notes": "Approved frame and Skull Coins can share a single giftcode with the matching Supabase SQL migration"
+  "version": "2026.11.14.1",
+  "notes": "Approved gameplay and updater fixes; cloud reward and +5 Moves refund changes deferred"
 }

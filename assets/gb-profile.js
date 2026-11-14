@@ -1110,7 +1110,7 @@ window.gbWelcomeApplyGift=function(accountId,mailId,grant,claimedAt){
 if(typeof consumeFailedLife==='function' && typeof canAttempt==='function' && typeof lifeText==='function'){
  const gbOriginalConsumeFailedLife=consumeFailedLife,gbOriginalCanAttempt=canAttempt,gbOriginalLifeText=lifeText;
  const gbHasUnlimitedLives=()=>typeof save!=='undefined' && Number(save.gbUnlimitedLivesUntil||0)>Date.now();
- consumeFailedLife=function(){if(gbHasUnlimitedLives()){gbOriginalLifeText();return;}return gbOriginalConsumeFailedLife();};
+ consumeFailedLife=function(){if(!eventRun&&(save.gbAttemptUnlimitedProtected===true||gbHasUnlimitedLives())){gbOriginalLifeText();return;}return gbOriginalConsumeFailedLife();};
  canAttempt=function(){if(gbHasUnlimitedLives())return true;return gbOriginalCanAttempt();};
  lifeText=function(){gbOriginalLifeText();if(gbHasUnlimitedLives()){
     const el=document.getElementById('lives');if(el){el.textContent='∞';el.title='Unlimited lives until '+new Date(save.gbUnlimitedLivesUntil).toLocaleTimeString();}
