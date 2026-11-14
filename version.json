@@ -1,4 +1,4 @@
 {
-  "version": "2026.11.14.1",
-  "notes": "Approved gameplay and updater fixes; cloud reward and +5 Moves refund changes deferred"
+  "version": "2026.11.14.2",
+  "notes": "Weekly Nightmare retry and stage reconciliation; Supabase client reuse; Ghost Parade desktop layout; reward retry and validation; +5 Moves refund safeguards; dead-board special recovery. Requires reviewed Supabase SQL migrations."
 }

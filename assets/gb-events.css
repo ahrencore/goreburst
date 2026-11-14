@@ -652,3 +652,13 @@
 .ev-root .ev-nightmare-rules ul{list-style:none;margin:0;padding:0;}
 .ev-root .ev-nightmare-rules li{margin:2px 0;text-align:center;}
 .ev-root .ev-nightmare-rules li::before{content:"• ";color:#ff9dd1;font-weight:900;}
+
+/* Desktop-only Ghost Parade overflow fix: mobile layout remains unchanged. */
+@media(min-width:700px){
+.ev-root .ev-ghost-shell,.ev-root .ev-ghost-board,#gbGhostOnlineRows{min-width:0;max-width:100%;box-sizing:border-box}
+#gbGhostOnlineRows{grid-template-columns:minmax(0,1fr)}
+.ev-root .ev-ghost-row{min-width:0;max-width:100%;box-sizing:border-box}
+.ev-root .ev-ghost-rankwrap{min-width:0;flex:1 1 0%;overflow:hidden}
+.ev-root .ev-ghost-name{min-width:0;max-width:100%;flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ev-root .ev-ghost-score{flex:0 0 auto}
+}

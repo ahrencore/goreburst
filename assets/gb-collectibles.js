@@ -160,7 +160,7 @@ const $=id=>document.getElementById(id);let page=-1;
 // This never exposes a service-role key. Rewards are written only via RPC.
 let gbDailyClientPromise;
 window.gbDailyMissionRpc=async(functionName,args)=>{
- if(!gbDailyClientPromise)gbDailyClientPromise=import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm').then(({createClient})=>createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}));
+ if(!gbDailyClientPromise)gbDailyClientPromise=import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm').then(({createClient})=>createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}})).catch(error=>{gbDailyClientPromise=null;throw error});
  const client=await gbDailyClientPromise;
  // The RPC enforces auth.uid() server-side. Avoid a network getUser() before every claim.
  // Supabase JS automatically sends and refreshes the stored session token.
@@ -197,8 +197,10 @@ async function loadOwnership(){
  inventoryReady=false;inventoryError='';rewardStatusReady=false;rewardStatusError='';rewardClaims=new Set();grandNextPosition=1;grandClaimedPosition=null;grandClaimedFrameId=null;collectionRound=1;legacyResetPending=false;owned=new Map();packs={carnival:0,freakshow:0,nightmare:0};packDb=null;packUser=null;cloudCoins=null;
  try{
   if(typeof SUPABASE_URL==='undefined'||typeof SUPABASE_KEY==='undefined')throw Error('Cloud connection unavailable');
-  const {createClient}=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
-  const db=createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+  // Reuse the same authenticated client already used for Daily Missions.
+  // Avoid creating another GoTrue client on every ownership notification poll.
+  if(!gbDailyClientPromise)gbDailyClientPromise=import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm').then(({createClient})=>createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}})).catch(error=>{gbDailyClientPromise=null;throw error});
+  const db=await gbDailyClientPromise;
   const {data:auth,error:authErr}=await db.auth.getUser();
   if(authErr||!auth?.user)throw Error('Sign in to load your collection');
   packDb=db;packUser=auth.user.id;

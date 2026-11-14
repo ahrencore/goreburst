@@ -354,14 +354,54 @@ let evWeeklyContinueUsed=false;
 let evWeeklyFailurePending=false;
 let evWeeklySessionId=null;
 let evWeeklyStarting=false;
-let evWeeklySubmitPromise=Promise.resolve();
+// Hold a failed submission for retry instead of poisoning later stage starts
+// with a permanently rejected promise or advancing the stage before confirmation.
+// Pending cloud completion survives refresh, without advancing stage until verified.
+const evWeeklyPendingKey=uid=>'gb-weekly-pending-v2:'+uid;
+function evWeeklyPendingLoad(uid){
+ if(!uid)return null;
+ try{
+  const row=JSON.parse(localStorage.getItem(evWeeklyPendingKey(uid))||'null');
+  if(row && row.userId===uid && /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(row.session)
+     && Number.isInteger(row.stage)&&row.stage>0 && typeof row.weekKey==='string')
+   return {...row,request:null};
+ }catch{}return null;
+}
+let evWeeklyPendingCompletion=null;
+function evWeeklyPendingSave(pending,ownerId=pending?.userId){
+ if(!ownerId)return;
+ try{if(pending)localStorage.setItem(evWeeklyPendingKey(ownerId),JSON.stringify({session:pending.session,stage:pending.stage,weekKey:pending.weekKey,userId:pending.userId}));
+ else localStorage.removeItem(evWeeklyPendingKey(ownerId));}catch(e){console.warn('[Weekly Nightmare] Could not persist pending completion:',e)}
+}
+async function evWeeklyConfirmPending(){
+ const currentUser=window.gbWeeklyPlayerId?.();
+ if(!currentUser)throw new Error('Sign in to confirm Weekly Nightmare progress.');
+ if(!evWeeklyPendingCompletion||evWeeklyPendingCompletion.userId!==currentUser)
+  evWeeklyPendingCompletion=evWeeklyPendingLoad(currentUser);
+ const pending=evWeeklyPendingCompletion;
+ if(!pending)return;
+ if(pending.request)return pending.request;
+ if(evData.weeklyKey!==pending.weekKey){evWeeklyPendingCompletion=null;evWeeklyPendingSave(null,pending.userId);return}
+ if(pending.userId!==currentUser)throw new Error('Weekly session account changed.');
+ pending.request=Promise.resolve().then(()=>window.gbWeeklyVerifiedComplete(pending.session,pending.stage)).then(()=>{
+  if(evWeeklyPendingCompletion!==pending)return;
+  if(evData.weeklyKey!==pending.weekKey){evWeeklyPendingCompletion=null;evWeeklyPendingSave(null,pending.userId);return;}
+  evData.weeklyBest=Math.max(evData.weeklyBest,pending.stage);
+  evData.weeklyStage=Math.max(evData.weeklyStage,pending.stage+1);
+  evSave();evWeeklyPendingCompletion=null;evWeeklyPendingSave(null,pending.userId);
+ }).finally(()=>{pending.request=null});
+ return pending.request;
+}
 async function evStartWeeklyStage(){
  evRefresh();if(!evOpenWeek()){evWeekly();return}if(!canAttempt()||evWeeklyStarting)return;
  evWeeklyStarting=true;
  try{
-  await evWeeklySubmitPromise;
-  if(typeof window.gbWeeklySessionStart!=='function')throw new Error('Weekly Nightmare session update is missing');
-  evWeeklySessionId=await window.gbWeeklySessionStart(evData.weeklyStage);
+  await evWeeklyConfirmPending();
+  if(typeof window.gbWeeklyNextStage!=='function'||typeof window.gbWeeklySessionStart!=='function')throw Error('Weekly Nightmare cloud update is missing');
+  const next=await window.gbWeeklyNextStage();
+  // The verified leaderboard is authoritative, not browser-local stage storage.
+  evData.weeklyStage=next;evData.weeklyBest=Math.max(0,next-1);evSave();
+  evWeeklySessionId=await window.gbWeeklySessionStart(next);
  }catch(error){evWeeklySessionId=null;alert('Weekly Nightmare could not start: '+(error.message||error));evWeeklyStarting=false;return}
  evWeeklyStarting=false;
  evRoot.hidden=true;evRoot.innerHTML='';eventRun=true;save.gbAttemptUnlimitedProtected=Number(save.gbUnlimitedLivesUntil||0)>Date.now();
@@ -405,11 +445,14 @@ function weeklyFinish(win){
  const finishedStage=evData.weeklyStage;
  mode=win?'ended':'failed';busy=false;playSfx(win?'victory':'fail');$('result').hidden=true;
  if(win){
+  void window.gbContinueFinishPurchasedAttempt?.().catch(e=>console.warn('Weekly purchased attempt completion:',e));
   evWeeklyFailurePending=false;save.gbAttemptUnlimitedProtected=false;persist();
-  evData.weeklyBest=Math.max(evData.weeklyBest,finishedStage);evData.weeklyStage++;evSave();
   const session=evWeeklySessionId;evWeeklySessionId=null;
-  evWeeklySubmitPromise=window.gbWeeklyVerifiedComplete(session,finishedStage);
-  evWeeklySubmitPromise.catch(error=>alert('Stage completed locally, but leaderboard sync failed: '+(error.message||error)));
+  const ownerId=window.gbWeeklyPlayerId?.();
+  if(!session||!ownerId){alert('Weekly Nightmare completion cannot be safely recorded. Please contact support.');return;}
+  evWeeklyPendingCompletion={session,stage:finishedStage,weekKey:evData.weeklyKey,userId:ownerId,request:null};
+  evWeeklyPendingSave(evWeeklyPendingCompletion);
+  void evWeeklyConfirmPending().catch(error=>alert('Stage cleared, but cloud confirmation failed. NEXT STAGE will retry the same submission once the connection returns: '+(error.message||error)));
  }else{
   evWeeklyFailurePending=true;
   // If the player closes this failed attempt without continuing, charge one life on return.
@@ -437,11 +480,14 @@ function weeklyFinish(win){
    try{
      window.gbWeeklyContinueRequestId ||= crypto.randomUUID();
      save.coins=await window.gbWalletContinueSpend(window.gbWeeklyContinueRequestId);
+     if(!covered.isConnected||!eventRun||!evWeeklyFailurePending){
+       await window.gbContinueInterruptAttempt?.();window.gbWeeklyContinueRequestId=null;return;
+     }
      window.gbWeeklyContinueRequestId=null;
      evWeeklyContinueUsed=true;evWeeklyFailurePending=false;
      save.pendingFailure=false;persist();
      moves=5;mode='free';busy=false;covered.remove();$('walker').hidden=true;render();say('+5 MOVES!');
-   }catch(error){alert('Payment failed: '+(error?.message||'Try again'));btn.disabled=false;}
+   }catch(error){if(error?.code==='GB_CONTINUE_RECONCILED')window.gbWeeklyContinueRequestId=null;alert('Payment failed: '+(error?.message||'Try again'));btn.disabled=false;}
  });
  covered.querySelector('#evEventRetry').onclick=()=>{
    if(!win)evWeeklyFinalizeFailure();

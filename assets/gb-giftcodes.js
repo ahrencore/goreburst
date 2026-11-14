@@ -14,7 +14,8 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!dialog.hidden)clos
 dialog.querySelector('form').addEventListener('submit',async e=>{e.preventDefault();const code=input.value.trim().toUpperCase().replace(/\s+/g,'');if(!/^[A-Z0-9-]{4,32}$/.test(code)){msg.textContent='Please enter a valid code.';return;}
 submit.disabled=true;msg.textContent='Checking your code…';img.hidden=true;
 try{
- const client=window.gbGiftSupabaseClient || await (async()=>{const m=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');return m.createClient('https://harqhhpobaepfkfeitmw.supabase.co','sb_publishable_K9F36jgWZaMWywln6Wwaiw_4zJ7523C',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}})})();
+ // Cache a single promise so repeated redemptions don't spawn auth clients.
+ const client=await (window.gbGiftSupabaseClientPromise ||= import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm').then(({createClient})=>createClient('https://harqhhpobaepfkfeitmw.supabase.co','sb_publishable_K9F36jgWZaMWywln6Wwaiw_4zJ7523C',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}})).catch(error=>{window.gbGiftSupabaseClientPromise=null;throw error}));
  const {data:{user},error:authError}=await client.auth.getUser();if(authError||!user||user.is_anonymous){msg.textContent='Log in to your account to claim gift codes.';return;}
  // Try newer multi-reward codes first (atomic coins + optional frame).
  const bundle=await client.rpc('gb_redeem_bundle_code',{p_code:code});
