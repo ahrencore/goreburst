@@ -1,4 +1,4 @@
 {
-  "version": "2026.11.14.3",
-  "notes": "Cloud reward ordered retry queue and delayed response display; no backend or reward calculation changes"
+  "version": "2026.11.16.1",
+  "notes": "Weekly Nightmare authenticated identity and verified next-stage lookup fix; no purchase, reward or gameplay changes"
 }

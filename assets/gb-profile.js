@@ -1969,6 +1969,22 @@ window.gbClashSubmit=async function(game,points){
   if(error)console.warn('Carnival Clash beta submission:',error.message);
 };
 
+// Weekly Nightmare identity must come from the same authenticated profile client.
+// Do not create another Supabase auth client or trust a browser-stored username.
+window.gbWeeklyPlayerId=function(){
+ return sb && user && !user.is_anonymous ? String(user.id) : null;
+};
+// Fetch the server-authoritative stage; the session-start RPC still validates it.
+window.gbWeeklyNextStage=async function(){
+ if(!sb || !user || user.is_anonymous)throw new Error('Sign in to start Weekly Nightmare.');
+ const expectedUserId=String(user.id);
+ const {data,error}=await sb.rpc('gb_weekly_next_stage');
+ if(error)throw new Error('Weekly Nightmare stage lookup failed: '+error.message);
+ if(String(user?.id||'')!==expectedUserId)throw new Error('Weekly Nightmare account changed. Try again.');
+ const stage=Number(data);
+ if(!Number.isSafeInteger(stage)||stage<1||stage>10000)throw new Error('Invalid Weekly Nightmare stage returned by server.');
+ return stage;
+};
 // Weekly Nightmare beta reporting: only stage totals; prizes must await trusted validation.
 // Weekly Nightmare progress is submitted only through a one-time server-issued stage session.
 window.gbWeeklySessionStart=async function(stage){
