@@ -1,0 +1,13 @@
+#gb-support-overlay[hidden],#gb-support-thread[hidden],#gb-support-list[hidden],#gb-support-form[hidden]{display:none!important}
+#gb-support-overlay{position:fixed;inset:0;z-index:10000;background:#100419df;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;backdrop-filter:blur(7px)}
+.gb-support-card{color:#ffe4f0;background:linear-gradient(160deg,#54234d,#210d2c 75%);border:2px solid #f2b16f;border-radius:20px;box-shadow:0 0 24px #180819;width:min(94vw,550px);max-height:90vh;overflow:auto;padding:20px;box-sizing:border-box;font:14px system-ui,sans-serif}
+.gb-support-card header{display:flex;justify-content:space-between;gap:10px;align-items:center}.gb-support-card h2{font:700 21px Georgia,serif;margin:4px 0 14px}.gb-support-card h3{font:700 17px Georgia,serif}
+#gb-support-close{font-size:28px;background:transparent;color:#fff;border:0;cursor:pointer}
+.gb-support-card form,.gb-support-reply{display:grid;gap:13px}.gb-support-card label,.gb-support-reply label{display:grid;gap:6px;font-weight:600}
+.gb-support-card input:not([type=file]),.gb-support-card select,.gb-support-card textarea,.gb-support-reply textarea,.gb-support-reply input{width:100%;box-sizing:border-box;background:#170d25;color:#fff3ee;border:1px solid #bd7caa;border-radius:8px;padding:9px;font:14px system-ui,sans-serif}
+.gb-support-card input[type=file]{border:0;background:transparent}.gb-support-card small{color:#e9b9d3}
+.gb-support-action{display:block;width:100%;text-align:center;border:1px solid #ffc68f!important;background:#83235f!important;color:white!important;padding:10px!important;border-radius:12px!important;margin:8px 0!important;cursor:pointer;font-weight:700!important;white-space:normal;overflow-wrap:anywhere}
+.gb-support-action:disabled{opacity:.55;cursor:default}.gb-support-message{padding:13px;margin:10px 0;border:1px solid #88577d;border-radius:12px;background:#351a40;overflow-wrap:anywhere}.gb-support-message p{white-space:pre-wrap}.gb-support-message a{color:#ffcf86;display:block;margin:8px 0}
+.gb-support-thread-button{font-size:13px!important}.gb-support-muted{opacity:.75}.gb-support-list{margin:8px 0 20px}#gb-support-status{min-height:1.4em;white-space:pre-wrap}#gb-support-admin .gb-support-message{color:#fbe1ef}#gb-support-my-threads{display:grid;gap:6px}
+
+.gb-support-error{color:#ffbcbb;font-weight:700;white-space:pre-wrap}

@@ -126,6 +126,7 @@ prAccountScreen.insertBefore(prRewardSync,prCloud);
 
 const prMailScreen=prScreen('mail','MAILBOX');
 prMailScreen.insertAdjacentHTML('beforeend',`<section class="gbpr-panel"><div class="gbpr-tag">CARNIVAL MAIL</div><div class="gbpr-social-actions"><button type="button" class="gbpr-btn secondary" id="gbpr-mail-refresh">REFRESH</button></div><div id="gbpr-mail-list" aria-live="polite" class="gbpr-social-list">Loading mail…</div></section>`);
+prMailScreen.insertAdjacentHTML('beforeend',`<section class="gbpr-panel"><div class="gbpr-tag">✉ GOREBURST TEAM</div><p class="gbpr-muted">Support replies and ongoing conversations appear here, separately from official announcements.</p><div id="gb-support-my-threads">Loading support conversations…</div></section>`);
 const prPublicScreen=prScreen('public','CARNIVAL PLAYER');
 prPublicScreen.insertAdjacentHTML('beforeend',`<section class="gbpr-panel gbpr-public-panel"><div class="gbpr-tag">✦ CARNIVAL PLAYER ✦</div><div id="gbpr-public-content" aria-live="polite">Loading player…</div><button type="button" class="gbpr-btn secondary" id="gbpr-public-back">‹ BACK TO FRIENDS</button></section>`);
 const prFriendsScreen=prScreen('friends','FRIENDS');
@@ -140,6 +141,7 @@ prAdminScreen.insertAdjacentHTML('beforeend',`<section class="gbpr-panel gb-admi
 <form id="gb-admin-frame-form" class="gbpr-form"><label>Frame title<input id="gb-admin-frame-title" maxlength="80" required></label><label>Artwork<input id="gb-admin-frame-file" type="file" accept="image/png,image/webp" required></label><button class="gbpr-btn" type="submit">UPLOAD TEST FRAME</button></form>
 <div class="gb-admin-publish-controls"><div class="gbpr-tag">OWNER-ONLY GIFT CODE RELEASE</div><p class="gbpr-muted">Approve a test frame, enter a new code and claim limit here, then choose PUBLISH AS GIFT CODE beside that approved frame. Publishing is irreversible without a separate revocation action.</p><label>Gift code<input id="gb-admin-publish-code" maxlength="32" placeholder="WALKERSGIFT2026" autocomplete="off"></label><label>Maximum redemptions<input id="gb-admin-publish-limit" type="number" min="1" max="100000" value="500"></label></div><div id="gb-admin-test-frames" class="gb-admin-items"></div>
 <h3>⚿ Username protection</h3><form id="gb-admin-username-form" class="gbpr-form"><label>Username<input id="gb-admin-username" maxlength="20" placeholder="username" required></label><div class="gbpr-actions"><button class="gbpr-btn" type="submit" data-mode="reserve">PROTECT</button><button class="gbpr-btn secondary" type="button" id="gb-admin-unreserve">RELEASE</button></div></form><div id="gb-admin-reserved-list" class="gb-admin-items"></div>
+<h3>✉ Player Inbox</h3><div id="gb-support-admin" class="gb-admin-items">Select Player Inbox to load support messages.</div>
 <p id="gb-admin-status" class="gbpr-error" aria-live="polite"></p><button type="button" id="gb-admin-refresh" class="gbpr-btn secondary">REFRESH CONTROL ROOM</button></section>`);
 
 // ADMIN NAVIGATION: partition ORIGINAL sibling nodes before inserting any wrappers.
@@ -148,9 +150,9 @@ prAdminScreen.insertAdjacentHTML('beforeend',`<section class="gbpr-panel gb-admi
 (function gbAdminBuildSections(){
  const panel=prAdminScreen.querySelector('.gb-admin-panel');
  if(!panel)return;
- const labels=[['broadcast','Broadcast Messages'],['frames','Frames & Gift Codes'],['usernames','Usernames']];
+ const labels=[['broadcast','Broadcast Messages'],['frames','Frames & Gift Codes'],['usernames','Usernames'],['support','Player Inbox']];
  const headings=Array.from(panel.children).filter(n=>n.tagName==='H3');
- if(headings.length!==3)return;
+ if(headings.length!==4)return;
  const status=panel.querySelector('#gb-admin-status');
  const originalChildren=Array.from(panel.children);
  const groups=labels.map(([key],i)=>{
@@ -235,8 +237,8 @@ function prNavigate(name){
  prFriendsScreen.querySelector('#gbpr-friends-account').classList.toggle('gbpr-hide',!!(gbprRegistered()&&profile?.username));
  prFriendsScreen.querySelector('#gbpr-friends-controls').classList.toggle('gbpr-hide',!(gbprRegistered()&&profile?.username));
  if(name==='friends'&&gbprRegistered()&&profile?.username)gbprLoadFriends();
- if(name==='mail')void gbprLoadMail();
- if(name==='admin')void gbAdminRefresh();
+ if(name==='mail'){void gbprLoadMail();void window.gbSupportRefreshMine?.();}
+ if(name==='admin'){void gbAdminRefresh();void window.gbSupportRefreshAdmin?.();}
  prScroll.scrollTop=0;
 }
 prScroll.querySelectorAll('[data-gbpr-nav]').forEach(b=>b.onclick=()=>prNavigate(b.dataset.gbprNav));
@@ -250,6 +252,7 @@ const prUpdateHub=()=>{
 };
 
 let sb=null,user=null,profile=null,signup=false,working=false,avatarPreview=null;
+window.gbSupportSession=()=>({client:sb,user,adminRole:gbAdminRole});
 let gbAdminRole=null;
 
 // Cloud-validated continue purchases. A successful RPC is the only authority to grant +5 moves.
@@ -1211,6 +1214,7 @@ async function gbprRefreshMailDot(){
   const announcements=await sb.rpc('gb_read_announcements');
   if(!announcements.error&&announcements.data?.some(a=>!a.read_at&&!gbprHiddenMailIds.has(a.id)))gbprMailPending=true;
  }
+ if(await window.gbSupportHasUnread?.())gbprMailPending=true;
  button?.classList.toggle('gbpr-mail-pending',gbprMailPending);
  gbprUpdatePfpNotice();
 }
@@ -1931,7 +1935,12 @@ window.gbLeaderboardAddFrames=async function(rows){
   return matches.length===1?matches[0]:null;
  };
  return rows.map(r=>{
-  if(r.is_bot)return {...r,equipped_frame:gbpfNormalize(r.equipped_frame)};
+  if(r.is_bot){
+   // Existing bot prize frames: display-only, never claims ownership or changes Supabase.
+   const frameByName={'🎀 vivian 🎀':'gift_04','M A R C U S':'gift_02','Luna':'gift_18','𝚊𝚙𝚙𝚕𝚎':'gift_13'};
+   const botFrame=Object.prototype.hasOwnProperty.call(frameByName,r.display_name)?frameByName[r.display_name]:r.equipped_frame;
+   return {...r,equipped_frame:gbpfNormalize(botFrame)};
+  }
   const id=idOf(r);
   const matched=findUnique('id',id)||findUnique('username',String(r.username||'').replace(/^@/,''))||findUnique('avatar_path',r.avatar_path)||findUnique('display_name',r.display_name);
   let selected=gbpfNormalize(matched?.equipped_frame??r.equipped_frame);

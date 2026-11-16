@@ -662,3 +662,13 @@
 .ev-root .ev-ghost-name{min-width:0;max-width:100%;flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ev-root .ev-ghost-score{flex:0 0 auto}
 }
+
+/* Carnival Clash: constrain leaderboard rows on desktop without changing mobile. */
+@media (min-width:700px) {
+  .ev-root .ev-clash-board,
+  .ev-root .ev-clash-rows,
+  .ev-root .ev-clash-row {width:100%;max-width:100%;min-width:0;box-sizing:border-box}
+  .ev-root .ev-clash-rankwrap {min-width:0;flex:1 1 0%;overflow:hidden}
+  .ev-root .ev-clash-name {min-width:0;flex:1 1 auto;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ev-root .ev-clash-score {flex:0 0 auto}
+}
