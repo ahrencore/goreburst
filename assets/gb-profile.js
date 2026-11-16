@@ -1187,6 +1187,9 @@ if(typeof consumeFailedLife==='function' && typeof canAttempt==='function' && ty
   }};
 }
 let gbprMailItems=[];
+const GBPR_MAIL_PAGE_SIZE=10;
+let gbprMailPage=0;
+let gbprMailDotRequest=0;
 let gbprHiddenMailIds=new Set();
 async function gbprHideMail(id){
  const m=gbprMailItems.find(x=>x.id===id);
@@ -1205,9 +1208,11 @@ async function gbprHideMail(id){
 }
 function gbprMailPendingCheck(m){return (m.category==='event_reward'&&!m.claimed_at)||!m.read_at;}
 async function gbprRefreshMailDot(){
+ const request=++gbprMailDotRequest;
  const button=prHub?.querySelector('[data-gbpr-nav="mail"]');
  if(!sb||!user){gbprMailPending=false;button?.classList.remove('gbpr-mail-pending');gbprUpdatePfpNotice();return;}
  const [{data,error},hidden]=await Promise.all([sb.from('gb_inbox').select('id,category,claimed_at,read_at').eq('recipient',user.id).limit(100),sb.rpc('gb_get_hidden_mail')]);
+ if(request!==gbprMailDotRequest)return;
  if(!hidden.error)gbprHiddenMailIds=new Set(hidden.data||[]);
  if(error)return;
  gbprMailPending=!!data?.filter(x=>!gbprHiddenMailIds.has(x.id)).some(gbprMailPendingCheck);
@@ -1215,10 +1220,13 @@ async function gbprRefreshMailDot(){
   const announcements=await sb.rpc('gb_read_announcements');
   if(!announcements.error&&announcements.data?.some(a=>!a.read_at&&!gbprHiddenMailIds.has(a.id)))gbprMailPending=true;
  }
- if(await window.gbSupportHasUnread?.())gbprMailPending=true;
+ const supportUnread=await window.gbSupportHasUnread?.();
+ if(request!==gbprMailDotRequest)return;
+ if(supportUnread)gbprMailPending=true;
  button?.classList.toggle('gbpr-mail-pending',gbprMailPending);
  gbprUpdatePfpNotice();
 }
+window.gbprRefreshMailDot=gbprRefreshMailDot;
 async function gbprLoadMail(){
  const host=$p('gbpr-mail-list');if(!host)return;
  if(!user){host.innerHTML=gbprSocialMessage('Sign in to see official mail.');return}
@@ -1262,8 +1270,20 @@ function gbprEventRewardIcons(reward){
 }
 function gbprDrawMailList(){
  const host=$p('gbpr-mail-list');if(!host)return;
- if(!gbprMailItems.length){host.innerHTML=gbprSocialMessage('No mail yet.');return}
- host.innerHTML=gbprMailItems.map(m=>`<div class="gbpr-inbox-entry"><button type="button" class="gbpr-inbox-row ${gbprMailPendingCheck(m)?'gbpr-inbox-unread':''}" data-mail-open="${m.id}"><span class="gbpr-inbox-envelope">✉</span><span class="gbpr-inbox-title"><b>${safe(m.title)}</b><small>${m.source_event==='welcome_gift'||m.category==='admin_broadcast'?'A letter from Mr. Walker':'Official Carnival Mail'}</small></span><span class="gbpr-inbox-status">${m.category==='event_reward'&&!m.claimed_at?'<i class="gbpr-mail-dot"></i>':!m.read_at?'<i class="gbpr-mail-dot"></i>':'›'}</span></button><button type="button" class="gbpr-mail-delete" data-mail-delete="${m.id}" aria-label="Delete ${safe(m.title)}" title="Delete letter" ${((m.category==='event_reward'||m.source_event==='welcome_gift'||m.source_event==='reward_claim_test')&&!m.claimed_at)?'disabled title="Claim reward first"':''}>✕</button></div>`).join('');
+ if(!gbprMailItems.length){gbprMailPage=0;host.innerHTML=gbprSocialMessage('No mail yet.');return}
+ const pageCount=Math.ceil(gbprMailItems.length/GBPR_MAIL_PAGE_SIZE);
+ gbprMailPage=Math.max(0,Math.min(gbprMailPage,pageCount-1));
+ const pageItems=gbprMailItems.slice(gbprMailPage*GBPR_MAIL_PAGE_SIZE,(gbprMailPage+1)*GBPR_MAIL_PAGE_SIZE);
+ host.innerHTML=pageItems.map(m=>`<div class="gbpr-inbox-entry"><button type="button" class="gbpr-inbox-row ${gbprMailPendingCheck(m)?'gbpr-inbox-unread':''}" data-mail-open="${m.id}"><span class="gbpr-inbox-envelope">✉</span><span class="gbpr-inbox-title"><b>${safe(m.title)}</b><small>${m.source_event==='welcome_gift'||m.category==='admin_broadcast'?'A letter from Mr. Walker':'Official Carnival Mail'}</small></span><span class="gbpr-inbox-status">${m.category==='event_reward'&&!m.claimed_at?'<i class="gbpr-mail-dot"></i>':!m.read_at?'<i class="gbpr-mail-dot"></i>':'›'}</span></button><button type="button" class="gbpr-mail-delete" data-mail-delete="${m.id}" aria-label="Delete ${safe(m.title)}" title="Delete letter" ${((m.category==='event_reward'||m.source_event==='welcome_gift'||m.source_event==='reward_claim_test')&&!m.claimed_at)?'disabled title="Claim reward first"':''}>✕</button></div>`).join('');
+ if(pageCount>1){
+  const nav=document.createElement('div');nav.className='gbpr-mail-pagination';
+  const previous=document.createElement('button');previous.type='button';previous.textContent='‹ PREV';previous.disabled=gbprMailPage===0;
+  previous.onclick=()=>{if(gbprMailPage>0){gbprMailPage--;gbprDrawMailList()}};
+  const pageLabel=document.createElement('span');pageLabel.textContent=`Page ${gbprMailPage+1} of ${pageCount}`;
+  const next=document.createElement('button');next.type='button';next.textContent='NEXT ›';next.disabled=gbprMailPage>=pageCount-1;
+  next.onclick=()=>{if(gbprMailPage<pageCount-1){gbprMailPage++;gbprDrawMailList()}};
+  nav.append(previous,pageLabel,next);host.append(nav);
+ }
  host.querySelectorAll('[data-mail-open]').forEach(b=>b.onclick=()=>gbprOpenMail(b.dataset.mailOpen));
  host.querySelectorAll('[data-mail-delete]').forEach(b=>b.onclick=()=>gbprHideMail(b.dataset.mailDelete));
 }

@@ -1,4 +1,4 @@
 {
-  "version": "2026.11.16.4",
-  "notes": "Contact Team hotfix: readable player support conversations, Control Room unread notification, and compact Settings control. Weekly Nightmare fix and existing gameplay preserved."
+  "version": "2026.11.16.5",
+  "notes": "Carnival Mail: 10 letters per page, support unread indicator refresh, support thread unread styling. Existing gameplay and support fixes preserved."
 }

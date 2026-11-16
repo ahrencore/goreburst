@@ -65,8 +65,8 @@ async function drawThreads(host,isAdmin=false){
  host.replaceChildren();
  if(!result.rows.length){host.append(mk('p',isAdmin?'No support messages yet.':'No support conversations yet.','gb-support-muted'));return}
  for(const thread of result.rows){const who=isAdmin?`${thread.requester_name} · `:'';const unread=isAdmin?thread.last_sender==='player'&&!thread.admin_read_at:thread.last_sender==='team'&&!thread.player_read_at;
-  const button=btn(`${unread?'● ':''}${who}${thread.subject} · ${label[thread.category]||thread.category} · ${thread.status}`,()=>void openThread(thread.id,isAdmin,{fromMail:!isAdmin&&host.id==='gb-support-my-threads'}).catch(e=>{const target=isAdmin?$('gb-support-admin'):$('gb-support-status');if(target){const msg='Conversation unavailable: '+e.message;if(isAdmin)target.append(mk('p',msg,'gb-support-error'));else target.textContent=msg}}));
-  button.classList.add('gb-support-thread-button');host.append(button);
+  const button=btn(`${who}${thread.subject} · ${label[thread.category]||thread.category} · ${thread.status}`,()=>void openThread(thread.id,isAdmin,{fromMail:!isAdmin&&host.id==='gb-support-my-threads'}).catch(e=>{const target=isAdmin?$('gb-support-admin'):$('gb-support-status');if(target){const msg='Conversation unavailable: '+e.message;if(isAdmin)target.append(mk('p',msg,'gb-support-error'));else target.textContent=msg}}));
+  button.classList.add('gb-support-thread-button');if(unread)button.classList.add('gb-support-thread-unread');host.append(button);
  }
  const pageCount=Math.max(1,Math.ceil(result.count/size));
  if(pageCount>1){const nav=mk('div',undefined,'gb-support-pagination');
@@ -105,7 +105,7 @@ async function openThread(id,admin=false,options={}){const {client}=get();const 
      await window.gbSupportRefreshIndicators?.();
      // Reload the actual inbox rows, so its unread mark and badge agree.
      // Keep the selected conversation open until Back is pressed.
-   }else{await window.gbSupportRefreshMine?.();}
+   }else{await window.gbSupportRefreshMine?.();void window.gbprRefreshMailDot?.();}
  }
 }
 async function refreshAdmin(){const host=$('gb-support-admin');if(!host)return;const a=account();if(!a.adminRole){host.textContent='Admin access required';return}
