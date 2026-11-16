@@ -11,3 +11,8 @@
 .gb-support-thread-button{font-size:13px!important}.gb-support-muted{opacity:.75}.gb-support-list{margin:8px 0 20px}#gb-support-status{min-height:1.4em;white-space:pre-wrap}#gb-support-admin .gb-support-message{color:#fbe1ef}#gb-support-my-threads{display:grid;gap:6px}
 
 .gb-support-error{color:#ffbcbb;font-weight:700;white-space:pre-wrap}
+
+/* Unread support requests: private Control Room indicators only. */
+#gb-admin-nav.gb-support-unread,.gb-admin-section-tile.gb-support-unread{position:relative;}
+#gb-admin-nav.gb-support-unread::after,.gb-admin-section-tile.gb-support-unread::after{content:"";position:absolute;right:9px;top:7px;width:10px;height:10px;border-radius:50%;background:#ff3049;box-shadow:0 0 0 2px #300b24,0 0 7px #ff415d;pointer-events:none;}
+#gb-support-my-threads .gb-support-thread-button{width:100%;margin:6px 0!important;padding:9px 12px!important;text-align:left;font:600 14px/1.35 system-ui,sans-serif!important;border-radius:13px!important;}

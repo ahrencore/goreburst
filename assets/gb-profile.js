@@ -126,7 +126,7 @@ prAccountScreen.insertBefore(prRewardSync,prCloud);
 
 const prMailScreen=prScreen('mail','MAILBOX');
 prMailScreen.insertAdjacentHTML('beforeend',`<section class="gbpr-panel"><div class="gbpr-tag">CARNIVAL MAIL</div><div class="gbpr-social-actions"><button type="button" class="gbpr-btn secondary" id="gbpr-mail-refresh">REFRESH</button></div><div id="gbpr-mail-list" aria-live="polite" class="gbpr-social-list">Loading mail…</div></section>`);
-prMailScreen.insertAdjacentHTML('beforeend',`<section class="gbpr-panel"><div class="gbpr-tag">✉ GOREBURST TEAM</div><p class="gbpr-muted">Support replies and ongoing conversations appear here, separately from official announcements.</p><div id="gb-support-my-threads">Loading support conversations…</div></section>`);
+prMailScreen.insertAdjacentHTML('beforeend',`<section class="gbpr-panel"><div class="gbpr-tag">✉ GOREBURST TEAM</div><div id="gb-support-my-threads">Loading support conversations…</div></section>`);
 const prPublicScreen=prScreen('public','CARNIVAL PLAYER');
 prPublicScreen.insertAdjacentHTML('beforeend',`<section class="gbpr-panel gbpr-public-panel"><div class="gbpr-tag">✦ CARNIVAL PLAYER ✦</div><div id="gbpr-public-content" aria-live="polite">Loading player…</div><button type="button" class="gbpr-btn secondary" id="gbpr-public-back">‹ BACK TO FRIENDS</button></section>`);
 const prFriendsScreen=prScreen('friends','FRIENDS');
@@ -172,7 +172,7 @@ prAdminScreen.insertAdjacentHTML('beforeend',`<section class="gbpr-panel gb-admi
  }
  labels.forEach(([key,label])=>{
   const btn=document.createElement('button');btn.type='button';btn.className='gbpr-btn gb-admin-section-tile';
-  btn.textContent=label;btn.addEventListener('click',()=>open(key));home.append(btn);
+  btn.textContent=label;if(key==='support')btn.dataset.supportInbox='1';btn.addEventListener('click',()=>{open(key);if(key==='support')void window.gbSupportRefreshAdmin?.()});home.append(btn);
  });
  back.addEventListener('click',()=>open(null));open(null);
  window.gbAdminOpenSection=open;
@@ -238,7 +238,7 @@ function prNavigate(name){
  prFriendsScreen.querySelector('#gbpr-friends-controls').classList.toggle('gbpr-hide',!(gbprRegistered()&&profile?.username));
  if(name==='friends'&&gbprRegistered()&&profile?.username)gbprLoadFriends();
  if(name==='mail'){void gbprLoadMail();void window.gbSupportRefreshMine?.();}
- if(name==='admin'){void gbAdminRefresh();void window.gbSupportRefreshAdmin?.();}
+ if(name==='admin'){void gbAdminRefresh();void window.gbSupportRefreshAdmin?.();void window.gbSupportRefreshIndicators?.();}
  prScroll.scrollTop=0;
 }
 prScroll.querySelectorAll('[data-gbpr-nav]').forEach(b=>b.onclick=()=>prNavigate(b.dataset.gbprNav));
@@ -714,6 +714,7 @@ async function gbAdminCheck(){
  }
  if(nav){nav.hidden=!gbAdminRole;nav.style.display=gbAdminRole?'':'none';}
  if(!gbAdminRole&&prCurrent==='admin')prNavigate('hub');
+ void window.gbSupportRefreshIndicators?.();
 }
 function gbAdminNote(message,ok=false){const el=$p('gb-admin-status');if(el){el.textContent=message;el.style.color=ok?'#98f2c1':'';}}
 async function gbAdminRefresh(){
