@@ -1263,6 +1263,17 @@ async function triggerQueue(initial){
   // board until their own blast resolves, so wheels can still select a color.
   const queuedPositions=new Set(queue.map(q=>q.r+','+q.c));
   for(const [rr,cc] of all){const val=grid[rr]?.[cc],k=`${rr},${cc}`;if(isSpecial(val)&&!done.has(k)&&!queuedPositions.has(k)&&!(rr===r&&cc===c)){queue.push({r:rr,c:cc,type:val});queuedPositions.add(k)}}
+  // Ferris Wheel also extinguishes any fire directly beside an affected piece.
+  // Add these blocker cells BEFORE building the clearing list; doing it later
+  // caused the 2026.11.16 chain-reaction regression.
+  if(type==='FW'){
+    const nearbyFire=new Set();
+    for(const [hr,hc] of hit)for(const [dr,dc] of [[-1,0],[1,0],[0,-1],[0,1]]){
+      const fr=hr+dr,fc=hc+dc;
+      if(valid(fr,fc)&&getB(fr,fc)?.kind==='FI')nearbyFire.add(fr+','+fc);
+    }
+    for(const pos of nearbyFire){const [fr,fc]=pos.split(',').map(Number);all.push([fr,fc]);}
+  }
   const clearNow=all.filter(([rr,cc])=>!queuedPositions.has(rr+','+cc));
   if(type==='RV'||type==='RH'){collectBlock('RV');starPoints+=4;playSfx('rocket')}if(type==='CB'){collectBlock('CB');starPoints+=6;playSfx('bomb')}if(type==='FW'){collectBlock('FW');starPoints+=8;playSfx('wheel')}say(type.startsWith('GH')?'HAUNTED HUNT!':type==='CB'?'CLOWNBOMB!':type==='FW'?'CARNIVAL MELTDOWN!':'ROCKET BLAST!');
   if(type.startsWith('GH')){
@@ -1273,7 +1284,6 @@ async function triggerQueue(initial){
     clear([...consumed,...targets].filter(([rr,cc])=>!queuedPositions.has(rr+','+cc)));
   }else{
     await specialVisual(r,c,type,hit);
-    if(type==='FW'){const nearbyFire=new Set();for(const [hr,hc] of hit)for(const [dr,dc] of [[-1,0],[1,0],[0,-1],[0,1]]){const fr=hr+dr,fc=hc+dc;if(valid(fr,fc)&&getB(fr,fc)?.kind==='FI')nearbyFire.add(fr+','+fc)}for(const key of nearbyFire){const [fr,fc]=key.split(',').map(Number);all.push([fr,fc])}}
     clear(clearNow);
   }
   await delay(75);
@@ -1562,7 +1572,7 @@ document.getElementById('gbSettingsClose').onclick=closeGbSettings;
 document.getElementById('gbSupportOpen').onclick=()=>{closeGbSettings();window.gbSupportOpen?.();};
 document.getElementById('gbSettings').addEventListener('click',e=>{if(e.target.id==='gbSettings')closeGbSettings()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeGbSettings()});
-</script><link rel="stylesheet" href="assets/gb-giftcodes.css"><script defer src="assets/gb-giftcodes.js?v=admin-bundle-20261107"></script><script src="assets/gb-events.js?v=2026.11.14.1"></script><script type="module" src="assets/gb-profile.js?v=2026.11.16.3"></script><script defer src="assets/gb-collectibles.js?v=gb-wallet-speed-20261107"></script><script defer src="assets/gb-shop.js?v=gb-wallet-speed-20261107"></script><style id="gb-events-badge-final-position">
+</script><link rel="stylesheet" href="assets/gb-giftcodes.css"><script defer src="assets/gb-giftcodes.js?v=admin-bundle-20261107"></script><script src="assets/gb-events.js?v=2026.11.14.1"></script><script type="module" src="assets/gb-profile.js?v=2026.11.16.4"></script><script defer src="assets/gb-collectibles.js?v=gb-wallet-speed-20261107"></script><script defer src="assets/gb-shop.js?v=gb-wallet-speed-20261107"></script><style id="gb-events-badge-final-position">
 /* Fixed badge: a child of the actual EVENTS tap area, not a pseudo-element. */
 #menu .bottom-tabs #events.ev-tab-has-reward::after{content:none!important;display:none!important}
 #menu .bottom-tabs #events{position:absolute!important;overflow:hidden!important}
@@ -1582,7 +1592,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeGbSettings()});
 #menu .bottom-tabs #events.ev-tab-has-reward{animation:gb-events-invite 1.8s ease-in-out infinite!important;isolation:isolate;overflow:visible!important;filter:drop-shadow(0 0 5px #ff79ec) drop-shadow(0 0 8px #a050ff)}
 @keyframes gb-events-invite{0%,100%{filter:drop-shadow(0 0 3px #ef4fb5) drop-shadow(0 0 4px #7844d4);opacity:1}50%{filter:drop-shadow(0 0 13px #ff72dd) drop-shadow(0 0 17px #895fff);opacity:.83}}
 @media(prefers-reduced-motion:reduce){#menu .bottom-tabs #events.ev-tab-has-reward{animation:none!important;filter:drop-shadow(0 0 10px #f858ce)}}
-</style><link rel="stylesheet" href="assets/gb-frame-universal.css?v=classic-fit-20261103-c"><script defer src="assets/gb-completion-frame-fit.js?v=opening-mask-20261104a"></script><script defer src="assets/gb-updater.js?v=2026.11.16.3"></script>
+</style><link rel="stylesheet" href="assets/gb-frame-universal.css?v=classic-fit-20261103-c"><script defer src="assets/gb-completion-frame-fit.js?v=opening-mask-20261104a"></script><script defer src="assets/gb-updater.js?v=2026.11.16.4"></script>
 <script id="gb-welcome-marquee-binding">
 /* Mirrors the existing profile display name. Never requests extra Supabase data. */
 (()=>{'use strict';
@@ -1610,5 +1620,15 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeGbSettings()});
 })();
 </script>
 <style id="gb-support-settings-polish">
-#gbSettings .gb-settings-card #gbSupportOpen{display:block;box-sizing:border-box;max-width:calc(100% - 16px);width:auto;margin:12px auto 0;padding:9px 16px;min-height:40px;font:700 13px/1.25 system-ui,sans-serif;letter-spacing:.035em;white-space:normal;text-align:center;border-width:1px;border-radius:12px;box-shadow:none;background:#69204e;color:#ffe7ee;}
-</style><link rel="stylesheet" href="assets/gb-support.css?v=20261116-3"><script type="module" src="assets/gb-support.js?v=20261116-3"></script></body></html>
+/* Three equal, compact Settings actions. No oversized individual buttons. */
+#gbSettings .gb-settings-card :is(#gbGiftOpen,#gbSupportOpen,#gbSettingsClose){
+ display:block;box-sizing:border-box;width:min(100%,286px);max-width:100%;
+ min-height:40px;margin:9px auto;padding:9px 12px;
+ border:1px solid #e5a3bc;border-radius:12px;box-shadow:none;
+ background:#69204e;color:#ffe7ee;
+ font:700 13px/1.25 system-ui,sans-serif;letter-spacing:.025em;
+ white-space:normal;text-align:center;
+}
+#gbSettings .gb-settings-card #gbGiftOpen{margin-top:18px;}
+#gbSettings .gb-settings-card #gbSettingsClose{margin-bottom:3px;}
+</style><link rel="stylesheet" href="assets/gb-support.css?v=20261116-4"><script type="module" src="assets/gb-support.js?v=20261116-4"></script></body></html>
